@@ -1,0 +1,127 @@
+{
+  "generatedAt": "2026-07-16T10:02:39.791Z",
+  "passed": 7,
+  "total": 7,
+  "checks": [
+    {
+      "name": "routine uses Luna planner",
+      "passed": true
+    },
+    {
+      "name": "routine uses Luna writer",
+      "passed": true
+    },
+    {
+      "name": "complex uses Sol planner",
+      "passed": true
+    },
+    {
+      "name": "complex still uses Luna writer",
+      "passed": true
+    },
+    {
+      "name": "all API generation uses store false",
+      "passed": true
+    },
+    {
+      "name": "all routes send cache keys",
+      "passed": true
+    },
+    {
+      "name": "usage exposes cache and cost",
+      "passed": true
+    }
+  ],
+  "calls": [
+    {
+      "model": "gpt-5.6-luna",
+      "schemaName": "poetry_pond_event_proposal_v3",
+      "cacheKey": "poetry-pond:v3:luna-planner:ontology-v2",
+      "store": false
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "schemaName": "poetry_pond_validated_render_v3",
+      "cacheKey": "poetry-pond:v3:luna-writer:style-v2",
+      "store": false
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "schemaName": "poetry_pond_event_proposal_v3",
+      "cacheKey": "poetry-pond:v3:sol-planner:ontology-v2",
+      "store": false
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "schemaName": "poetry_pond_validated_render_v3",
+      "cacheKey": "poetry-pond:v3:luna-writer:style-v2",
+      "store": false
+    }
+  ],
+  "routineRoute": {
+    "policy": "efficient",
+    "complexity": {
+      "score": 2,
+      "tier": "low",
+      "reasons": [
+        "unsupported-local-grammar"
+      ]
+    },
+    "trace": [
+      {
+        "stage": "local-parser",
+        "outcome": "needs_clarification",
+        "reason": "unsupported-action"
+      },
+      {
+        "stage": "luna-planner",
+        "outcome": "accepted",
+        "reason": "routine-unsupported-language"
+      }
+    ],
+    "review": {
+      "used": false,
+      "reason": "deterministic-ranking-sufficient"
+    },
+    "writer": {
+      "used": true,
+      "model": "gpt-5.6-luna"
+    },
+    "solUsed": false
+  },
+  "complexRoute": {
+    "policy": "efficient",
+    "complexity": {
+      "score": 7,
+      "tier": "high",
+      "reasons": [
+        "medium-line",
+        "conditional-or-temporal",
+        "reference-resolution",
+        "relational-action",
+        "unsupported-local-grammar"
+      ]
+    },
+    "trace": [
+      {
+        "stage": "local-parser",
+        "outcome": "needs_clarification",
+        "reason": "unsupported-action"
+      },
+      {
+        "stage": "sol-planner",
+        "outcome": "accepted",
+        "reason": "high-complexity"
+      }
+    ],
+    "review": {
+      "used": false,
+      "reason": "deterministic-ranking-sufficient"
+    },
+    "writer": {
+      "used": true,
+      "model": "gpt-5.6-luna"
+    },
+    "solUsed": true
+  }
+}

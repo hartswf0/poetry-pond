@@ -1,0 +1,16 @@
+{
+  "name": "poetry-pond-ripple-v2",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Typed causal-world foundation for Poetry Pond: validated events, inspectable consequences, replay undo, and bounded OpenAI rendering.",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "evals": "node run-evals.mjs",
+    "verify": "npm test && npm run evals"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

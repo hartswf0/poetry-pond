@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>RIPPLE / THEREFORE — Semantic Wave Field</title>
+<style>
+:root{
+  color-scheme:dark;
+  --ink:#eee8dc;
+  --dim:#9d9a90;
+  --faint:rgba(232,226,212,.14);
+  --panel:rgba(6,14,18,.91);
+  --panel-solid:#071116;
+  --water:#0d2425;
+  --amber:#d8ad72;
+  --green:#91b5a6;
+  --red:#c9877f;
+  --violet:#ad96c8;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
+  --serif:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050d12;color:var(--ink);font-family:var(--mono)}
+button,input{font:inherit;color:inherit}
+button{border:1px solid var(--faint);background:rgba(4,12,16,.72);cursor:pointer}
+button:hover,button:focus-visible{border-color:rgba(232,226,212,.5);background:rgba(232,226,212,.08);outline:none}
+button:disabled{opacity:.4;cursor:wait}
+input{border:0;background:transparent;outline:none}
+.hidden{display:none!important}
+
+#stage{position:fixed;inset:0;z-index:0}
+#stage canvas{display:block;width:100%;height:100%;touch-action:none}
+#veil{position:fixed;inset:0;z-index:2;pointer-events:none;background:radial-gradient(120% 90% at 50% 110%,rgba(0,0,0,.58) 0%,rgba(0,0,0,0) 45%),radial-gradient(140% 100% at 50% -20%,rgba(214,166,106,.09) 0%,rgba(0,0,0,0) 50%),radial-gradient(100% 100% at 50% 50%,rgba(0,0,0,0) 52%,rgba(0,0,0,.52) 100%)}
+#semanticWaveCanvas{position:fixed;inset:0;z-index:4;pointer-events:none;width:100%;height:100%}
+#branchSvg{position:fixed;inset:0;z-index:5;pointer-events:none;width:100%;height:100%}
+#worldOverlay{position:fixed;inset:0;z-index:6;pointer-events:none}
+
+#topRail{position:fixed;z-index:30;top:18px;left:50%;transform:translateX(-50%);width:min(980px,calc(100vw - 32px));height:46px;display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto;border:1px solid rgba(232,226,212,.22);background:rgba(5,13,18,.78);backdrop-filter:blur(8px)}
+#brand{display:flex;align-items:center;padding:0 15px;border-right:1px solid var(--faint);font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap}
+#routeStatus{min-width:0;display:flex;align-items:center;padding:0 15px;font-size:9px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rail-btn{height:100%;border:0;border-left:1px solid var(--faint);padding:0 14px;font-size:9px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;white-space:nowrap}
+.rail-btn.live{background:var(--ink);color:#071116}
+.rail-btn.live::before{content:"● ";font-size:8px}
+#recordDot{display:none;color:var(--red)}
+body.recording #recordDot{display:inline}
+
+#commandBar{position:fixed;z-index:30;bottom:22px;left:50%;transform:translateX(-50%);width:min(760px,calc(100vw - 28px));height:58px;display:grid;grid-template-columns:112px minmax(0,1fr) 88px;border:1px solid rgba(232,226,212,.24);background:rgba(5,13,18,.84);backdrop-filter:blur(9px);box-shadow:0 16px 38px rgba(0,0,0,.28)}
+#modeButton,#sendButton{border:0}
+#modeButton{border-right:1px solid var(--faint);font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+#stoneInput{min-width:0;padding:0 17px;font-size:14px;color:var(--ink)}
+#stoneInput::placeholder{color:rgba(232,226,212,.42)}
+#sendButton{border-left:1px solid var(--faint);font-size:10px;font-weight:900;text-transform:uppercase}
+
+.node-marker{position:absolute;pointer-events:auto;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;border:1px solid rgba(232,226,212,.34);background:rgba(5,13,18,.58);padding:0;box-shadow:0 0 0 4px rgba(5,13,18,.18)}
+.node-marker.active{background:rgba(145,181,166,.54);border-color:rgba(232,226,212,.72)}
+.node-marker.selected{width:21px;height:21px;margin:-10.5px 0 0 -10.5px;background:var(--ink);border-color:var(--ink);box-shadow:0 0 0 6px rgba(232,226,212,.10)}
+.node-marker.branch-target{border-color:var(--amber);box-shadow:0 0 0 6px rgba(216,173,114,.14)}
+.node-marker span{position:absolute;left:50%;top:22px;transform:translateX(-50%);font-size:7px;color:rgba(232,226,212,.64);white-space:nowrap;pointer-events:none}
+
+#stackView{display:none!important}
+#stackStem{position:absolute;left:50%;bottom:-32px;width:1px;height:38px;background:linear-gradient(to bottom,rgba(232,226,212,.45),rgba(232,226,212,0))}
+.stack-cycle-note{text-align:center;margin:0 0 6px;font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+.stack-layer{position:relative;margin:0 auto 5px;width:fit-content;min-width:220px;max-width:100%;padding:8px 12px;border:1px solid rgba(232,226,212,.24);background:rgba(5,13,18,.89);font-size:11px;line-height:1.45;letter-spacing:.01em;overflow-wrap:anywhere}
+.stack-layer::before{content:attr(data-type);display:block;margin-bottom:4px;font-size:7px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
+.stack-layer.stone{border-color:rgba(232,226,212,.46)}
+.stack-layer.fragment{border-color:rgba(145,181,166,.42)}
+.stack-layer.therefore{background:rgba(232,226,212,.94);color:#071116;border-color:var(--ink);font-weight:700}
+.stack-layer.therefore::before{color:rgba(7,17,22,.55)}
+.stack-layer.spawn{border-color:rgba(216,173,114,.72);background:rgba(74,52,31,.72);font-style:italic}
+.stack-layer.streaming::after{content:"▋";margin-left:3px;animation:blink .8s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+#stackRoute{text-align:center;margin-top:5px;font-size:7px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+#consequenceGauge{width:min(430px,calc(100vw - 58px));margin:7px auto 0;padding:8px 10px;border:1px solid rgba(232,226,212,.18);background:rgba(5,13,18,.78);display:none}
+#consequenceGauge.visible{display:block}
+.gauge-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px;font-size:7px;letter-spacing:.11em;text-transform:uppercase;color:var(--dim)}
+.gauge-head b{color:var(--ink);font-weight:700}
+.gauge-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.gauge-item small{display:block;margin-bottom:3px;font-size:6px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.gauge-track{height:3px;background:rgba(232,226,212,.10);overflow:hidden}
+.gauge-fill{height:100%;background:var(--green)}
+.gauge-reason{margin-top:7px;font-size:8px;line-height:1.4;color:rgba(232,226,212,.68)}
+.node-marker.active::before{content:"";position:absolute;left:50%;bottom:18px;width:5px;height:var(--mini-stack,8px);transform:translateX(-50%);border:1px solid rgba(232,226,212,.42);background:repeating-linear-gradient(to top,rgba(145,181,166,.45) 0 3px,rgba(5,13,18,.72) 3px 5px);box-shadow:0 4px 9px rgba(0,0,0,.28)}
+.node-marker.selected::before{border-color:var(--ink);background:repeating-linear-gradient(to top,rgba(232,226,212,.88) 0 3px,rgba(5,13,18,.78) 3px 5px)}
+.branch-path{fill:none;stroke:rgba(216,173,114,.34);stroke-width:1.35;stroke-dasharray:5 7;marker-end:url(#branchArrow)}
+.branch-path.recent{stroke:rgba(216,173,114,.24)}
+.branch-path.selected{stroke:rgba(232,226,212,.78);stroke-width:2;stroke-dasharray:none}
+.branch-pulse,.branch-label{display:none}
+
+
+#lensBackdrop,#apiBackdrop,#contextBackdrop{position:fixed;inset:0;opacity:0;pointer-events:none;transition:opacity .18s;background:rgba(0,0,0,.42);z-index:39}
+body.lens-open #lensBackdrop,body.api-open #apiBackdrop,body.context-open #contextBackdrop{opacity:1;pointer-events:auto}
+#lensDrawer{position:fixed;z-index:40;right:16px;top:16px;bottom:16px;width:min(430px,calc(100vw - 32px));display:grid;grid-template-rows:54px 38px minmax(0,1fr) auto;border:1px solid rgba(232,226,212,.24);background:var(--panel);backdrop-filter:blur(10px);transform:translateX(calc(100% + 24px));transition:transform .2s}
+body.lens-open #lensDrawer{transform:translateX(0)}
+.drawer-head{display:grid;grid-template-columns:1fr 54px;border-bottom:1px solid var(--faint)}
+.drawer-head h2{margin:0;display:flex;align-items:center;padding:0 15px;font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+.drawer-head button{border:0;border-left:1px solid var(--faint);font-size:18px}
+#lensTabs{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--faint)}
+#lensTabs button{border:0;border-right:1px solid var(--faint);font-size:8px;text-transform:uppercase;letter-spacing:.08em}
+#lensTabs button:last-child{border-right:0}
+#lensTabs button.active{background:var(--ink);color:#071116}
+#lensBody{overflow:auto;min-height:0;padding:12px}
+.lens-panel{display:none}
+.lens-panel.active{display:block}
+.panel-title{margin:0 0 10px;font-size:9px;color:var(--dim);letter-spacing:.12em;text-transform:uppercase}
+.event-entry{width:100%;display:grid;grid-template-columns:62px 1fr;gap:9px;padding:9px 7px;border:0;border-bottom:1px solid rgba(232,226,212,.08);text-align:left;background:transparent}
+.event-entry:hover,.event-entry.selected{background:rgba(232,226,212,.08)}
+.event-meta{font-size:8px;font-weight:900}
+.event-meta small{display:block;margin-top:3px;color:var(--dim);font-weight:400}
+.event-text{font-size:10px;line-height:1.42}
+#historySearch{width:100%;height:36px;padding:0 10px;margin-bottom:8px;border:1px solid var(--faint);color:var(--ink)}
+#timelineRange{width:100%;accent-color:var(--ink)}
+#timelineNow{margin:10px 0;padding:10px;border:1px solid var(--faint);font-size:10px;line-height:1.45}
+#branchList{margin-top:10px}
+.map-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;max-width:340px;margin:0 auto}
+.map-node{aspect-ratio:1;border:1px solid rgba(232,226,212,.14);background:rgba(232,226,212,.025);font-size:7px;padding:0}
+.map-node.active{background:rgba(145,181,166,.28)}
+.map-node.selected{background:var(--ink);color:#071116}
+.metrics{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--faint)}
+.metric{padding:10px;border-right:1px solid var(--faint);border-bottom:1px solid var(--faint)}
+.metric:nth-child(2n){border-right:0}.metric:nth-last-child(-n+2){border-bottom:0}
+.metric small{display:block;color:var(--dim);font-size:7px;text-transform:uppercase;letter-spacing:.09em}.metric strong{display:block;margin-top:4px;font-size:13px}
+#pressureCanvas{width:100%;height:70px;margin-top:12px;border:1px solid var(--faint)}
+.auto-policy{margin-top:12px;padding:10px;border:1px solid var(--faint);display:grid;gap:10px}
+.policy-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em}
+.policy-row input{grid-column:1/-1;width:100%;accent-color:var(--amber)}
+.policy-row b{color:var(--ink);font-size:9px}
+
+#drawerActions{border-top:1px solid var(--faint);padding:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#drawerActions button{min-height:32px;font-size:8px;text-transform:uppercase;letter-spacing:.05em}
+
+#apiModal{position:fixed;z-index:50;left:50%;top:50%;transform:translate(-50%,-47%) scale(.98);width:min(520px,calc(100vw - 30px));max-height:calc(100vh - 34px);overflow:auto;border:1px solid rgba(232,226,212,.24);background:var(--panel-solid);opacity:0;pointer-events:none;transition:opacity .17s,transform .17s}
+body.api-open #apiModal{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.api-head{display:grid;grid-template-columns:1fr 54px;height:54px;border-bottom:1px solid var(--faint)}
+.api-head h2{margin:0;display:flex;align-items:center;padding:0 15px;font-size:10px;letter-spacing:.13em;text-transform:uppercase}.api-head button{border:0;border-left:1px solid var(--faint);font-size:18px}
+.api-body{padding:15px;display:grid;gap:10px}.api-body p{margin:0;color:var(--dim);font-size:9px;line-height:1.5}.api-body label{display:grid;gap:5px;font-size:8px;text-transform:uppercase;letter-spacing:.08em}.api-body input{height:38px;padding:0 9px;border:1px solid var(--faint)}
+.checkline{display:flex!important;grid-template-columns:none!important;align-items:center;gap:8px}.checkline input{width:15px;height:15px}.api-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.api-actions button{height:38px;font-size:9px;text-transform:uppercase}.api-status{padding:9px;border:1px solid var(--faint);font-size:8px;color:var(--dim)}
+
+#contextMenu{position:fixed;z-index:50;width:220px;border:1px solid rgba(232,226,212,.24);background:var(--panel-solid);display:none;grid-template-columns:1fr 1fr;gap:1px;padding:1px}
+body.context-open #contextMenu{display:grid}
+#contextMenu button{min-height:38px;border:0;background:rgba(232,226,212,.04);font-size:8px;text-transform:uppercase}
+#contextMenu button:hover{background:var(--ink);color:#071116}
+
+#performanceHint{position:fixed;z-index:35;left:50%;bottom:18px;transform:translateX(-50%);font:italic 15px var(--serif);letter-spacing:.11em;color:rgba(232,226,212,.5);opacity:0;pointer-events:none;transition:opacity .4s}
+body.performance #topRail,body.performance #commandBar,body.performance .node-marker span{opacity:0;pointer-events:none}
+body.performance #performanceHint{opacity:.8}
+body.performance #stackView{filter:drop-shadow(0 14px 24px rgba(0,0,0,.48))}
+
+#fallback{position:fixed;inset:0;z-index:100;display:none;place-items:center;padding:2rem;text-align:center;color:var(--dim);font:italic 18px var(--serif)}
+#importInput{display:none}
+
+@media(max-width:760px){
+  #topRail{top:9px;width:calc(100vw - 18px);grid-template-columns:auto minmax(0,1fr) auto auto auto;height:42px}
+  #brand{font-size:8px;padding:0 10px}#routeStatus{font-size:7px;padding:0 8px}.rail-btn{padding:0 8px;font-size:7px}
+  #commandBar{bottom:10px;width:calc(100vw - 18px);height:54px;grid-template-columns:86px minmax(0,1fr) 64px}#stoneInput{font-size:12px;padding:0 10px}
+  #lensDrawer{inset:8px;width:auto}.stack-layer{min-width:180px;font-size:10px}
+}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="stage"></div>
+<div id="veil"></div>
+<canvas id="semanticWaveCanvas" aria-label="Typographic ripple field"></canvas>
+<svg id="branchSvg"></svg>
+<div id="worldOverlay">
+  <div id="nodeMarkers"></div>
+  <div id="stackView" class="hidden"><div id="stackCycleNote" class="stack-cycle-note"></div><div id="stackLayers"></div><div id="consequenceGauge"></div><div id="stackStem"></div><div id="stackRoute"></div></div>
+</div>
+
+<header id="topRail">
+  <button id="brand" title="Center selected node">RIPPLE / THEREFORE · SEMANTIC WAVE</button>
+  <div id="routeStatus">Center node ready · local fallback</div>
+  <button class="rail-btn" id="lensButton">Lens</button>
+  <button class="rail-btn" id="autoButton">Auto</button>
+  <button class="rail-btn" id="apiButton">API <span id="recordDot">●</span></button>
+</header>
+
+<footer id="commandBar">
+  <button id="modeButton">Neutral</button>
+  <input id="stoneInput" autocomplete="off" placeholder="Write the next ripple…">
+  <button id="sendButton">Send</button>
+</footer>
+
+<div id="performanceHint">tab restores the instrument</div>
+
+<div id="lensBackdrop"></div>
+<aside id="lensDrawer">
+  <div class="drawer-head"><h2 id="lensTitle">History</h2><button id="lensClose">×</button></div>
+  <nav id="lensTabs">
+    <button data-lens="history" class="active">History</button>
+    <button data-lens="timeline">Timeline</button>
+    <button data-lens="map">Map</button>
+    <button data-lens="ecology">Ecology</button>
+  </nav>
+  <div id="lensBody">
+    <section class="lens-panel active" data-panel="history"><input id="historySearch" placeholder="Search literal records"><div id="historyList"></div></section>
+    <section class="lens-panel" data-panel="timeline"><p class="panel-title">Event cursor</p><input id="timelineRange" type="range" min="0" max="0" value="0"><div id="timelineNow">No events.</div><div id="branchList"></div></section>
+    <section class="lens-panel" data-panel="map"><p class="panel-title">Field addresses</p><div id="mapGrid" class="map-grid"></div></section>
+    <section class="lens-panel" data-panel="ecology"><p class="panel-title">Field ecology</p><div id="metrics" class="metrics"></div><canvas id="pressureCanvas"></canvas><div class="auto-policy"><div class="policy-row"><span>Auto-branch threshold</span><b id="branchThresholdValue">56</b><input id="branchThreshold" type="range" min="25" max="85" value="56"></div><div class="policy-row"><span>Maximum cycles per node</span><b id="maxNodeCyclesValue">2</b><input id="maxNodeCycles" type="range" min="1" max="4" value="2"></div></div></section>
+  </div>
+  <div id="drawerActions">
+    <button data-action="mode">Apply mode</button>
+    <button data-action="branch">Branch</button>
+    <button data-action="portal">Portal</button>
+    <button data-action="record">Record</button>
+    <button data-action="export">Export</button>
+    <button data-action="save">Save</button>
+    <button data-action="load">Load</button>
+    <button data-action="import">Import</button>
+    <button data-action="clear">Clear</button>
+  </div>
+</aside>
+
+<div id="apiBackdrop"></div>
+<section id="apiModal">
+  <div class="api-head"><h2>OpenAI API</h2><button id="apiClose">×</button></div>
+  <div class="api-body">
+    <p>The key is used only by this local page. Use a server-side proxy before publishing the instrument.</p>
+    <label>API key<input id="apiKey" type="password" autocomplete="off" placeholder="sk-…"></label>
+    <label>Model<input id="apiModel" value="gpt-5.6-luna"></label>
+    <label>Endpoint<input id="apiEndpoint" value="https://api.openai.com/v1/responses"></label>
+    <label class="checkline"><input id="rememberKey" type="checkbox">Remember on this device</label>
+    <div id="apiStatus" class="api-status">Local fallback is active.</div>
+    <div class="api-actions"><button id="apiApply">Use API</button><button id="apiClear">Disconnect</button></div>
+  </div>
+</section>
+
+<div id="contextBackdrop"></div>
+<div id="contextMenu">
+  <button data-context="NEUTRAL">Neutral</button><button data-context="OBSTACLE">Obstacle</button>
+  <button data-context="GOAL">Goal</button><button data-context="SHIFT">Shift</button>
+  <button data-context="BRANCH">Branch</button><button data-context="PORTAL">Portal</button>
+</div>
+
+<input id="importInput" type="file" accept="application/json,.json">
+<div id="fallback">This field needs WebGL to hold water.<br>Please try a different browser.</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+if(!window.THREE||!window.WebGLRenderingContext){document.getElementById('fallback').style.display='grid';return;}
+
+const $=id=>document.getElementById(id);
+const els={stage:$('stage'),semanticWaveCanvas:$('semanticWaveCanvas'),branchSvg:$('branchSvg'),nodeMarkers:$('nodeMarkers'),stackView:$('stackView'),stackCycleNote:$('stackCycleNote'),stackLayers:$('stackLayers'),consequenceGauge:$('consequenceGauge'),stackRoute:$('stackRoute'),brand:$('brand'),routeStatus:$('routeStatus'),lensButton:$('lensButton'),autoButton:$('autoButton'),apiButton:$('apiButton'),modeButton:$('modeButton'),stoneInput:$('stoneInput'),sendButton:$('sendButton'),lensBackdrop:$('lensBackdrop'),lensDrawer:$('lensDrawer'),lensTitle:$('lensTitle'),lensClose:$('lensClose'),lensTabs:$('lensTabs'),historySearch:$('historySearch'),historyList:$('historyList'),timelineRange:$('timelineRange'),timelineNow:$('timelineNow'),branchList:$('branchList'),mapGrid:$('mapGrid'),metrics:$('metrics'),pressureCanvas:$('pressureCanvas'),branchThreshold:$('branchThreshold'),branchThresholdValue:$('branchThresholdValue'),maxNodeCycles:$('maxNodeCycles'),maxNodeCyclesValue:$('maxNodeCyclesValue'),drawerActions:$('drawerActions'),apiBackdrop:$('apiBackdrop'),apiModal:$('apiModal'),apiClose:$('apiClose'),apiKey:$('apiKey'),apiModel:$('apiModel'),apiEndpoint:$('apiEndpoint'),rememberKey:$('rememberKey'),apiStatus:$('apiStatus'),apiApply:$('apiApply'),apiClear:$('apiClear'),contextBackdrop:$('contextBackdrop'),contextMenu:$('contextMenu'),importInput:$('importInput')};
+
+const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isCoarse=window.matchMedia('(pointer: coarse)').matches;
+const MODES=['NEUTRAL','OBSTACLE','GOAL','SHIFT'];
+const MODE_LABEL={NEUTRAL:'Neutral',OBSTACLE:'Obstacle',GOAL:'Goal',SHIFT:'Shift'};
+const STORAGE_KEY='ripple-still-water-state-v1';
+const API_STORAGE='ripple-still-water-api-v1';
+const POND=16;
+
+let renderer;
+try{renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance',preserveDrawingBuffer:true});}
+catch(e){$('fallback').style.display='grid';return;}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,isCoarse?1.6:2));
+renderer.setSize(innerWidth,innerHeight);
+els.stage.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,100);
+const cameraBase=new THREE.Vector3(0,6.4,8.6);
+const focusTarget=new THREE.Vector3(0,0,-.8);
+const focusCurrent=new THREE.Vector3(0,0,-.8);
+camera.position.copy(cameraBase);camera.lookAt(focusCurrent);
+
+/* GPU wave simulation from the supplied Still Water field. */
+const SIM=isCoarse?256:384;
+let floatType=THREE.HalfFloatType;
+const gl=renderer.getContext();
+if(gl.getExtension('OES_texture_float')&&gl.getExtension('OES_texture_float_linear'))floatType=THREE.FloatType;
+function makeTarget(){return new THREE.WebGLRenderTarget(SIM,SIM,{type:floatType,minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,wrapS:THREE.ClampToEdgeWrapping,wrapT:THREE.ClampToEdgeWrapping,depthBuffer:false,stencilBuffer:false});}
+let rtA=makeTarget(),rtB=makeTarget();
+const simScene=new THREE.Scene();
+const simCamera=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+const stampCanvas=document.createElement('canvas');stampCanvas.width=stampCanvas.height=1024;
+const stampCtx=stampCanvas.getContext('2d');
+const stampTexture=new THREE.CanvasTexture(stampCanvas);stampTexture.minFilter=THREE.LinearFilter;stampTexture.magFilter=THREE.LinearFilter;stampTexture.flipY=false;
+let semanticStampFrames=0,semanticStampMagnitude=0;
+const simMaterial=new THREE.ShaderMaterial({uniforms:{uPrev:{value:null},uTexel:{value:new THREE.Vector2(1/SIM,1/SIM)},uDrop:{value:new THREE.Vector2(-1,-1)},uDropMag:{value:0},uDropRad:{value:.012},uStamp:{value:stampTexture},uStampMag:{value:0},uDamp:{value:.9962}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',fragmentShader:[
+'precision highp float;','uniform sampler2D uPrev;','uniform sampler2D uStamp;','uniform vec2 uTexel;','uniform vec2 uDrop;','uniform float uDropMag;','uniform float uDropRad;','uniform float uStampMag;','uniform float uDamp;','varying vec2 vUv;','void main(){','vec4 data=texture2D(uPrev,vUv);','float u=data.r;','float up=data.g;','float l=texture2D(uPrev,vUv-vec2(uTexel.x,0.)).r;','float r=texture2D(uPrev,vUv+vec2(uTexel.x,0.)).r;','float b=texture2D(uPrev,vUv-vec2(0.,uTexel.y)).r;','float t=texture2D(uPrev,vUv+vec2(0.,uTexel.y)).r;','float lap=(l+r+b+t)-4.*u;','float nu=(2.*u-up)+.5*lap;','nu*=uDamp;','if(uDrop.x>=0.){float d=distance(vUv,uDrop);nu-=uDropMag*exp(-(d*d)/(uDropRad*uDropRad));}','float glyph=texture2D(uStamp,vUv).r;','nu-=glyph*uStampMag;','vec2 e=min(vUv,1.-vUv);','float edge=smoothstep(0.,.05,min(e.x,e.y));','nu*=mix(.86,1.,edge);','gl_FragColor=vec4(nu,u,0.,1.);','}'
+].join('\n')});
+simScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),simMaterial));
+const dropQueue=[];
+function queueDrop(u,v,mag,rad,delay=0){dropQueue.push({u,v,mag,rad,at:performance.now()+delay});}
+function stepSim(){const now=performance.now();let applied=null;for(let i=0;i<dropQueue.length;i++){if(dropQueue[i].at<=now){applied=dropQueue.splice(i,1)[0];break;}}if(applied){simMaterial.uniforms.uDrop.value.set(applied.u,applied.v);simMaterial.uniforms.uDropMag.value=applied.mag;simMaterial.uniforms.uDropRad.value=applied.rad;}else simMaterial.uniforms.uDrop.value.set(-1,-1);simMaterial.uniforms.uPrev.value=rtA.texture;simMaterial.uniforms.uStampMag.value=semanticStampFrames>0?semanticStampMagnitude:0;if(semanticStampFrames>0)semanticStampFrames--;renderer.setRenderTarget(rtB);renderer.render(simScene,simCamera);renderer.setRenderTarget(null);const tmp=rtA;rtA=rtB;rtB=tmp;}
+
+const semanticMapCanvas=document.createElement('canvas');semanticMapCanvas.width=semanticMapCanvas.height=2048;
+const semanticMapCtx=semanticMapCanvas.getContext('2d');
+const semanticMapTexture=new THREE.CanvasTexture(semanticMapCanvas);semanticMapTexture.minFilter=THREE.LinearFilter;semanticMapTexture.magFilter=THREE.LinearFilter;semanticMapTexture.flipY=false;
+const waterMaterial=new THREE.ShaderMaterial({uniforms:{uHeight:{value:null},uSemantic:{value:semanticMapTexture},uTexel:{value:new THREE.Vector2(1/SIM,1/SIM)},uTime:{value:0},uSun:{value:new THREE.Vector3(-.55,.34,-.76).normalize()},uCam:{value:camera.position}},transparent:true,vertexShader:['varying vec2 vUv;','varying vec3 vWorld;','void main(){vUv=uv;vec4 wp=modelMatrix*vec4(position,1.);vWorld=wp.xyz;gl_Position=projectionMatrix*viewMatrix*wp;}'].join('\n'),fragmentShader:[
+'precision highp float;','uniform sampler2D uHeight;','uniform sampler2D uSemantic;','uniform vec2 uTexel;','uniform float uTime;','uniform vec3 uSun;','uniform vec3 uCam;','varying vec2 vUv;','varying vec3 vWorld;','vec3 sky(vec3 d){float h=clamp(d.y,0.,1.);vec3 z=vec3(.043,.078,.125);vec3 q=vec3(.66,.45,.24);vec3 c=mix(q,z,pow(h,.55));float s=pow(max(dot(d,uSun),0.),24.);c+=vec3(1.,.72,.4)*s*.55;return c;}','void main(){','float hC=texture2D(uHeight,vUv).r;','float hL=texture2D(uHeight,vUv-vec2(uTexel.x,0.)).r;','float hR=texture2D(uHeight,vUv+vec2(uTexel.x,0.)).r;','float hB=texture2D(uHeight,vUv-vec2(0.,uTexel.y)).r;','float hT=texture2D(uHeight,vUv+vec2(0.,uTexel.y)).r;','float breeze=.0018*sin(vUv.x*38.+uTime*.7)*sin(vUv.y*31.-uTime*.9);','vec3 n=normalize(vec3(-(hR-hL)*14.,1.,-(hT-hB)*14.));','n.xz+=breeze*8.;n=normalize(n);','vec3 viewDir=normalize(uCam-vWorld);','vec3 refl=reflect(-viewDir,n);refl.y=abs(refl.y);','float fres=pow(1.-max(dot(n,viewDir),0.),3.);fres=mix(.06,.92,fres);','vec3 deep=vec3(.012,.038,.043);vec3 shallow=vec3(.036,.092,.088);','float gather=clamp(hC*8.+.5,0.,1.);vec3 body=mix(deep,shallow,gather);','float caustic=pow(clamp((hL+hR+hB+hT-4.*hC)*-30.+.5,0.,1.),2.);body+=vec3(.04,.07,.065)*caustic*.28;','vec3 col=mix(body,sky(refl),fres*.72);','float spec=pow(max(dot(refl,uSun),0.),180.);col+=vec3(1.,.78,.45)*spec*.62;','vec2 warpedUv=vUv+vec2(hR-hL,hT-hB)*.012;','vec4 semantic=texture2D(uSemantic,warpedUv);','col=mix(col,semantic.rgb,semantic.a*.78);','float rim=distance(vUv,vec2(.5));float alpha=1.-smoothstep(.335,.5,rim);','gl_FragColor=vec4(col,alpha);','}'
+].join('\n')});
+const water=new THREE.Mesh(new THREE.PlaneGeometry(POND,POND),waterMaterial);water.rotation.x=-Math.PI/2;scene.add(water);
+scene.add(new THREE.AmbientLight(0x33424d,.9));
+const stoneLight=new THREE.DirectionalLight(0xffd9a3,1.1);stoneLight.position.set(-4,6,-5);scene.add(stoneLight);
+
+const stoneGeometry=(()=>{const g=new THREE.IcosahedronGeometry(.09,0);const p=g.attributes.position;for(let i=0;i<p.count;i++)p.setXYZ(i,p.getX(i)*(.8+Math.random()*.5),p.getY(i)*(.7+Math.random()*.4),p.getZ(i)*(.8+Math.random()*.5));g.computeVertexNormals();return g;})();
+const fallingStones=[];
+function worldToUv(x,z){return{u:x/POND+.5,v:.5-z/POND};}
+function dropPhysicalStone(node,power=1){const m=new THREE.Mesh(stoneGeometry,new THREE.MeshStandardMaterial({color:0x2b2e30,roughness:.85,metalness:.05,transparent:true}));m.position.set(node.x,3.5+Math.random()*.45,node.z);m.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,Math.random()*Math.PI);const s=.78+Math.random()*.38;m.scale.setScalar(s);scene.add(m);fallingStones.push({mesh:m,vy:-.45,size:s,power,spin:new THREE.Vector3((Math.random()-.5)*4,(Math.random()-.5)*4,(Math.random()-.5)*4),hit:false});}
+function updateStones(dt){for(let i=fallingStones.length-1;i>=0;i--){const s=fallingStones[i],m=s.mesh;if(!s.hit){s.vy-=9.8*dt;m.position.y+=s.vy*dt;m.rotation.x+=s.spin.x*dt;m.rotation.y+=s.spin.y*dt;m.rotation.z+=s.spin.z*dt;if(m.position.y<=0){s.hit=true;s.vy*=.16;const uv=worldToUv(m.position.x,m.position.z);const power=Math.min(1.25,(.55+s.size*.45)*s.power);queueDrop(uv.u,uv.v,1.35*power,.011+.004*s.size,0);queueDrop(uv.u,uv.v,-.45*power,.02,130);queueDrop(uv.u,uv.v,.28*power,.016,300);}}else{m.position.y+=s.vy*dt;m.rotation.x+=s.spin.x*dt*.2;m.rotation.z+=s.spin.z*dt*.2;m.material.opacity=Math.max(0,1+m.position.y*1.4);if(m.position.y<-.9){scene.remove(m);m.material.dispose();fallingStones.splice(i,1);}}}}
+
+
+const semanticCtx=els.semanticWaveCanvas.getContext('2d');
+let semanticDpr=1,semanticDirty=true;
+function resizeSemanticCanvas(){semanticDpr=Math.min(2,window.devicePixelRatio||1);els.semanticWaveCanvas.width=Math.floor(innerWidth*semanticDpr);els.semanticWaveCanvas.height=Math.floor(innerHeight*semanticDpr);els.semanticWaveCanvas.style.width=innerWidth+'px';els.semanticWaveCanvas.style.height=innerHeight+'px';semanticCtx.setTransform(semanticDpr,0,0,semanticDpr,0,0);semanticDirty=true;}
+function semanticColor(type,mode='NEUTRAL',alpha=1){const base=type==='THEREFORE'?[216,173,114]:type==='FRAGMENT'?[145,181,166]:type==='SPAWN'?[173,150,200]:mode==='OBSTACLE'?[201,135,127]:mode==='GOAL'?[145,181,166]:mode==='SHIFT'?[173,150,200]:[238,232,220];return `rgba(${base[0]},${base[1]},${base[2]},${alpha})`;}
+function semanticLayerPower(type){return type==='THEREFORE'?.23:type==='STONE'?.16:type==='SPAWN'?.18:.09;}
+function semanticLayerRadius(type,index,total){if(type==='STONE')return 30;if(type==='SPAWN')return 52;if(type==='THEREFORE')return 76+Math.max(0,total-2)*31;return 58+Math.max(0,index-1)*31;}
+function clipSemanticText(text,max=92){const clean=normalizeText(text);return clean.length>max?clean.slice(0,max-1).replace(/\s+\S*$/,'')+'…':clean;}
+function stampLayerIntoWater(node,layer){if(!node||!layer||layer.type==='SYSTEM')return;const size=stampCanvas.width,uv=worldToUv(node.x,node.z),x=uv.u*size,y=(1-uv.v)*size;stampCtx.clearRect(0,0,size,size);stampCtx.save();stampCtx.translate(x,y);stampCtx.fillStyle='#fff';stampCtx.textAlign='center';stampCtx.textBaseline='middle';const text=clipSemanticText(layer.text,70);let fontSize=layer.type==='THEREFORE'?48:layer.type==='STONE'?42:36;if(text.length>46)fontSize-=8;stampCtx.font=`700 ${fontSize}px Georgia,serif`;stampCtx.shadowColor='rgba(255,255,255,.8)';stampCtx.shadowBlur=6;stampCtx.fillText(text,0,0,520);stampCtx.restore();stampTexture.needsUpdate=true;semanticStampMagnitude=semanticLayerPower(layer.type);semanticStampFrames=2;}
+function redrawSemanticMap(){if(!semanticDirty)return;semanticDirty=false;const c=semanticMapCtx,s=semanticMapCanvas.width;c.clearRect(0,0,s,s);for(const node of state.nodes){const cycle=node.cycles.filter(cy=>!cy.handoff).at(-1)||node.cycles.at(-1);if(!cycle||!cycle.layers?.length)continue;const uv=worldToUv(node.x,node.z),x=uv.u*s,y=(1-uv.v)*s;const layers=cycle.layers.slice(-5);c.save();c.translate(x,y);c.textAlign='center';c.textBaseline='middle';layers.forEach((layer,i)=>{const dy=(i-(layers.length-1)/2)*34;const col=layer.type==='THEREFORE'?'rgba(216,173,114,.92)':layer.type==='FRAGMENT'?'rgba(145,181,166,.78)':layer.type==='SPAWN'?'rgba(173,150,200,.82)':'rgba(238,232,220,.86)';c.fillStyle=col;c.font=`${layer.type==='THEREFORE'?'700':'500'} ${layer.type==='THEREFORE'?24:20}px Georgia,serif`;c.fillText(clipSemanticText(layer.text,64),0,dy,430);});c.restore();}semanticMapTexture.needsUpdate=true;}
+function drawWavyEllipse(cx,cy,rx,ry,phase,color,width,alpha){semanticCtx.save();semanticCtx.beginPath();for(let i=0;i<=180;i++){const a=i/180*Math.PI*2;const wobble=1+Math.sin(a*7+phase)*.012+Math.sin(a*3-phase*.7)*.008;const x=cx+Math.cos(a)*rx*wobble,y=cy+Math.sin(a)*ry*wobble;if(i===0)semanticCtx.moveTo(x,y);else semanticCtx.lineTo(x,y);}semanticCtx.strokeStyle=color;semanticCtx.globalAlpha=alpha;semanticCtx.lineWidth=width;semanticCtx.shadowColor=color;semanticCtx.shadowBlur=width>1.5?7:3;semanticCtx.stroke();semanticCtx.restore();}
+function drawTextOnEllipse(text,cx,cy,rx,ry,color,fontSize=11,alpha=1){const str=clipSemanticText(text,100);if(!str)return;semanticCtx.save();semanticCtx.font=`${fontSize>=13?'700':'500'} ${fontSize}px Georgia,serif`;semanticCtx.textAlign='center';semanticCtx.textBaseline='middle';semanticCtx.fillStyle=color;semanticCtx.globalAlpha=alpha;semanticCtx.shadowColor='rgba(2,8,11,.96)';semanticCtx.shadowBlur=4;semanticCtx.lineWidth=3;semanticCtx.strokeStyle='rgba(2,8,11,.78)';const widths=[...str].map(ch=>Math.max(3,semanticCtx.measureText(ch).width));const total=widths.reduce((a,b)=>a+b,0);const arcLength=Math.max(1,Math.PI*rx*.92);const scale=Math.min(1,arcLength/total);let cursor=-total*scale/2;for(let i=0;i<str.length;i++){const w=widths[i]*scale;cursor+=w/2;const a=1.5*Math.PI+(cursor/(Math.PI*rx*.92))*Math.PI*.92;const x=cx+Math.cos(a)*rx,y=cy+Math.sin(a)*ry;const tangent=Math.atan2(Math.cos(a)*ry,-Math.sin(a)*rx);semanticCtx.save();semanticCtx.translate(x,y);semanticCtx.rotate(tangent);semanticCtx.scale(scale,scale);semanticCtx.strokeText(str[i],0,0);semanticCtx.fillText(str[i],0,0);semanticCtx.restore();cursor+=w/2;}semanticCtx.restore();}
+function drawConsequenceTicks(cycle,cx,cy,rx,ry,alpha){if(!cycle?.consequence)return;const c=cycle.consequence,values=[c.impact,c.certainty,c.scope,c.urgency,100-c.reversibility];semanticCtx.save();values.forEach((v,i)=>{const a=.15*Math.PI+i*.175*Math.PI;const len=4+Math.max(0,Math.min(100,v))/100*11;const x1=cx+Math.cos(a)*rx,y1=cy+Math.sin(a)*ry;const x2=cx+Math.cos(a)*(rx+len),y2=cy+Math.sin(a)*(ry+len*.42);semanticCtx.beginPath();semanticCtx.moveTo(x1,y1);semanticCtx.lineTo(x2,y2);semanticCtx.strokeStyle=semanticColor('THEREFORE',cycle.mode,.35+.55*(v/100));semanticCtx.globalAlpha=alpha;semanticCtx.lineWidth=1.2;semanticCtx.stroke();});semanticCtx.restore();}
+function cycleVisualLayers(cycle){if(!cycle)return[];if(state.generation.pending&&cycle.id===state.selection.cycleId){const out=[];const stone=cycle.layers.find(l=>l.type==='STONE');if(stone)out.push(stone);(cycle.stream.fragments||[]).forEach((t,i)=>out.push({id:`stream-f-${i}`,type:'FRAGMENT',text:t||`fragment ${i+1}`,born:performance.now()-120}));if(cycle.stream.therefore)out.push({id:'stream-t',type:'THEREFORE',text:cycle.stream.therefore,born:performance.now()-120});return out;}return cycle.layers||[];}
+function drawCycleRings(node,cycle,selected,now,cycleOffset=0){const p=projectWorld(node.x,.08,node.z);if(!p.visible)return;const layers=cycleVisualLayers(cycle);if(!layers.length)return;const alphaBase=selected?1:.20;layers.forEach((layer,i)=>{const born=layer.born||cycle.createdAt||now-1000;const age=Math.max(0,now-born);const t=Math.min(1,age/900);const ease=1-Math.pow(1-t,3);const target=semanticLayerRadius(layer.type,i,layers.length)+cycleOffset;const rx=Math.max(4,target*ease),ry=rx*.34;const score=cycle.consequence?consequenceScore(cycle.consequence):42;const width=layer.type==='THEREFORE'?1.7+score/100*1.2:layer.type==='STONE'?1.5:1.05;const col=semanticColor(layer.type,cycle.mode,alphaBase);drawWavyEllipse(p.x,p.y,rx,ry,now*.0018+i*.7,col,width,alphaBase);if(selected&&rx>22)drawTextOnEllipse(`${layer.type}: ${layer.text}`,p.x,p.y,rx,ry,col,layer.type==='THEREFORE'?13:11,Math.min(1,alphaBase*(.45+.55*ease)));if(layer.type==='THEREFORE')drawConsequenceTicks(cycle,p.x,p.y,rx,ry,alphaBase);});if(selected&&cycle.consequence){const score=consequenceScore(cycle.consequence),dest=cycle.branchDecision?.destination;semanticCtx.save();semanticCtx.font='700 8px ui-monospace,monospace';semanticCtx.textAlign='center';semanticCtx.fillStyle=semanticColor('THEREFORE',cycle.mode,.82);semanticCtx.fillText(`${score} · ${cycle.branchDecision?.should_branch?'BRANCH'+(dest?' → '+dest:''):'STAY'}`,p.x,p.y+Math.max(48,semanticLayerRadius('THEREFORE',layers.length-1,layers.length)*.36+18));semanticCtx.restore();}}
+function quadraticPoint(a,m,b,t){const u=1-t;return{x:u*u*a.x+2*u*t*m.x+t*t*b.x,y:u*u*a.y+2*u*t*m.y+t*t*b.y};}
+function drawBranchText(branch,now){const source=state.nodeMap.get(branch.sourceNodeId),dest=state.nodeMap.get(branch.destinationNodeId);if(!source||!dest)return;const a=projectWorld(source.x,.08,source.z),b=projectWorld(dest.x,.08,dest.z);const m={x:(a.x+b.x)/2,y:Math.min(a.y,b.y)-44};const phrase=clipSemanticText(branch.nextStone||branch.reason||branch.text,62);semanticCtx.save();semanticCtx.font='500 9px Georgia,serif';semanticCtx.textAlign='center';semanticCtx.textBaseline='middle';semanticCtx.fillStyle='rgba(216,173,114,.72)';semanticCtx.shadowColor='rgba(2,8,11,.9)';semanticCtx.shadowBlur=4;const chars=[...phrase],start=.16,end=.84;chars.forEach((ch,i)=>{const t=start+(end-start)*(i/Math.max(1,chars.length-1));const p=quadraticPoint(a,m,b,t),q=quadraticPoint(a,m,b,Math.min(1,t+.01));semanticCtx.save();semanticCtx.translate(p.x,p.y);semanticCtx.rotate(Math.atan2(q.y-p.y,q.x-p.x));semanticCtx.fillText(ch,0,0);semanticCtx.restore();});const progress=((now-(branch.createdAt||Date.now()))%2800)/2800;const packet=quadraticPoint(a,m,b,.08+.84*progress);semanticCtx.beginPath();semanticCtx.arc(packet.x,packet.y,3,0,Math.PI*2);semanticCtx.fillStyle='rgba(238,232,220,.9)';semanticCtx.fill();semanticCtx.restore();}
+function renderSemanticTypography(now=performance.now()){semanticCtx.clearRect(0,0,innerWidth,innerHeight);const selected=selectedNode();if(selected){const cycles=selected.cycles.filter(c=>!c.handoff);const current=currentCycle()||cycles.at(-1)||selected.cycles.at(-1);cycles.slice(-3,-1).forEach((cy,i)=>drawCycleRings(selected,cy,false,now,18+(i*10)));if(current)drawCycleRings(selected,current,true,now,0);}state.nodes.filter(n=>n.id!==selected?.id&&n.cycles.length).slice(-12).forEach(node=>{const cy=node.cycles.filter(c=>!c.handoff).at(-1)||node.cycles.at(-1);if(cy)drawCycleRings(node,cy,false,now,0);});const related=state.branches.filter(b=>b.sourceNodeId===selected?.id||b.destinationNodeId===selected?.id||state.branches.slice(-5).includes(b));related.forEach(b=>drawBranchText(b,now));}
+
+const state={nodes:[],nodeMap:new Map(),events:[],branches:[],portals:[],selection:{nodeId:null,eventId:null,cycleId:null},mode:'NEUTRAL',route:'FALLBACK',machine:'READY',lens:'history',lensOpen:false,autoplay:false,autoSeed:'',autoTargetId:null,autoBranchId:null,autoStayCount:0,autoTimer:null,autoToken:0,autoDelay:1250,autoBranchEveryCycle:true,policy:{branchThreshold:56,maxCyclesPerNode:2},autoAt:0,autoTurn:0,generation:{pending:false,abort:null},api:{key:'',model:'gpt-5.6-luna',endpoint:'https://api.openai.com/v1/responses',remember:false},nextEvent:1,nextCycle:1,nextBranch:1,nextPortal:1,branchSourceId:null,pressureHistory:[],recording:{active:false,recorder:null,chunks:[],stream:null},performance:false};
+
+function buildNodes(){state.nodes=[];state.nodeMap=new Map();const size=9;for(let gy=0;gy<size;gy++)for(let gx=0;gx<size;gx++){const dx=(gx-4)/4,dz=(gy-4)/4;if(dx*dx/1.02+dz*dz/1.02>1)continue;const id=`${gx},${gy}`;const node={id,gx,gy,x:dx*4.9,z:dz*4.2,mode:'NEUTRAL',cycles:[],layers:[],stoneMesh:null};state.nodes.push(node);state.nodeMap.set(id,node);}state.selection.nodeId='4,4';}
+function selectedNode(){return state.nodeMap.get(state.selection.nodeId)||null;}
+function currentCycle(){const node=selectedNode();if(!node)return null;if(state.selection.cycleId){const found=node.cycles.find(c=>c.id===state.selection.cycleId);if(found)return found;}return node.cycles.at(-1)||null;}
+function uid(prefix,n){return prefix+String(n).padStart(4,'0');}
+function normalizeText(v){return String(v||'').replace(/\s+/g,' ').trim();}
+function escapeHtml(v){return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function hash(str){let h=0;for(let i=0;i<str.length;i++)h=(h*31+str.charCodeAt(i))>>>0;return h;}
+
+function ensurePersistentStone(node){if(node.stoneMesh)return;const material=new THREE.MeshStandardMaterial({color:0x353d3d,roughness:.9,metalness:.03});const m=new THREE.Mesh(stoneGeometry,material);m.position.set(node.x,.055,node.z);m.scale.setScalar(.74);m.rotation.set(.4,.7,.2);scene.add(m);node.stoneMesh=m;}
+function updatePersistentStoneStyles(){for(const node of state.nodes){if(!node.stoneMesh)continue;const selected=node.id===state.selection.nodeId;node.stoneMesh.scale.setScalar(selected?1.05:.74);node.stoneMesh.material.color.setHex(selected?0x8eaa9f:0x353d3d);}}
+
+function addEvent(type,nodeId,text,opts={}){const ev={id:uid('E',state.nextEvent++),type,nodeId,text:normalizeText(text),cycleId:opts.cycleId||null,parentId:opts.parentId||null,route:opts.route||state.route,time:Date.now(),mode:opts.mode||state.mode,branchId:opts.branchId||null};state.events.push(ev);state.selection.eventId=ev.id;if(nodeId&&state.nodeMap.has(nodeId)){const node=state.nodeMap.get(nodeId);ensurePersistentStone(node);}updatePressure();queueSave();return ev;}
+function addLayer(node,cycle,type,text,opts={}){const ev=addEvent(type,node.id,text,{cycleId:cycle.id,parentId:opts.parentId,route:opts.route,mode:cycle.mode});const layer={id:`L${ev.id.slice(1)}`,type,text:normalizeText(text),eventId:ev.id,cycleId:cycle.id,streaming:false,born:performance.now()};node.layers.push(layer);cycle.layers.push(layer);semanticDirty=true;stampLayerIntoWater(node,layer);return layer;}
+function appendSystem(text){addEvent('SYSTEM',state.selection.nodeId||'FIELD',text,{route:'SYSTEM'});renderAll();}
+
+function selectNode(id){if(!state.nodeMap.has(id))return;state.selection.nodeId=id;const node=state.nodeMap.get(id);state.selection.cycleId=node.cycles.at(-1)?.id||null;state.selection.eventId=node.layers.at(-1)?.eventId||null;focusTarget.set(node.x,0,node.z-.8);updatePersistentStoneStyles();renderAll();}
+function selectEvent(id){const ev=state.events.find(e=>e.id===id);if(!ev)return;state.selection.eventId=ev.id;if(state.nodeMap.has(ev.nodeId))state.selection.nodeId=ev.nodeId;state.selection.cycleId=ev.cycleId||state.nodeMap.get(ev.nodeId)?.cycles.at(-1)?.id||null;const node=selectedNode();if(node)focusTarget.set(node.x,0,node.z-.8);updatePersistentStoneStyles();renderAll();}
+
+function cycleMode(){state.mode=MODES[(MODES.indexOf(state.mode)+1)%MODES.length];renderAll();}
+function applyMode(mode){if(!MODES.includes(mode))return;state.mode=mode;const node=selectedNode();if(node)node.mode=mode;addEvent(mode,node?.id||'FIELD',`Mode applied: ${mode}.`,{route:'USER'});renderAll();}
+
+function beginCycle(node,stone,auto){const cycle={id:uid('C',state.nextCycle++),stone,fragments:[],therefore:'',nextStone:'',mode:state.mode,route:auto?`AUTO/${state.route}`:state.route,layers:[],createdAt:Date.now(),consequence:null,branchDecision:null,sourceBranchId:null,handoff:false,stream:{fragments:[],therefore:'',status:''}};node.cycles.push(cycle);state.selection.cycleId=cycle.id;const stoneLayer=addLayer(node,cycle,'STONE',stone,{route:auto?`AUTO/${state.route}`:'USER'});state.selection.eventId=stoneLayer.eventId;return cycle;}
+
+function fallbackGenerate(command,node,mode){const clean=normalizeText(command);const subject=clean.replace(/[.!?]+$/,'');const neighbor=nearestActiveNode(node);const compare=neighbor?`Compare it with node ${neighbor.id}.`:`Keep its source visible at node ${node.id}.`;const modeLine={NEUTRAL:`CONDITION: State what must remain true for “${subject}.”`,OBSTACLE:`OBSTACLE: Identify the concrete force that prevents “${subject}.”`,GOAL:`GOAL: Name the observable result that would complete “${subject}.”`,SHIFT:`SHIFT: Change one condition inside “${subject}” and preserve the source.`}[mode];const fragments=[`SOURCE: ${subject}.`,modeLine,`FIELD: ${compare}`];const therefore=`THEREFORE: ${subject} now has a visible source, a stated condition, and a consequence that can be tested.`;const nextStone=`${subject} changes when its stated condition no longer holds.`;const q=clean.toLowerCase();const impact=Math.min(100,35+(q.match(/\b(harm|risk|fail|break|lose|death|ill|poison|danger|cost)\b/g)||[]).length*24+(mode==='OBSTACLE'?18:0));const scope=Math.min(100,28+(q.match(/\b(people|public|system|field|network|everyone|community|river|world)\b/g)||[]).length*22);const urgency=Math.min(100,22+(q.match(/\b(now|immediate|urgent|before|quickly|today)\b/g)||[]).length*30);const certainty=Math.min(94,55+(q.match(/\b(is|are|will|causes|becomes)\b/g)||[]).length*8);const reversibility=Math.max(8,72-(q.match(/\b(permanent|irreversible|death|destroy|poison)\b/g)||[]).length*28);const branchScore=Math.round(impact*.28+scope*.30+urgency*.12+(100-reversibility)*.18+(mode==='SHIFT'?12:0));const shouldBranch=/\b(branch|spawn|another node|send outward|move outward)\b/i.test(clean)||branchScore>=52;return{fragments,therefore,nextStone,mode,consequence:{impact,certainty,reversibility,scope,urgency,summary:`${subject} produces a ${branchScore>=52?'field-level':'local'} consequence with branch score ${branchScore}.`},branch:{should_branch:shouldBranch,reason:shouldBranch?`Consequence score ${branchScore} crosses the branching threshold.`:`Consequence score ${branchScore} remains local.`,coordinate:''},spawn:null};}
+function nearestActiveNode(node){return state.nodes.filter(n=>n.id!==node.id&&n.cycles.length).sort((a,b)=>Math.hypot(a.x-node.x,a.z-node.z)-Math.hypot(b.x-node.x,b.z-node.z))[0]||null;}
+function normalizeScore(v,fallback){const n=Number(v);return Number.isFinite(n)?Math.max(0,Math.min(100,n)):fallback;}
+function consequenceScore(c){if(!c)return 0;return Math.round(c.impact*.28+c.scope*.30+c.urgency*.12+(100-c.reversibility)*.18+c.certainty*.12);}
+function validateResult(raw){if(!raw||typeof raw!=='object')throw new Error('No structured cycle.');const fragments=Array.isArray(raw.fragments)?raw.fragments.map(normalizeText).filter(Boolean).slice(0,3):[];if(fragments.length<2)throw new Error('Fewer than two fragments.');let therefore=normalizeText(raw.therefore||raw.consequence_text||'');if(!therefore)throw new Error('No THEREFORE statement.');if(!/^THEREFORE\s*:/i.test(therefore))therefore='THEREFORE: '+therefore;const nextStone=normalizeText(raw.next_stone||raw.nextStone||therefore.replace(/^THEREFORE\s*:\s*/i,''));const mode=MODES.includes(String(raw.mode||'').toUpperCase())?String(raw.mode).toUpperCase():state.mode;const rc=raw.consequence&&typeof raw.consequence==='object'?raw.consequence:{};const consequence={impact:normalizeScore(rc.impact,45),certainty:normalizeScore(rc.certainty,60),reversibility:normalizeScore(rc.reversibility,55),scope:normalizeScore(rc.scope,40),urgency:normalizeScore(rc.urgency,35),summary:normalizeText(rc.summary||therefore)};let branch=null;const rb=raw.branch&&typeof raw.branch==='object'?raw.branch:null;if(rb)branch={should_branch:!!rb.should_branch,reason:normalizeText(rb.reason||''),coordinate:normalizeText(rb.coordinate||'')};let spawn=null;if(raw.spawn&&typeof raw.spawn==='object'){const text=normalizeText(raw.spawn.text||'');if(text)spawn={coordinate:normalizeText(raw.spawn.coordinate||''),text};}return{fragments,therefore,nextStone,mode,consequence,branch,spawn};}
+function parseJsonObject(text){const raw=String(text||'').trim();try{return JSON.parse(raw);}catch{}const a=raw.indexOf('{'),b=raw.lastIndexOf('}');if(a>=0&&b>a){try{return JSON.parse(raw.slice(a,b+1));}catch{}}return null;}
+
+function parseJsonStringAt(str,start){let out='',escaped=false;for(let i=start;i<str.length;i++){const ch=str[i];if(escaped){out+=ch==='n'?'\n':ch==='t'?'\t':ch;escaped=false;continue;}if(ch==='\\'){escaped=true;continue;}if(ch==='"')return{value:out,end:i,complete:true};out+=ch;}return{value:out,end:str.length,complete:false};}
+function extractPartialString(buffer,key){const re=new RegExp('"'+key+'"\\s*:\\s*"','g');const m=re.exec(buffer);if(!m)return'';return parseJsonStringAt(buffer,m.index+m[0].length).value;}
+function extractPartialArray(buffer,key){const re=new RegExp('"'+key+'"\\s*:\\s*\\[','g');const m=re.exec(buffer);if(!m)return[];const out=[];let i=m.index+m[0].length;while(i<buffer.length){while(i<buffer.length&&/[\s,]/.test(buffer[i]))i++;if(buffer[i]===']')break;if(buffer[i]!=='"')break;const parsed=parseJsonStringAt(buffer,i+1);out.push(parsed.value);i=parsed.end+1;if(!parsed.complete)break;}return out.slice(0,3);}
+function syncStreamingPreview(cycle,buffer){cycle.stream.fragments=extractPartialArray(buffer,'fragments');cycle.stream.therefore=extractPartialString(buffer,'therefore');renderStack();}
+
+async function apiGenerate(command,node,cycle){const recent=node.layers.slice(-8).map(l=>`${l.type}: ${l.text}`);const prompt=[
+'Operate the RIPPLE / THEREFORE engine as a concrete causal instrument.',
+'Preserve the user input as the literal STONE.',
+'Return two or three short FRAGMENTS. Each fragment must do a different job: SOURCE, CONDITION or OPERATION, and FIELD or CONSEQUENCE.',
+'Return one THEREFORE statement beginning exactly with THEREFORE: and naming a concrete consequence.',
+'Return next_stone as a new proposition that follows from the consequence. It must not be an instruction to continue, test, name, make, or write anything.',
+'Do not repeat the same sentence in different words.',
+'Assess the consequence on five 0-100 scales: impact, certainty, reversibility, scope, and urgency.',
+'Decide whether the consequence should branch into another node. Branch when the consequence changes scope, creates a new affected party, introduces a distinct condition, or crosses a meaningful risk threshold.',
+'Return branch.should_branch, a concrete reason, and an optional coordinate. Do not branch merely to paraphrase.',
+`STONE: ${command}`,`MODE: ${state.mode}`,`NODE: ${node.id}`,`CURRENT STACK: ${recent.join(' | ')||'empty'}`
+].join('\n');
+const schema={type:'object',additionalProperties:false,properties:{fragments:{type:'array',minItems:2,maxItems:3,items:{type:'string'}},therefore:{type:'string'},next_stone:{type:'string'},mode:{type:'string',enum:MODES},consequence:{type:'object',additionalProperties:false,properties:{impact:{type:'number'},certainty:{type:'number'},reversibility:{type:'number'},scope:{type:'number'},urgency:{type:'number'},summary:{type:'string'}},required:['impact','certainty','reversibility','scope','urgency','summary']},branch:{type:'object',additionalProperties:false,properties:{should_branch:{type:'boolean'},reason:{type:'string'},coordinate:{type:'string'}},required:['should_branch','reason','coordinate']},spawn:{anyOf:[{type:'object',additionalProperties:false,properties:{coordinate:{type:'string'},text:{type:'string'}},required:['coordinate','text']},{type:'null'}]}},required:['fragments','therefore','next_stone','mode','consequence','branch','spawn']};
+state.generation.abort=new AbortController();
+const response=await fetch(state.api.endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${state.api.key}`},signal:state.generation.abort.signal,body:JSON.stringify({model:state.api.model,store:false,stream:true,max_output_tokens:700,input:[{role:'developer',content:'Return only the structured RIPPLE / THEREFORE cycle.'},{role:'user',content:prompt}],text:{format:{type:'json_schema',name:'ripple_therefore_cycle',strict:true,schema}}})});
+if(!response.ok)throw new Error(`API ${response.status}: ${(await response.text()).slice(0,180)}`);if(!response.body)throw new Error('No response stream.');
+const reader=response.body.getReader(),decoder=new TextDecoder();let sse='',structured='';cycle.stream.status=`STREAMING ${state.api.model}`;renderAll();
+while(true){const {value,done}=await reader.read();if(done)break;sse+=decoder.decode(value,{stream:true});const lines=sse.split('\n');sse=lines.pop()||'';for(const line of lines){if(!line.startsWith('data:'))continue;const txt=line.slice(5).trim();if(!txt||txt==='[DONE]')continue;let ev;try{ev=JSON.parse(txt);}catch{continue;}if(ev.type==='response.output_text.delta'&&typeof ev.delta==='string'){structured+=ev.delta;syncStreamingPreview(cycle,structured);}if(ev.type==='error')throw new Error(ev.message||'Streaming error.');}}
+return validateResult(parseJsonObject(structured));}
+
+async function revealFallback(cycle,result){cycle.stream.status='LOCAL FALLBACK';for(const fragment of result.fragments){cycle.stream.fragments.push('');for(let i=1;i<=fragment.length;i+=3){cycle.stream.fragments[cycle.stream.fragments.length-1]=fragment.slice(0,i);renderStack();await sleep(12);}await sleep(80);}for(let i=1;i<=result.therefore.length;i+=3){cycle.stream.therefore=result.therefore.slice(0,i);renderStack();await sleep(10);}}
+
+async function processStone(raw,{auto=false,targetNode=null,sourceBranchId=null}={}){
+  const command=normalizeText(raw);
+  if(!command||state.generation.pending)return null;
+  const node=targetNode||selectedNode()||state.nodeMap.get('4,4');
+  selectNode(node.id);
+  state.generation.pending=true;
+  state.machine=auto?'AUTO CYCLE':'WORKING';
+  state.route=state.api.key?'API':'FALLBACK';
+  els.stoneInput.value='';
+  els.sendButton.disabled=true;
+  els.sendButton.textContent='…';
+  const cycle=beginCycle(node,command,auto);
+  cycle.sourceBranchId=sourceBranchId;
+  if(sourceBranchId){
+    const incoming=state.branches.find(b=>b.id===sourceBranchId);
+    if(incoming)incoming.destinationCycleId=cycle.id;
+  }
+  dropPhysicalStone(node,1);
+  cycle.stream.status=state.route==='API'?`CALLING ${state.api.model}`:'LOCAL FALLBACK';
+  renderAll();
+  let result=null,dest=null,branch=null;
+  try{
+    try{
+      if(state.api.key)result=await apiGenerate(command,node,cycle);
+      else{
+        result=fallbackGenerate(command,node,state.mode);
+        await revealFallback(cycle,result);
+      }
+    }catch(err){
+      if(err?.name==='AbortError'&&!state.autoplay)return null;
+      addEvent('FAILURE',node.id,`API generation failed: ${err.message}`,{cycleId:cycle.id,route:'API'});
+      state.route='FALLBACK';
+      result=fallbackGenerate(command,node,state.mode);
+      cycle.stream={fragments:[],therefore:'',status:'API FAILED · LOCAL FALLBACK'};
+      await revealFallback(cycle,result);
+    }
+
+    result=validateResult(result);
+    cycle.fragments=result.fragments;
+    cycle.therefore=result.therefore;
+    cycle.nextStone=result.nextStone;
+    cycle.mode=result.mode;
+    cycle.route=auto?`AUTO/${state.route}`:state.route;
+    cycle.consequence=result.consequence;
+    cycle.branchDecision=result.branch;
+    cycle.stream={fragments:[],therefore:'',status:''};
+
+    let parent=cycle.layers[0].eventId;
+    for(const fragment of result.fragments){
+      const layer=addLayer(node,cycle,'FRAGMENT',fragment,{parentId:parent,route:cycle.route});
+      parent=layer.eventId;
+      pulseNode(node,.32);
+      renderAll();
+      await sleep(auto?520:280);
+    }
+    const thereforeLayer=addLayer(node,cycle,'THEREFORE',result.therefore,{parentId:parent,route:cycle.route});
+    state.selection.eventId=thereforeLayer.eventId;
+    state.selection.cycleId=cycle.id;
+    node.mode=result.mode;
+    state.mode=result.mode;
+    state.autoSeed=result.nextStone;
+    pulseNode(node,.72);
+    renderAll();
+    await sleep(auto?900:420);
+
+    const score=consequenceScore(result.consequence);
+    const explicit=!!result.spawn?.text;
+    const modelBranch=!!result.branch?.should_branch;
+    const emptyExists=state.nodes.some(n=>n.id!==node.id&&n.cycles.length===0);
+    const autoBranch=auto&&state.autoBranchEveryCycle&&emptyExists;
+    const forcedAuto=auto&&state.autoStayCount>=Math.max(0,state.policy.maxCyclesPerNode-1);
+    const shouldBranch=autoBranch||explicit||modelBranch||forcedAuto||score>=state.policy.branchThreshold;
+
+    if(shouldBranch){
+      dest=pickBranchNode(node,result.branch?.coordinate||result.spawn?.coordinate||'',result.consequence,cycle.id,result.nextStone);
+      if(dest){
+        const branchText=result.spawn?.text||`SPAWN: ${result.nextStone||result.therefore.replace(/^THEREFORE\s*:\s*/i,'')}`;
+        branch=createBranch(node,dest,branchText,cycle.id,{score,reason:result.branch?.reason||result.consequence.summary,nextStone:result.nextStone,mode:result.mode});
+        cycle.branchDecision={...(cycle.branchDecision||{}),should_branch:true,destination:dest.id,branchId:branch.id,score};
+        state.autoTargetId=dest.id;
+        state.autoBranchId=branch.id;
+        state.autoStayCount=0;
+        state.machine='BRANCHING';
+        renderAll();
+        await sleep(auto?820:420);
+        selectNode(dest.id);
+      }
+    }
+
+    if(!dest){
+      state.autoTargetId=node.id;
+      state.autoBranchId=null;
+      state.autoStayCount+=1;
+      cycle.branchDecision={...(cycle.branchDecision||{}),should_branch:false,destination:node.id,score};
+    }
+    return{cycle,node,result,destination:dest,branch};
+  }finally{
+    state.machine='READY';
+    state.generation.pending=false;
+    state.generation.abort=null;
+    els.sendButton.disabled=false;
+    els.sendButton.textContent='Send';
+    renderAll();
+    if(state.autoplay)scheduleAutoStep(state.autoDelay);
+  }
+}
+function pulseNode(node,power=.4){const uv=worldToUv(node.x,node.z);queueDrop(uv.u,uv.v,.75*power,.012,0);queueDrop(uv.u,uv.v,-.18*power,.018,100);}
+function pickBranchNode(source,coordinate,consequence,cycleId='',nextStone=''){
+  if(coordinate&&state.nodeMap.has(coordinate)&&coordinate!==source.id)return state.nodeMap.get(coordinate);
+  const empties=state.nodes.filter(n=>n.id!==source.id&&n.cycles.length===0);
+  const pool=empties.length?empties:state.nodes.filter(n=>n.id!==source.id).sort((a,b)=>a.cycles.length-b.cycles.length);
+  if(!pool.length)return null;
+  const scope=(consequence?.scope||40)/100;
+  const urgency=(consequence?.urgency||30)/100;
+  const impact=(consequence?.impact||40)/100;
+  const desiredDistance=1.65+scope*2.5+impact*.45;
+  const angle=(hash(`${source.id}|${cycleId}|${nextStone}`)%6283)/1000;
+  const desiredX=source.x+Math.cos(angle)*desiredDistance;
+  const desiredZ=source.z+Math.sin(angle)*desiredDistance*(.78+urgency*.25);
+  return pool.slice().sort((a,b)=>{
+    const aa=Math.hypot(a.x-desiredX,a.z-desiredZ)+a.cycles.length*20;
+    const bb=Math.hypot(b.x-desiredX,b.z-desiredZ)+b.cycles.length*20;
+    return aa-bb;
+  })[0]||null;
+}
+function createHandoffCycle(dest,branch,source){
+  const handoff={id:uid('C',state.nextCycle++),stone:branch.nextStone||branch.text,fragments:[],therefore:'',nextStone:branch.nextStone||'',mode:branch.mode||state.mode,route:'BRANCH',layers:[],createdAt:Date.now(),consequence:null,branchDecision:null,sourceBranchId:branch.id,handoff:true,stream:{fragments:[],therefore:'',status:'BRANCH ARRIVAL'}};
+  dest.cycles.push(handoff);
+  const text=`FROM ${source.id}: ${branch.nextStone||branch.reason||branch.text}`;
+  const layer=addLayer(dest,handoff,'SPAWN',text,{route:'BRANCH'});
+  branch.handoffCycleId=handoff.id;
+  branch.handoffEventId=layer.eventId;
+  return handoff;
+}
+function createBranch(source,dest,text,cycleId=null,meta={}){
+  ensurePersistentStone(dest);
+  const branch={id:uid('B',state.nextBranch++),sourceNodeId:source.id,destinationNodeId:dest.id,text:normalizeText(text),reason:normalizeText(meta.reason||text),score:Number(meta.score)||0,nextStone:normalizeText(meta.nextStone||''),mode:MODES.includes(meta.mode)?meta.mode:state.mode,sourceCycleId:cycleId,createdAt:Date.now()};
+  state.branches.push(branch);
+  const ev=addEvent('BRANCH',source.id,`${source.id} → ${dest.id}: ${branch.reason}`,{cycleId,branchId:branch.id,route:state.route});
+  branch.eventId=ev.id;
+  const handoff=createHandoffCycle(dest,branch,source);
+  branch.destinationHandoffCycleId=handoff.id;
+  dropPhysicalStone(dest,.88);
+  pulseNode(dest,.68);
+  renderAll();
+  return branch;
+}
+function startManualBranch(){const node=selectedNode();if(!node)return;state.branchSourceId=node.id;document.body.classList.remove('lens-open');state.lensOpen=false;appendSystem('Branch mode armed. Select a destination node.');renderAll();}
+function completeManualBranch(destId){if(!state.branchSourceId)return false;const source=state.nodeMap.get(state.branchSourceId),dest=state.nodeMap.get(destId);if(!source||!dest||source.id===dest.id)return false;createBranch(source,dest,`SPAWN: branch from node ${source.id} to node ${dest.id}.`,currentCycle()?.id||null);state.branchSourceId=null;selectNode(dest.id);return true;}
+
+function openPortal(node){const portal={id:uid('P',state.nextPortal++),nodeId:node.id,born:performance.now(),duration:2300,lastPulse:0};state.portals.push(portal);addEvent('PORTAL',node.id,`Portal opened at node ${node.id}.`,{route:'USER'});renderAll();}
+function updatePortals(now){state.portals=state.portals.filter(p=>now-p.born<p.duration);for(const p of state.portals){if(now-p.lastPulse<160)continue;p.lastPulse=now;const node=state.nodeMap.get(p.nodeId);if(!node)continue;const uv=worldToUv(node.x,node.z);const age=(now-p.born)/p.duration;queueDrop(uv.u,uv.v,-.22*(1-age),.025+age*.02,0);queueDrop(uv.u,uv.v,.10*(1-age),.012,70);}}
+
+function stopAuto(){
+  state.autoplay=false;
+  state.autoToken++;
+  if(state.autoTimer){clearTimeout(state.autoTimer);state.autoTimer=null;}
+  if(state.generation.abort)state.generation.abort.abort();
+  state.machine='READY';
+  renderAll();
+}
+function scheduleAutoStep(delay=state.autoDelay){
+  if(!state.autoplay)return;
+  if(state.autoTimer)clearTimeout(state.autoTimer);
+  const token=state.autoToken;
+  state.autoTimer=setTimeout(async()=>{
+    state.autoTimer=null;
+    if(!state.autoplay||token!==state.autoToken)return;
+    if(state.generation.pending){scheduleAutoStep(260);return;}
+    const next=buildAutoStone();
+    const target=state.nodeMap.get(state.autoTargetId)||selectedNode()||state.nodeMap.get('4,4');
+    state.autoTurn++;
+    await processStone(next,{auto:true,targetNode:target,sourceBranchId:state.autoBranchId});
+  },Math.max(80,delay));
+}
+function toggleAuto(){
+  if(state.autoplay){stopAuto();return;}
+  state.autoplay=true;
+  state.autoToken++;
+  state.autoTurn=0;
+  state.autoTargetId=state.selection.nodeId||'4,4';
+  state.autoBranchId=null;
+  state.autoStayCount=0;
+  const typed=normalizeText(els.stoneInput.value);
+  if(typed){state.autoSeed=typed;els.stoneInput.value='';}
+  else if(!normalizeText(state.autoSeed))state.autoSeed=buildAutoStone();
+  state.machine='AUTO READY';
+  renderAll();
+  scheduleAutoStep(140);
+}
+function buildAutoStone(){
+  if(normalizeText(state.autoSeed))return normalizeText(state.autoSeed);
+  const target=state.nodeMap.get(state.autoTargetId)||selectedNode();
+  const cycles=target?.cycles?.filter(c=>!c.handoff)||[];
+  const cycle=cycles.at(-1)||currentCycle();
+  if(cycle?.nextStone)return normalizeText(cycle.nextStone);
+  if(cycle?.therefore)return normalizeText(cycle.therefore.replace(/^THEREFORE\s*:\s*/i,''));
+  const last=state.events.slice().reverse().find(e=>e.type==='THEREFORE'||e.type==='STONE');
+  if(last?.text)return normalizeText(last.text.replace(/^THEREFORE\s*:\s*/i,''));
+  return'A first stone changes the field, and its consequence must travel.';
+}
+function updateAuto(){/* Auto is driven by scheduleAutoStep so it cannot be lost inside the render loop. */}
+function openLens(name=state.lens){state.lens=name;state.lensOpen=true;document.body.classList.add('lens-open');renderLens();}
+function closeLens(){state.lensOpen=false;document.body.classList.remove('lens-open');}
+function openApi(){document.body.classList.add('api-open');renderApi();}
+function closeApi(){document.body.classList.remove('api-open');}
+function openContext(x,y){const menu=els.contextMenu;menu.style.left=Math.min(innerWidth-230,Math.max(8,x))+'px';menu.style.top=Math.min(innerHeight-170,Math.max(8,y))+'px';document.body.classList.add('context-open');}
+function closeContext(){document.body.classList.remove('context-open');}
+function togglePerformance(){state.performance=!state.performance;document.body.classList.toggle('performance',state.performance);if(state.performance){closeLens();closeApi();closeContext();}}
+
+function renderAll(){renderStatus();renderMarkers();renderStack();renderBranches();redrawSemanticMap();if(state.lensOpen)renderLens();renderApi();updatePersistentStoneStyles();}
+function renderStatus(){const node=selectedNode();els.modeButton.textContent=MODE_LABEL[state.mode];els.autoButton.textContent=state.autoplay?'Stop Auto':'Auto Branch';els.autoButton.classList.toggle('live',state.autoplay);els.apiButton.classList.toggle('live',!!state.api.key);const cycle=currentCycle();let detail=node?`node ${node.id}`:'field';if(state.generation.pending)detail+=` · ${cycle?.stream.status||state.machine||'working'}`;else detail+=` · ${node?.cycles.length||0} cycles`;detail+=` · ${state.api.key?state.api.model:'local fallback'}`;if(state.autoplay&&state.autoTargetId)detail+=` · auto routes to ${state.autoTargetId}`;if(cycle?.handoff)detail+=' · branch arrival';if(cycle?.consequence)detail+=` · consequence ${consequenceScore(cycle.consequence)}`;if(state.recording.active)detail+=' · recording';els.routeStatus.textContent=detail;}
+function renderApi(){els.apiKey.value=state.api.key;els.apiModel.value=state.api.model;els.apiEndpoint.value=state.api.endpoint;els.rememberKey.checked=state.api.remember;els.apiStatus.textContent=state.api.key?`API route armed with ${state.api.model}.`:'Local fallback is active.';}
+
+function renderMarkers(){const selected=selectedNode();const visible=new Set();if(selected){visible.add(selected.id);for(const node of state.nodes){if(node.cycles.length||Math.hypot(node.x-selected.x,node.z-selected.z)<2.7)visible.add(node.id);}}for(const branch of state.branches){if(branch.sourceNodeId===selected?.id||branch.destinationNodeId===selected?.id){visible.add(branch.sourceNodeId);visible.add(branch.destinationNodeId);}}
+const existing=new Map([...els.nodeMarkers.querySelectorAll('.node-marker')].map(el=>[el.dataset.id,el]));for(const node of state.nodes){if(!visible.has(node.id)){existing.get(node.id)?.remove();continue;}let el=existing.get(node.id);if(!el){el=document.createElement('button');el.className='node-marker';el.dataset.id=node.id;el.innerHTML=`<span>${node.id}</span>`;el.addEventListener('click',e=>{e.stopPropagation();if(state.branchSourceId){if(completeManualBranch(node.id))return;}selectNode(node.id);});el.addEventListener('contextmenu',e=>{e.preventDefault();selectNode(node.id);openContext(e.clientX,e.clientY);});els.nodeMarkers.appendChild(el);}el.classList.toggle('active',node.cycles.length>0);el.classList.toggle('selected',node.id===state.selection.nodeId);el.classList.toggle('branch-target',!!state.branchSourceId&&node.id!==state.branchSourceId);el.style.setProperty('--mini-stack',`${Math.min(46,8+node.layers.length*3)}px`);const label=el.querySelector('span');if(label)label.textContent=node.cycles.length?`${node.id} · ${node.layers.length}`:node.id;}}
+
+function renderStack(){semanticDirty=true;}
+function projectWorld(x,y,z){const v=new THREE.Vector3(x,y,z).project(camera);return{x:(v.x*.5+.5)*innerWidth,y:(-v.y*.5+.5)*innerHeight,visible:v.z>-1&&v.z<1};}
+function updateOverlayPositions(){for(const el of els.nodeMarkers.querySelectorAll('.node-marker')){const node=state.nodeMap.get(el.dataset.id);if(!node)continue;const p=projectWorld(node.x,.12,node.z);el.style.left=p.x+'px';el.style.top=p.y+'px';el.style.opacity=p.visible?'1':'0';}const node=selectedNode();if(node&&!els.stackView.classList.contains('hidden')){const p=projectWorld(node.x,.18,node.z);els.stackView.style.left=p.x+'px';els.stackView.style.top=(p.y-20)+'px';}}
+function renderBranches(){const selected=selectedNode();const showAll=state.lensOpen&&state.lens==='timeline';const recentIds=new Set(state.branches.slice(-12).map(b=>b.id));const lines=[];lines.push('<defs><marker id="branchArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(216,173,114,.72)"/></marker></defs>');for(const b of state.branches){const related=b.sourceNodeId===selected?.id||b.destinationNodeId===selected?.id;if(!showAll&&!related&&!recentIds.has(b.id))continue;const a=state.nodeMap.get(b.sourceNodeId),d=state.nodeMap.get(b.destinationNodeId);if(!a||!d)continue;const pa=projectWorld(a.x,.1,a.z),pd=projectWorld(d.x,.1,d.z);const mx=(pa.x+pd.x)/2,my=Math.min(pa.y,pd.y)-42;const cls=related?'selected':recentIds.has(b.id)?'recent':'';const pathId=`path-${b.id}`;lines.push(`<path id="${pathId}" class="branch-path ${cls}" d="M ${pa.x} ${pa.y} Q ${mx} ${my} ${pd.x} ${pd.y}"/>`);if(related||showAll){lines.push(`<text class="branch-label" x="${mx+5}" y="${my-5}">${escapeHtml(b.id)} · ${Math.round(b.score||0)}</text>`);lines.push(`<circle class="branch-pulse" r="2.6"><animateMotion dur="2.4s" repeatCount="indefinite" path="M ${pa.x} ${pa.y} Q ${mx} ${my} ${pd.x} ${pd.y}"/></circle>`);}}els.branchSvg.innerHTML=lines.join('');}
+
+function renderLens(){for(const b of els.lensTabs.querySelectorAll('button'))b.classList.toggle('active',b.dataset.lens===state.lens);for(const p of els.lensDrawer.querySelectorAll('.lens-panel'))p.classList.toggle('active',p.dataset.panel===state.lens);els.lensTitle.textContent=state.lens;renderHistory();renderTimeline();renderMap();renderEcology();}
+function renderHistory(){const q=normalizeText(els.historySearch.value).toLowerCase();const list=state.events.filter(e=>!q||`${e.id} ${e.type} ${e.nodeId} ${e.text}`.toLowerCase().includes(q));els.historyList.innerHTML=list.slice().reverse().map(ev=>`<button class="event-entry${ev.id===state.selection.eventId?' selected':''}" data-event="${ev.id}"><span class="event-meta">${ev.type}<small>${ev.id} · ${ev.nodeId}</small></span><span class="event-text">${escapeHtml(ev.text)}</span></button>`).join('')||'<p class="panel-title">No records.</p>';}
+function renderTimeline(){const max=Math.max(0,state.events.length-1);els.timelineRange.max=String(max);let index=Math.max(0,state.events.findIndex(e=>e.id===state.selection.eventId));if(index<0)index=max;els.timelineRange.value=String(index);const ev=state.events[index];els.timelineNow.innerHTML=ev?`<b>${ev.id} · ${ev.type} · ${ev.nodeId}</b><br>${escapeHtml(ev.text)}`:'No events.';const related=state.branches.filter(b=>!ev||b.sourceNodeId===ev.nodeId||b.destinationNodeId===ev.nodeId);els.branchList.innerHTML=related.map(b=>`<button class="event-entry" data-node="${b.destinationNodeId}"><span class="event-meta">BRANCH<small>${b.sourceNodeId} → ${b.destinationNodeId}</small></span><span class="event-text">${escapeHtml(b.reason||b.text)} · score ${Math.round(b.score||0)}</span></button>`).join('')||'<p class="panel-title">No branch topology at this event.</p>';}
+function renderMap(){els.mapGrid.innerHTML='';for(let gy=0;gy<9;gy++)for(let gx=0;gx<9;gx++){const id=`${gx},${gy}`,node=state.nodeMap.get(id);const b=document.createElement('button');b.className='map-node';if(!node){b.style.visibility='hidden';els.mapGrid.appendChild(b);continue;}b.textContent=node.cycles.length?String(node.cycles.length):'';b.title=id;b.classList.toggle('active',node.cycles.length>0);b.classList.toggle('selected',id===state.selection.nodeId);b.addEventListener('click',()=>{selectNode(id);renderLens();});els.mapGrid.appendChild(b);}}
+function ecology(){const events=state.events;const active=state.nodes.filter(n=>n.cycles.length).length;const fragments=events.filter(e=>e.type==='FRAGMENT').length;const therefore=events.filter(e=>e.type==='THEREFORE').length;const modes=Object.fromEntries(MODES.map(m=>[m,state.nodes.filter(n=>n.mode===m&&n.cycles.length).length]));const consequenceScores=state.nodes.flatMap(n=>n.cycles).map(c=>consequenceScore(c.consequence)).filter(Boolean);const avgConsequence=consequenceScores.length?consequenceScores.reduce((a,b)=>a+b,0)/consequenceScores.length:0;const pressure=active*.8+therefore*1.2+state.branches.length*.6+state.portals.length*.5+modes.OBSTACLE*1.4+modes.GOAL*.8+modes.SHIFT+avgConsequence*.03;return{active,fragments,therefore,branches:state.branches.length,portals:events.filter(e=>e.type==='PORTAL').length,pressure,avgConsequence,modes};}
+function updatePressure(){const p=ecology().pressure;state.pressureHistory.push(p);if(state.pressureHistory.length>80)state.pressureHistory.shift();}
+function renderEcology(){const e=ecology();els.branchThreshold.value=String(state.policy.branchThreshold);els.branchThresholdValue.textContent=String(state.policy.branchThreshold);els.maxNodeCycles.value=String(state.policy.maxCyclesPerNode);els.maxNodeCyclesValue.textContent=String(state.policy.maxCyclesPerNode);const vals=[['Live nodes',e.active],['Fragments',e.fragments],['Therefore',e.therefore],['Branches',e.branches],['Portals',e.portals],['Pressure',e.pressure.toFixed(1)],['Avg consequence',e.avgConsequence.toFixed(0)],['Obstacles',e.modes.OBSTACLE],['Goals / shifts',`${e.modes.GOAL} / ${e.modes.SHIFT}`]];els.metrics.innerHTML=vals.map(([k,v])=>`<div class="metric"><small>${k}</small><strong>${v}</strong></div>`).join('');const c=els.pressureCanvas,rect=c.getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1);c.width=Math.max(1,rect.width*dpr);c.height=Math.max(1,rect.height*dpr);const x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,rect.width,rect.height);x.strokeStyle='rgba(232,226,212,.5)';x.lineWidth=1;x.beginPath();const arr=state.pressureHistory.length?state.pressureHistory:[0],max=Math.max(1,...arr);arr.forEach((v,i)=>{const px=(i/Math.max(1,arr.length-1))*rect.width,py=rect.height-6-(v/max)*(rect.height-12);i?x.lineTo(px,py):x.moveTo(px,py);});x.stroke();}
+
+function centerSelection(){const node=selectedNode();if(node)focusTarget.set(node.x,0,node.z-.8);else focusTarget.set(0,0,-.8);}
+function queueSave(){clearTimeout(queueSave.timer);queueSave.timer=setTimeout(saveLocal,300);}
+function serialize(){return{nodes:state.nodes.map(n=>({id:n.id,mode:n.mode,cycles:n.cycles,layers:n.layers})),events:state.events,branches:state.branches,selection:state.selection,mode:state.mode,nextEvent:state.nextEvent,nextCycle:state.nextCycle,nextBranch:state.nextBranch,nextPortal:state.nextPortal,autoTargetId:state.autoTargetId,autoBranchId:state.autoBranchId,autoStayCount:state.autoStayCount,autoBranchEveryCycle:state.autoBranchEveryCycle,autoDelay:state.autoDelay,policy:state.policy,api:{model:state.api.model,endpoint:state.api.endpoint}};}
+function saveLocal(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(serialize()));return true;}catch{return false;}}
+function restore(payload){if(!payload||!Array.isArray(payload.nodes)||!Array.isArray(payload.events))throw new Error('Invalid field file.');for(const n of state.nodes){if(n.stoneMesh){scene.remove(n.stoneMesh);n.stoneMesh.material.dispose();n.stoneMesh=null;}n.cycles=[];n.layers=[];}for(const saved of payload.nodes){const n=state.nodeMap.get(saved.id);if(!n)continue;n.mode=saved.mode||'NEUTRAL';n.cycles=Array.isArray(saved.cycles)?saved.cycles:[];n.layers=Array.isArray(saved.layers)?saved.layers:[];if(n.cycles.length)ensurePersistentStone(n);}state.events=payload.events||[];state.branches=payload.branches||[];state.selection=payload.selection||state.selection;state.mode=MODES.includes(payload.mode)?payload.mode:'NEUTRAL';state.nextEvent=payload.nextEvent||state.events.length+1;state.nextCycle=payload.nextCycle||1;state.nextBranch=payload.nextBranch||1;state.nextPortal=payload.nextPortal||1;state.autoTargetId=payload.autoTargetId||state.selection.nodeId||'4,4';state.autoBranchId=payload.autoBranchId||null;state.autoStayCount=payload.autoStayCount||0;state.autoBranchEveryCycle=payload.autoBranchEveryCycle!==false;state.autoDelay=Number(payload.autoDelay)||1250;state.policy={...state.policy,...(payload.policy||{})};if(payload.api?.model)state.api.model=payload.api.model;if(payload.api?.endpoint)state.api.endpoint=payload.api.endpoint;semanticDirty=true;selectNode(state.selection.nodeId||'4,4');renderAll();}
+function loadLocal(){const raw=localStorage.getItem(STORAGE_KEY);if(!raw){appendSystem('No local field exists.');return;}try{restore(JSON.parse(raw));appendSystem('Local field loaded.');}catch(e){appendSystem(`Load failed: ${e.message}`);}}
+function exportJson(){downloadBlob(new Blob([JSON.stringify(serialize(),null,2)],{type:'application/json'}),`ripple-still-water-${stamp()}.json`);}
+function exportTranscript(){downloadBlob(new Blob([state.events.map(e=>`[${e.id}] ${e.type} @ ${e.nodeId}\n${e.text}`).join('\n\n')],{type:'text/plain'}),`ripple-still-water-${stamp()}.txt`);}
+function importJson(file){file.text().then(t=>restore(JSON.parse(t))).catch(e=>appendSystem(`Import failed: ${e.message}`));}
+function clearField(){if(!confirm('Clear every node, event, branch, and cycle?'))return;for(const n of state.nodes){if(n.stoneMesh){scene.remove(n.stoneMesh);n.stoneMesh.material.dispose();n.stoneMesh=null;}n.cycles=[];n.layers=[];n.mode='NEUTRAL';}state.events=[];state.branches=[];state.portals=[];state.nextEvent=1;state.nextCycle=1;state.nextBranch=1;state.nextPortal=1;state.selection={nodeId:'4,4',eventId:null,cycleId:null};state.autoSeed='';state.autoTargetId='4,4';state.autoBranchId=null;state.autoStayCount=0;state.autoplay=false;state.autoToken++;if(state.autoTimer){clearTimeout(state.autoTimer);state.autoTimer=null;}semanticDirty=true;appendSystem('Field cleared.');selectNode('4,4');}
+function stamp(){return new Date().toISOString().replace(/[:.]/g,'-');}
+function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),500);}
+
+async function startRecording(){if(state.recording.active){stopRecording();return;}let stream=null;try{if(navigator.mediaDevices?.getDisplayMedia)stream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:30},audio:false});else if(renderer.domElement.captureStream)stream=renderer.domElement.captureStream(30);}catch{return;}if(!stream||typeof MediaRecorder==='undefined')return;const types=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];const type=types.find(t=>MediaRecorder.isTypeSupported(t))||'';const rec=new MediaRecorder(stream,type?{mimeType:type}:undefined);state.recording={active:true,recorder:rec,chunks:[],stream};rec.ondataavailable=e=>{if(e.data?.size)state.recording.chunks.push(e.data);};rec.onstop=()=>{downloadBlob(new Blob(state.recording.chunks,{type:rec.mimeType||'video/webm'}),`ripple-performance-${stamp()}.webm`);exportTranscript();stream.getTracks().forEach(t=>t.stop());state.recording={active:false,recorder:null,chunks:[],stream:null};document.body.classList.remove('recording');renderStatus();};rec.start(250);document.body.classList.add('recording');appendSystem('Performance recording started.');renderStatus();}
+function stopRecording(){const rec=state.recording.recorder;if(rec&&rec.state!=='inactive')rec.stop();}
+
+function applyApi(){state.api.key=normalizeText(els.apiKey.value);state.api.model=normalizeText(els.apiModel.value)||state.api.model;state.api.endpoint=normalizeText(els.apiEndpoint.value)||state.api.endpoint;state.api.remember=els.rememberKey.checked;if(state.api.remember&&state.api.key)localStorage.setItem(API_STORAGE,JSON.stringify(state.api));else localStorage.removeItem(API_STORAGE);state.route=state.api.key?'API':'FALLBACK';closeApi();appendSystem(state.api.key?'API route armed.':'Fallback route active.');renderAll();}
+function clearApi(){state.api.key='';state.api.remember=false;state.route='FALLBACK';localStorage.removeItem(API_STORAGE);closeApi();appendSystem('API disconnected.');renderAll();}
+function loadApi(){try{const raw=localStorage.getItem(API_STORAGE);if(!raw)return;const p=JSON.parse(raw);state.api={...state.api,...p};state.route=state.api.key?'API':'FALLBACK';}catch{}}
+
+function bindEvents(){els.brand.addEventListener('click',centerSelection);els.modeButton.addEventListener('click',cycleMode);els.sendButton.addEventListener('click',()=>processStone(els.stoneInput.value));els.stoneInput.addEventListener('keydown',e=>{if(e.key==='Enter')processStone(els.stoneInput.value);if(e.key==='Escape')els.stoneInput.value='';});els.autoButton.addEventListener('click',toggleAuto);els.apiButton.addEventListener('click',openApi);els.lensButton.addEventListener('click',()=>openLens(state.lens));els.lensClose.addEventListener('click',closeLens);els.lensBackdrop.addEventListener('click',closeLens);els.apiBackdrop.addEventListener('click',closeApi);els.apiClose.addEventListener('click',closeApi);els.apiApply.addEventListener('click',applyApi);els.apiClear.addEventListener('click',clearApi);els.contextBackdrop.addEventListener('click',closeContext);els.lensTabs.addEventListener('click',e=>{const b=e.target.closest('[data-lens]');if(!b)return;state.lens=b.dataset.lens;renderLens();});els.historySearch.addEventListener('input',renderHistory);els.branchThreshold.addEventListener('input',()=>{state.policy.branchThreshold=Number(els.branchThreshold.value);renderEcology();queueSave();});els.maxNodeCycles.addEventListener('input',()=>{state.policy.maxCyclesPerNode=Number(els.maxNodeCycles.value);renderEcology();queueSave();});els.historyList.addEventListener('click',e=>{const b=e.target.closest('[data-event]');if(b)selectEvent(b.dataset.event);});els.timelineRange.addEventListener('input',()=>{const ev=state.events[Number(els.timelineRange.value)];if(ev)selectEvent(ev.id);});els.branchList.addEventListener('click',e=>{const b=e.target.closest('[data-node]');if(b)selectNode(b.dataset.node);});els.drawerActions.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action;if(a==='mode')applyMode(state.mode);if(a==='branch')startManualBranch();if(a==='portal'&&selectedNode())openPortal(selectedNode());if(a==='record')state.recording.active?stopRecording():startRecording();if(a==='export')exportJson();if(a==='save'){if(saveLocal())appendSystem('Local field saved.');else appendSystem('Local save failed.');}if(a==='load')loadLocal();if(a==='import')els.importInput.click();if(a==='clear')clearField();});els.importInput.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)importJson(f);e.target.value='';});els.contextMenu.addEventListener('click',e=>{const b=e.target.closest('[data-context]');if(!b)return;const a=b.dataset.context;if(MODES.includes(a))applyMode(a);if(a==='BRANCH')startManualBranch();if(a==='PORTAL'&&selectedNode())openPortal(selectedNode());closeContext();});window.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();togglePerformance();}if(e.key==='Escape'){closeLens();closeApi();closeContext();if(state.autoplay)stopAuto();}if(e.key.toLowerCase()==='h')openLens('history');if(e.key.toLowerCase()==='t')openLens('timeline');if(e.key.toLowerCase()==='m')openLens('map');if(e.key.toLowerCase()==='e')openLens('ecology');});window.addEventListener('resize',resize);}
+
+const raycaster=new THREE.Raycaster(),ndc=new THREE.Vector2(),planeY0=new THREE.Plane(new THREE.Vector3(0,1,0),0),hitPoint=new THREE.Vector3();let pointerDown=false,dragged=false,downX=0,downY=0,lastTrail=0;
+function pointToWorld(x,y){ndc.set(x/innerWidth*2-1,-y/innerHeight*2+1);raycaster.setFromCamera(ndc,camera);return raycaster.ray.intersectPlane(planeY0,hitPoint)?hitPoint:null;}
+function nearestNodeToPoint(p){return state.nodes.slice().sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z))[0]||null;}
+renderer.domElement.addEventListener('pointerdown',e=>{pointerDown=true;dragged=false;downX=e.clientX;downY=e.clientY;});renderer.domElement.addEventListener('pointermove',e=>{if(!pointerDown)return;if(Math.abs(e.clientX-downX)+Math.abs(e.clientY-downY)>10)dragged=true;if(!dragged)return;const now=performance.now();if(now-lastTrail<38)return;lastTrail=now;const p=pointToWorld(e.clientX,e.clientY);if(p){const uv=worldToUv(p.x,p.z);if(uv.u>.03&&uv.u<.97&&uv.v>.03&&uv.v<.97)queueDrop(uv.u,uv.v,.12,.009,0);}});window.addEventListener('pointerup',e=>{if(!pointerDown)return;pointerDown=false;if(!dragged){const p=pointToWorld(e.clientX,e.clientY);if(p){const node=nearestNodeToPoint(p);if(node){if(state.branchSourceId)completeManualBranch(node.id);else{selectNode(node.id);pulseNode(node,.25);}}}}});renderer.domElement.addEventListener('contextmenu',e=>{e.preventDefault();const p=pointToWorld(e.clientX,e.clientY);if(!p)return;const node=nearestNodeToPoint(p);if(node){selectNode(node.id);openContext(e.clientX,e.clientY);}});
+
+function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);resizeSemanticCanvas();renderAll();}
+const clock=new THREE.Clock();let running=true;
+function frame(){if(!running)return;requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime,now=performance.now();updateAuto(now);updatePortals(now);stepSim();updateStones(dt);focusCurrent.lerp(focusTarget,.045);if(!reducedMotion){camera.position.x=cameraBase.x+focusCurrent.x+Math.sin(t*.11)*.12;camera.position.y=cameraBase.y+Math.sin(t*.16)*.04;camera.position.z=cameraBase.z+focusCurrent.z+.8+Math.cos(t*.09)*.1;}else camera.position.set(cameraBase.x+focusCurrent.x,cameraBase.y,cameraBase.z+focusCurrent.z+.8);camera.lookAt(focusCurrent);waterMaterial.uniforms.uHeight.value=rtA.texture;waterMaterial.uniforms.uTime.value=t;waterMaterial.uniforms.uCam.value=camera.position;renderer.render(scene,camera);updateOverlayPositions();renderBranches();renderSemanticTypography(now);}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)running=false;else if(!running){running=true;clock.getDelta();frame();}});
+
+resizeSemanticCanvas();buildNodes();loadApi();bindEvents();selectNode('4,4');addEvent('SYSTEM','4,4','Field ready. Drop a literal stone or touch the surface.',{route:'SYSTEM'});renderAll();if(!reducedMotion)setTimeout(()=>{const n=state.nodeMap.get('4,4');dropPhysicalStone(n,.6);},700);frame();
+})();
+</script>
+</body>
+</html>

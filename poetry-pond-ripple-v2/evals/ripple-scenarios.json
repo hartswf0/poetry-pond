@@ -1,0 +1,37 @@
+[
+  {
+    "id": "blueberry-persistence",
+    "seed": {
+      "bird": {"id":"bird","type":"actor","aliases":["bird"],"attributes":{"present":true,"locationId":null,"hunger":0,"lastAction":null}},
+      "blueberry": {"id":"blueberry","type":"resource","aliases":["blueberry","blueberries"],"attributes":{"present":true,"quantity":1,"ownerId":null,"locationId":null,"condition":"fresh"}}
+    },
+    "steps": [
+      {"text":"The bird eats the last blueberry.","expect":{"status":"accepted","state":{"blueberry.quantity":0,"blueberry.present":false}}},
+      {"text":"The bell is quiet.","resolution":{"kind":"record-proposition","epistemicStatus":"asserted"},"expect":{"status":"accepted"}},
+      {"text":"The bird returns tomorrow. What food remains?","expect":{"status":"accepted","relevantSourceText":"The bird eats the last blueberry.","renderIncludes":"No blueberry remains"}}
+    ]
+  },
+  {
+    "id": "pronoun-ambiguity",
+    "seed": {
+      "bird": {"id":"bird","type":"actor","aliases":["bird"],"attributes":{"present":true,"locationId":null,"hunger":0,"lastAction":null}},
+      "fox": {"id":"fox","type":"actor","aliases":["fox"],"attributes":{"present":true,"locationId":null,"hunger":0,"lastAction":null}},
+      "berry": {"id":"berry","type":"resource","aliases":["berry"],"attributes":{"present":true,"quantity":1,"ownerId":null,"locationId":null,"condition":"fresh"}}
+    },
+    "steps": [
+      {"text":"It eats the berry.","expect":{"status":"needs_clarification","clarificationCode":"ambiguous-pronoun","state":{"berry.quantity":1}}}
+    ]
+  },
+  {
+    "id": "counterfactual-depletion",
+    "twins": true,
+    "seed": {
+      "bird": {"id":"bird","type":"actor","aliases":["bird"],"attributes":{"present":true,"locationId":null,"hunger":0,"lastAction":null}},
+      "blueberry": {"id":"blueberry","type":"resource","aliases":["blueberry","blueberries"],"attributes":{"present":true,"quantity":1,"ownerId":null,"locationId":null,"condition":"fresh"}}
+    },
+    "worldA": ["The bird eats the last blueberry.", "What food remains?"],
+    "worldB": ["The bird does not eat the blueberry.", "What food remains?"],
+    "expectDifferentStatePath": "blueberry.quantity",
+    "expectDifferentTherefore": true
+  }
+]

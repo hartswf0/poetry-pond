@@ -1,0 +1,53 @@
+{
+  "generatedAt": "2026-07-16T10:02:39.518Z",
+  "engine": "poetry-pond-ripple-v3",
+  "passed": 3,
+  "total": 3,
+  "results": [
+    {
+      "id": "blueberry-persistence",
+      "passed": true,
+      "failures": [],
+      "steps": [
+        {
+          "text": "The bird eats the last blueberry.",
+          "status": "accepted",
+          "failures": []
+        },
+        {
+          "text": "The bell is quiet.",
+          "status": "accepted",
+          "failures": []
+        },
+        {
+          "text": "The bird returns tomorrow. What food remains?",
+          "status": "accepted",
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "pronoun-ambiguity",
+      "passed": true,
+      "failures": [],
+      "steps": [
+        {
+          "text": "It eats the berry.",
+          "status": "needs_clarification",
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "counterfactual-depletion",
+      "passed": true,
+      "failures": [],
+      "observed": {
+        "stateA": 0,
+        "stateB": 1,
+        "thereforeA": "Therefore, the present encounter carries the stored absence of blueberry.",
+        "thereforeB": "Therefore, no earlier material loss currently limits this encounter."
+      }
+    }
+  ]
+}

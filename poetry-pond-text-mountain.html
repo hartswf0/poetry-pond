@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#09131d">
+<title>Poetry Pond — Text Mountain</title>
+<style>
+:root{
+  --ink:#f5efe3;
+  --muted:#aeb7bd;
+  --dim:#6e7b82;
+  --line:rgba(238,241,232,.16);
+  --glass:rgba(8,15,23,.72);
+  --glass-solid:rgba(7,13,20,.95);
+  --gold:#e3bb70;
+  --aqua:#86d9d3;
+  --rust:#d08d70;
+  --violet:#aaa0e6;
+  --danger:#f1a39b;
+  --safe-top:max(14px,env(safe-area-inset-top));
+  --safe-bottom:max(14px,env(safe-area-inset-bottom));
+  --shadow:0 28px 90px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#09131d;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select{font:inherit}
+button{color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid rgba(227,187,112,.8);outline-offset:3px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+#atmo,#links{position:fixed;inset:0;width:100%;height:100%;display:block}
+#atmo{z-index:0;background:#09131d}
+#links{z-index:2;pointer-events:none}
+#vignette{position:fixed;inset:0;z-index:8;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,transparent 30%,rgba(1,4,8,.08) 58%,rgba(1,4,8,.72) 115%)}
+#grain{position:fixed;inset:-30%;z-index:9;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.75'/%3E%3C/svg%3E");animation:grain 1.1s steps(2) infinite}
+@keyframes grain{0%{transform:translate(0,0)}25%{transform:translate(2%,-1%)}50%{transform:translate(-1%,2%)}75%{transform:translate(1%,1%)}100%{transform:translate(0,0)}}
+
+#world{position:fixed;inset:0;z-index:3;perspective:1300px;perspective-origin:50% 45%;touch-action:none;user-select:none}
+#mountainStage{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(var(--rx,-2deg)) rotateY(var(--ry,0deg)) scale(var(--zoom,1));transition:transform .15s ease-out}
+.mountain{position:absolute;transform-style:preserve-3d;transform-origin:50% 100%;cursor:pointer;transition:filter .45s,opacity .45s,transform .65s cubic-bezier(.2,.7,.2,1)}
+.mountain.main{left:50%;bottom:20.5%;width:min(560px,72vw);height:min(590px,62vh);transform:translateX(-50%) translateZ(70px);z-index:6;cursor:grab}
+.mountain.main:active{cursor:grabbing}
+.mountain.satellite{width:160px;height:190px;opacity:.82;filter:saturate(.76) brightness(.78) blur(.15px);z-index:3}
+.mountain.satellite:hover{opacity:1;filter:saturate(1) brightness(1);transform:scale(1.05)}
+.mountain.satellite[data-pos="0"]{left:8%;bottom:29%;transform:rotateY(12deg) scale(.9)}
+.mountain.satellite[data-pos="1"]{left:24%;bottom:52%;transform:rotateY(8deg) scale(.7)}
+.mountain.satellite[data-pos="2"]{right:22%;bottom:55%;transform:rotateY(-9deg) scale(.67)}
+.mountain.satellite[data-pos="3"]{right:7%;bottom:31%;transform:rotateY(-13deg) scale(.94)}
+.mountain.satellite[data-pos="4"]{left:18%;bottom:13%;transform:rotateY(6deg) scale(.72)}
+.mountain.satellite[data-pos="5"]{right:18%;bottom:13%;transform:rotateY(-6deg) scale(.72)}
+.mountain-stack{position:absolute;left:0;right:0;bottom:0;height:100%;transform-style:preserve-3d}
+.stratum{--w:90%;--y:0px;--rot:0deg;--z:0px;--h:36px;position:absolute;left:50%;bottom:0;width:var(--w);height:var(--h);transform:translate3d(-50%,var(--y),var(--z)) rotateZ(var(--rot)) rotateX(-1deg);transform-origin:50% 100%;display:flex;align-items:center;justify-content:center;padding:5px 22px;border:1px solid rgba(242,222,183,.19);border-radius:3px 5px 7px 4px;clip-path:polygon(1.5% 7%,96% 0,100% 23%,98.5% 88%,94% 100%,3% 96%,0 73%);background:
+  linear-gradient(180deg,rgba(255,255,255,.12),transparent 18%),
+  radial-gradient(circle at 23% 14%,rgba(255,255,255,.08),transparent 32%),
+  repeating-linear-gradient(176deg,rgba(255,255,255,.025) 0 1px,rgba(0,0,0,.04) 1px 4px),
+  linear-gradient(110deg,#293038,#141a20 43%,#343333 68%,#11171b);
+box-shadow:0 8px 10px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.09),inset 0 -5px 10px rgba(0,0,0,.4);transition:transform .7s cubic-bezier(.18,.8,.2,1),filter .4s,opacity .4s}
+.stratum::before{content:"";position:absolute;left:2%;right:2%;top:-7px;height:8px;clip-path:polygon(2% 100%,6% 0,94% 5%,99% 100%);background:linear-gradient(180deg,#4a4843,#242628);opacity:.8;filter:brightness(.72)}
+.stratum::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.5),transparent 15%,transparent 82%,rgba(0,0,0,.62));mix-blend-mode:multiply}
+.stratum-text{position:relative;z-index:2;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;font-family:"Arial Narrow","Roboto Condensed",Impact,ui-sans-serif,sans-serif;font-stretch:condensed;font-weight:550;letter-spacing:-.015em;font-size:clamp(12px,1.45vw,20px);line-height:1;text-shadow:0 2px 4px rgba(0,0,0,.9),0 0 18px rgba(255,236,196,.12);color:#d7d1c3}
+.stratum.foundation{opacity:.78;filter:saturate(.66)}
+.stratum.foundation .stratum-text{opacity:.13;font-size:10px;letter-spacing:.04em}
+.stratum.title-layer{background:linear-gradient(180deg,#2e2925,#0f1215 52%,#29221d);border-color:rgba(255,225,169,.34);box-shadow:0 10px 18px rgba(0,0,0,.58),0 0 22px rgba(227,187,112,.14),inset 0 1px rgba(255,255,255,.12)}
+.stratum.title-layer .stratum-text{font-size:clamp(17px,2vw,27px);font-weight:780;color:#fff7e7;text-shadow:0 2px 4px #000,0 0 10px rgba(255,240,207,.7)}
+.stratum.user-layer{border-color:rgba(244,219,165,.6);background:linear-gradient(180deg,#4b443a,#201e1b 50%,#3d3329);box-shadow:0 10px 18px rgba(0,0,0,.62),0 0 24px rgba(227,187,112,.22),inset 0 1px rgba(255,255,255,.15)}
+.stratum.user-layer .stratum-text{color:#fff4d9;font-weight:720}
+.stratum.mode-Obstacle{background:linear-gradient(180deg,#51362e,#211a19 52%,#4c2f28);border-color:rgba(208,141,112,.58)}
+.stratum.mode-Goal{background:linear-gradient(180deg,#514227,#211c14 52%,#4a3a22);border-color:rgba(227,187,112,.62)}
+.stratum.mode-Turn{background:linear-gradient(180deg,#353249,#181820 52%,#332e48);border-color:rgba(170,160,230,.56)}
+.stratum.consequence .stratum-text{color:#e1d9c9}
+.stratum.therefore{border-color:rgba(227,187,112,.72);background:linear-gradient(180deg,#4a3a22,#171410 50%,#44321d);box-shadow:0 10px 20px rgba(0,0,0,.65),0 0 26px rgba(227,187,112,.22),inset 0 1px rgba(255,255,255,.15)}
+.stratum.therefore .stratum-text{color:#f6d79b;font-weight:760}
+.stratum.branch{border-color:rgba(134,217,211,.5);background:linear-gradient(180deg,#264448,#121d20 50%,#203b3f)}
+.stratum.branch .stratum-text{color:#bfe8e4}
+.stratum.entering{animation:accrete .8s cubic-bezier(.15,.85,.2,1) both}
+@keyframes accrete{0%{opacity:0;filter:blur(6px) brightness(2);transform:translate3d(-50%,calc(var(--y) - 80px),70px) rotateZ(calc(var(--rot) * -1)) scale(1.15)}65%{opacity:1}100%{filter:none;transform:translate3d(-50%,var(--y),var(--z)) rotateZ(var(--rot)) rotateX(-1deg) scale(1)}}
+.mountain-name{position:absolute;left:50%;bottom:-34px;transform:translateX(-50%);font-size:9px;text-transform:uppercase;letter-spacing:.18em;color:rgba(229,236,231,.6);white-space:nowrap;text-shadow:0 2px 8px #000}
+.mountain.main .mountain-name{bottom:-44px;color:rgba(246,237,217,.75)}
+.mountain-glow{position:absolute;left:50%;bottom:-25px;width:78%;height:120px;transform:translateX(-50%);background:radial-gradient(ellipse at center,rgba(115,214,205,.19),transparent 68%);filter:blur(12px);pointer-events:none}
+
+#reflection{position:absolute;left:50%;top:79.5%;width:min(560px,72vw);height:min(430px,44vh);transform:translateX(-50%) scaleY(-.68) perspective(900px) rotateX(7deg);transform-origin:50% 0;opacity:.22;filter:blur(2.2px) saturate(.7);mask-image:linear-gradient(to bottom,rgba(0,0,0,.92),transparent 88%);-webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,.92),transparent 88%);pointer-events:none;overflow:hidden;z-index:1}
+#reflection .mountain-stack{height:100%}
+#reflection .stratum{box-shadow:none;filter:brightness(.55);border-color:transparent}
+#reflection .stratum-text{opacity:.5}
+
+#impactStone{position:absolute;left:50%;top:9%;width:34px;height:28px;z-index:10;display:none;transform:translateX(-50%);border-radius:49% 43% 55% 38%;background:radial-gradient(circle at 35% 28%,#8d8474,#342f29 45%,#111416 78%);box-shadow:0 8px 14px rgba(0,0,0,.4),inset 2px 3px 4px rgba(255,255,255,.14)}
+#impactStone.fall{display:block;animation:stonefall .82s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes stonefall{0%{transform:translate(-50%,-80px) rotate(0) scale(.65);opacity:0}14%{opacity:1}100%{transform:translate(-50%,calc(53vh - 10px)) rotate(235deg) scale(1.1);opacity:1}}
+
+#ui{position:fixed;inset:0;z-index:20;pointer-events:none}
+.interactive{pointer-events:auto}
+.topbar{position:absolute;top:var(--safe-top);left:18px;right:18px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.brand{display:flex;align-items:center;gap:10px;text-shadow:0 3px 18px #000}
+.brand-mark{width:10px;height:10px;border-radius:50%;border:1px solid rgba(227,187,112,.8);box-shadow:0 0 20px rgba(227,187,112,.55)}
+.brand b{display:block;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
+.brand span{display:block;margin-top:3px;font-size:9px;color:var(--muted);letter-spacing:.04em}
+.top-actions{display:flex;gap:8px;align-items:center}
+.icon-btn,.ghost-btn,.primary-btn,.mode-btn,.history-trace,.menu-row{border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 10px 34px rgba(0,0,0,.24);cursor:pointer}
+.icon-btn{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:18px}
+.status-chip{display:none;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;background:rgba(8,15,23,.6);backdrop-filter:blur(15px);padding:8px 11px;font-size:9px;text-transform:uppercase;letter-spacing:.13em;color:var(--muted)}
+.status-chip.show{display:flex}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px rgba(227,187,112,.8)}
+
+.hero{position:absolute;left:50%;top:14%;transform:translateX(-50%);text-align:center;width:min(620px,88vw);transition:opacity .5s,transform .5s;text-shadow:0 4px 30px #000}
+.hero.hidden{opacity:0;transform:translate(-50%,-10px);pointer-events:none}
+.hero-kicker{font-size:9px;text-transform:uppercase;letter-spacing:.26em;color:#dbc493}
+.hero h1{margin:7px 0 0;font-family:Georgia,"Times New Roman",serif;font-size:clamp(26px,4vw,52px);font-weight:400;line-height:1.03}
+.hero p{margin:11px auto 0;max-width:430px;color:var(--muted);font-size:11px;line-height:1.55}
+
+.composer-wrap{position:absolute;left:50%;bottom:var(--safe-bottom);width:min(860px,calc(100% - 28px));transform:translateX(-50%);transition:transform .35s,opacity .35s}
+.composer-wrap.hidden{transform:translate(-50%,145%);opacity:0;pointer-events:none}
+.history-trace{display:none;margin:0 auto 9px;height:32px;min-width:280px;border-radius:999px;padding:0 14px;align-items:center;gap:9px;color:var(--muted)}
+.history-trace.show{display:flex}
+.trace-label{font-size:8px;letter-spacing:.16em;text-transform:uppercase}.trace-line{height:1px;flex:1;background:linear-gradient(90deg,rgba(227,187,112,.12),rgba(227,187,112,.65))}.trace-dots{display:flex;gap:5px}.trace-dot{width:5px;height:5px;border-radius:50%;background:rgba(240,229,205,.28)}.trace-dot.current{background:var(--gold);box-shadow:0 0 9px rgba(227,187,112,.75)}
+.composer{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(180deg,rgba(12,20,28,.82),rgba(6,11,18,.94));box-shadow:var(--shadow);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+.mode-wrap{position:relative}.mode-btn{height:48px;min-width:102px;border-radius:14px;padding:0 13px;display:flex;gap:8px;align-items:center;justify-content:center;font-size:11px}
+.mode-menu{position:absolute;bottom:58px;left:0;width:235px;padding:7px;border:1px solid var(--line);border-radius:16px;background:var(--glass-solid);box-shadow:var(--shadow);display:none}
+.mode-menu.open{display:block}.mode-option{display:block;width:100%;padding:11px;border:0;border-radius:11px;background:transparent;text-align:left;cursor:pointer}.mode-option:hover{background:rgba(227,187,112,.08)}.mode-option b{display:block;font-size:11px}.mode-option small{display:block;margin-top:3px;color:var(--muted);font-size:9px;line-height:1.35}
+#lineInput{width:100%;height:48px;min-width:0;border:0;background:transparent;outline:0;color:#f8f0df;font-family:Georgia,"Times New Roman",serif;font-size:clamp(16px,2vw,20px);padding:0 8px}
+#lineInput::placeholder{color:#758188}
+.primary-btn{height:48px;border-radius:14px;padding:0 18px;min-width:126px;background:#f3ead8;color:#10161a;font-weight:780;border-color:rgba(255,255,255,.38)}
+.primary-btn.danger{background:#3a2222;color:#ffd8d2;border-color:rgba(241,163,155,.3)}
+.primary-btn:disabled{opacity:.34;cursor:not-allowed}
+.composer-sub{display:flex;justify-content:space-between;gap:12px;padding:7px 8px 0;color:var(--muted);font-size:9px;min-height:20px;text-shadow:0 2px 9px #000}.composer-sub .target{color:#e1ca98}
+
+.ritual-panel{position:absolute;left:50%;bottom:128px;transform:translateX(-50%);width:min(620px,calc(100% - 30px));display:none;padding:17px 18px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(180deg,rgba(10,18,26,.83),rgba(5,10,16,.95));backdrop-filter:blur(24px);box-shadow:var(--shadow)}
+.ritual-panel.show{display:block;animation:panelin .38s ease-out}
+@keyframes panelin{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+.ritual-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.ritual-eyebrow{font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:7px}.ritual-title{margin:0;font-family:Georgia,"Times New Roman",serif;font-size:clamp(19px,3vw,28px);font-weight:400}.ritual-copy{margin:8px 0 0;color:var(--muted);font-size:10px;line-height:1.5}.ritual-line{margin:13px 0 0;font-family:Georgia,"Times New Roman",serif;font-size:16px;line-height:1.38;color:#f5dfb6}.progress{height:3px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-top:13px}.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--aqua),var(--gold));transition:width .35s}.ritual-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.ghost-btn{border-radius:12px;padding:10px 13px;font-size:10px}.ghost-btn.danger{color:var(--danger)}
+
+.focus-label{position:absolute;left:50%;bottom:16.5%;transform:translateX(-50%);text-align:center;text-shadow:0 3px 14px #000;transition:opacity .4s}.focus-label b{display:block;font-size:9px;letter-spacing:.18em;text-transform:uppercase}.focus-label span{display:block;color:var(--muted);font-size:9px;margin-top:4px}
+
+.drawer-backdrop{position:fixed;inset:0;z-index:60;background:rgba(0,3,7,.55);opacity:0;pointer-events:none;transition:.25s}.drawer-backdrop.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;z-index:61;width:min(410px,94vw);height:100%;padding:20px;background:linear-gradient(180deg,rgba(10,18,26,.985),rgba(4,8,14,.995));border-left:1px solid var(--line);box-shadow:-30px 0 90px rgba(0,0,0,.55);transform:translateX(105%);transition:.35s cubic-bezier(.2,.8,.2,1);overflow:auto}.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.drawer h2{font-family:Georgia,"Times New Roman",serif;font-size:30px;font-weight:400;margin:0}.drawer-section{padding:14px 0;border-top:1px solid var(--line)}.drawer-section h3{margin:0 0 8px;font-size:8px;text-transform:uppercase;letter-spacing:.19em;color:var(--dim)}
+.menu-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;border-radius:14px;padding:12px;margin:5px 0;text-align:left}.menu-row b{display:block;font-size:11px}.menu-row small{display:block;color:var(--muted);font-size:9px;line-height:1.4;margin-top:3px}.menu-row .value{font-size:9px;color:#d6c08f;white-space:nowrap}
+.history-item{display:block;width:100%;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.025);padding:12px;margin:7px 0;text-align:left;color:inherit;cursor:pointer}.history-item:hover,.history-item.active{border-color:rgba(227,187,112,.48);background:rgba(227,187,112,.06)}.history-item small{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.14em;color:#cbb27f}.history-item b{display:block;font-family:Georgia,"Times New Roman",serif;font-size:14px;font-weight:400;margin-top:6px;line-height:1.3}.history-item span{display:block;color:var(--muted);font-size:9px;margin-top:6px}
+.preview-banner{position:fixed;top:calc(var(--safe-top) + 54px);left:50%;z-index:55;transform:translateX(-50%);width:min(650px,calc(100% - 28px));display:none;align-items:center;justify-content:space-between;gap:12px;border:1px solid rgba(227,187,112,.28);border-radius:16px;background:rgba(13,18,24,.9);padding:11px 13px;box-shadow:var(--shadow);backdrop-filter:blur(18px)}.preview-banner.show{display:flex}.preview-banner b{display:block;font-size:10px}.preview-banner span{display:block;color:var(--muted);font-size:8px;margin-top:3px}.preview-actions{display:flex;gap:7px;white-space:nowrap}
+
+.modal-backdrop{position:fixed;inset:0;z-index:80;display:none;place-items:center;padding:18px;background:rgba(0,3,7,.7)}.modal-backdrop.open{display:grid}.modal{width:min(540px,100%);border:1px solid var(--line);border-radius:22px;background:var(--glass-solid);box-shadow:var(--shadow);padding:22px}.modal h2{margin:0;font-family:Georgia,"Times New Roman",serif;font-size:28px;font-weight:400}.modal p{color:var(--muted);font-size:10px;line-height:1.5}.field{margin-top:12px}.field label{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.15em;color:var(--dim);margin-bottom:6px}.field input,.field select{width:100%;height:44px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.035);color:var(--ink);padding:0 11px}.modal-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px}.warning{color:#e5bd8d!important}
+
+.reading{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;padding:12vw;background:radial-gradient(circle at center,rgba(5,10,15,.1),rgba(2,5,9,.75));backdrop-filter:blur(2px)}.reading.open{display:flex}.reading blockquote{max-width:900px;margin:0;text-align:center;font-family:Georgia,"Times New Roman",serif;font-size:clamp(30px,6vw,82px);line-height:1.08;text-shadow:0 7px 44px #000}.reading-controls{position:absolute;top:var(--safe-top);right:18px;display:flex;gap:8px}
+.toast-region{position:fixed;top:calc(var(--safe-top) + 58px);right:18px;z-index:100;display:grid;gap:8px;pointer-events:none}.toast{max-width:310px;border:1px solid var(--line);border-radius:12px;background:rgba(7,13,20,.94);padding:10px 12px;font-size:9px;color:#dce2df;box-shadow:0 12px 30px rgba(0,0,0,.32);transition:.25s}
+
+@media(max-width:720px){
+  .brand span{display:none}.status-chip{display:none!important}.topbar{left:13px;right:13px}.icon-btn{width:40px;height:40px}
+  .hero{top:12%}.hero p{display:none}
+  .mountain.main{width:92vw;height:58vh;bottom:23%}
+  #reflection{width:92vw;top:76%;height:34vh}
+  .mountain.satellite{width:95px;height:130px;opacity:.66}.mountain.satellite[data-pos="0"]{left:-1%;bottom:38%}.mountain.satellite[data-pos="1"]{left:15%;bottom:58%}.mountain.satellite[data-pos="2"]{right:14%;bottom:60%}.mountain.satellite[data-pos="3"]{right:-1%;bottom:39%}.mountain.satellite[data-pos="4"],.mountain.satellite[data-pos="5"]{display:none}
+  .composer{grid-template-columns:auto minmax(0,1fr) auto;padding:6px}.mode-btn{min-width:70px;width:70px;padding:0 7px}.primary-btn{min-width:68px;padding:0 11px}.composer-sub{font-size:8px}.composer-sub span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ritual-panel{bottom:118px;padding:15px}.focus-label{bottom:19%}
+  .stratum{padding-left:13px;padding-right:13px}.stratum-text{font-size:clamp(11px,3.2vw,16px)}
+  .preview-banner{align-items:flex-start}.preview-actions{flex-direction:column}
+}
+@media(max-height:700px){.mountain.main{height:54vh;bottom:25%}.hero{top:16%}.focus-label{display:none}.ritual-panel{bottom:110px}.stratum-text{font-size:13px}}
+@media(prefers-reduced-motion:reduce){#grain{animation:none}.stratum.entering,#impactStone.fall{animation-duration:.01ms!important}.mountain,#mountainStage{transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="atmo" aria-hidden="true"></canvas>
+<canvas id="links" aria-hidden="true"></canvas>
+<div id="world" aria-label="Interactive field of text mountains. Drag to rotate the field, scroll or pinch to zoom, and select a distant mountain to focus it.">
+  <div id="mountainStage">
+    <div id="mountains"></div>
+    <div id="reflection" aria-hidden="true"><div class="mountain-stack"></div></div>
+    <div id="impactStone" aria-hidden="true"></div>
+  </div>
+</div>
+<div id="vignette"></div><div id="grain"></div>
+
+<div id="ui">
+  <header class="topbar">
+    <div class="brand"><i class="brand-mark"></i><div><b>Poetry Pond</b><span>Text accretes into landscape</span></div></div>
+    <div class="top-actions interactive">
+      <div id="autoChip" class="status-chip"><i class="status-dot"></i>Autoplay</div>
+      <button id="menuBtn" class="icon-btn" aria-label="Open menu">☰</button>
+    </div>
+  </header>
+
+  <section id="hero" class="hero" aria-live="polite">
+    <div class="hero-kicker">Open RCC — Text is the mountain</div>
+    <h1>Give one thought<br>a geological life.</h1>
+    <p>Each line becomes a readable stratum. Consequences accumulate above it, branches awaken distant peaks, and the water keeps the reflection.</p>
+  </section>
+
+  <div id="focusLabel" class="focus-label"><b>Focus mountain</b><span>Root · quiet strata</span></div>
+
+  <section id="ritualPanel" class="ritual-panel interactive" aria-live="polite">
+    <div class="ritual-top"><div><div id="ritualEyebrow" class="ritual-eyebrow"></div><h2 id="ritualTitle" class="ritual-title"></h2><p id="ritualCopy" class="ritual-copy"></p></div></div>
+    <div id="ritualLine" class="ritual-line"></div>
+    <div id="progress" class="progress"><i></i></div>
+    <div id="ritualActions" class="ritual-actions"></div>
+  </section>
+
+  <div id="previewBanner" class="preview-banner interactive"><div><b id="previewTitle">Previewing an earlier mountain field</b><span id="previewMeta">Nothing has been restored.</span></div><div class="preview-actions"><button id="returnCurrentBtn" class="ghost-btn">Return</button><button id="restorePreviewBtn" class="ghost-btn">Restore</button></div></div>
+
+  <div id="composerWrap" class="composer-wrap interactive">
+    <button id="historyTrace" class="history-trace" aria-label="Open history"><span class="trace-label">Strata</span><span class="trace-line"></span><span id="traceDots" class="trace-dots"></span></button>
+    <div class="composer">
+      <div class="mode-wrap">
+        <button id="modeBtn" class="mode-btn" aria-haspopup="true" aria-expanded="false"><span>Stone</span><span aria-hidden="true">⌃</span></button>
+        <div id="modeMenu" class="mode-menu" role="menu">
+          <button class="mode-option" data-mode="Stone"><b>Stone</b><small>A direct layer added to the selected mountain.</small></button>
+          <button class="mode-option" data-mode="Obstacle"><b>Obstacle</b><small>A resistant stratum that redirects later meaning.</small></button>
+          <button class="mode-option" data-mode="Goal"><b>Goal</b><small>An attracting layer that draws nearby peaks toward it.</small></button>
+          <button class="mode-option" data-mode="Turn"><b>Turn</b><small>A reversal that changes the mountain’s direction.</small></button>
+        </div>
+      </div>
+      <input id="lineInput" maxlength="220" autocomplete="off" placeholder="Write a line into the mountain" aria-label="Write a line into the mountain">
+      <button id="dropBtn" class="primary-btn" disabled>Accrete</button>
+    </div>
+    <div class="composer-sub"><span id="composerHint">Drag to orbit. Select a distant peak to bring it forward.</span><span id="targetLabel" class="target"></span></div>
+  </div>
+</div>
+
+<div id="drawerBackdrop" class="drawer-backdrop"></div>
+<aside id="menuDrawer" class="drawer" aria-hidden="true">
+  <div class="drawer-head"><h2>Field</h2><button class="icon-btn drawer-close" aria-label="Close menu">×</button></div>
+  <div class="drawer-section"><h3>Performance</h3>
+    <button id="readingRow" class="menu-row" hidden><span><b>Reading mode</b><small>Let the latest stratum occupy the entire field.</small></span><span class="value">Enter</span></button>
+    <button id="autoplayRow" class="menu-row"><span><b>Autoplay</b><small>The field places one new stone every fourteen seconds.</small></span><span id="autoplayValue" class="value">Start</span></button>
+  </div>
+  <div class="drawer-section"><h3>Landscape</h3>
+    <button id="historyRow" class="menu-row" hidden><span><b>Strata history</b><small>Preview or restore an earlier mountain field.</small></span><span id="historyCount" class="value">0 stones</span></button>
+    <button id="atmosphereRow" class="menu-row"><span><b>Atmosphere</b><small>Change the sky without changing the poem.</small></span><span id="atmosphereValue" class="value">Blue hour</span></button>
+    <button id="motionRow" class="menu-row"><span><b>Water and aurora</b><small>Reduce ambient motion while preserving impact ripples.</small></span><span id="motionValue" class="value">Full</span></button>
+    <button id="exportRow" class="menu-row" hidden><span><b>Export</b><small>Save the readable mountain as text or JSON.</small></span><span class="value">Open</span></button>
+  </div>
+  <div class="drawer-section"><h3>Generator</h3>
+    <button id="apiRow" class="menu-row"><span><b>Generator connection</b><small>Use the local mountain voice or an optional compatible endpoint.</small></span><span id="apiValue" class="value">Local</span></button>
+  </div>
+  <div class="drawer-section"><h3>Session</h3>
+    <button id="resetCameraRow" class="menu-row"><span><b>Reset view</b><small>Return the focus mountain to its frontal reading angle.</small></span><span class="value">Reset</span></button>
+    <button id="newFieldRow" class="menu-row"><span><b>New field</b><small>Remove every authored stratum and return to quiet geology.</small></span><span class="value">Clear</span></button>
+  </div>
+</aside>
+<aside id="historyDrawer" class="drawer" aria-hidden="true">
+  <div class="drawer-head"><h2>Strata</h2><button class="icon-btn drawer-close" aria-label="Close history">×</button></div>
+  <p style="color:var(--muted);font-size:10px;line-height:1.55;margin-top:-8px">Opening a stratum previews it. The live field changes only after you choose Restore.</p>
+  <div id="historyList"></div>
+</aside>
+
+<div id="apiModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="apiTitle">
+  <div class="modal"><h2 id="apiTitle">Generator connection</h2><p>The mountain works offline. An optional OpenAI-compatible chat-completions endpoint can provide alternate consequences.</p><p class="warning">A saved key is stored unencrypted in this browser profile. Session-only use is safer.</p>
+    <div class="field"><label for="endpointInput">Endpoint</label><input id="endpointInput" placeholder="https://example.com/v1/chat/completions"></div>
+    <div class="field"><label for="modelInput">Model</label><input id="modelInput" placeholder="model-name"></div>
+    <div class="field"><label for="keyInput">API key</label><input id="keyInput" type="password" autocomplete="off"></div>
+    <div class="field"><label for="storageSelect">Key handling</label><select id="storageSelect"><option value="session">Use for this session</option><option value="save">Save in browser</option></select></div>
+    <div class="modal-actions"><button id="removeKeyBtn" class="ghost-btn danger">Remove key</button><button class="ghost-btn modal-close">Cancel</button><button id="useLocalBtn" class="ghost-btn">Use local</button><button id="saveApiBtn" class="primary-btn">Connect</button></div>
+  </div>
+</div>
+<div id="exportModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+  <div class="modal"><h2 id="exportTitle">Export mountain</h2><p>Save the current accumulation without changing it.</p><div class="modal-actions"><button class="ghost-btn modal-close">Cancel</button><button id="exportTextBtn" class="ghost-btn">Poem text</button><button id="exportJsonBtn" class="primary-btn">Field JSON</button></div></div>
+</div>
+<div id="reading" class="reading"><blockquote id="readingLine"></blockquote><div class="reading-controls"><button id="speakBtn" class="icon-btn" aria-label="Read aloud">◖</button><button id="exitReadingBtn" class="icon-btn" aria-label="Exit reading mode">×</button></div></div>
+<div id="toastRegion" class="toast-region" role="status" aria-live="polite"></div>
+
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const deep=v=>JSON.parse(JSON.stringify(v));
+const uid=p=>`${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
+const now=()=>performance.now()/1000;
+const escapeHtml=s=>String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function hashString(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function seeded(seed){let s=seed>>>0;return()=>((s=Math.imul(1664525,s)+1013904223>>>0)/4294967296)}
+function tokenize(text){const stop=new Set(['the','and','but','for','with','that','this','from','into','upon','your','our','their','his','her','its','was','were','are','has','have','had','not','you','can','will']);return text.toLowerCase().replace(/[^a-z0-9' -]/g,' ').split(/\s+/).filter(w=>w.length>2&&!stop.has(w))}
+
+const MODES={
+ Stone:{verb:'settled',color:'#e3bb70'},
+ Obstacle:{verb:'resisted',color:'#d08d70'},
+ Goal:{verb:'gathered',color:'#e6c36f'},
+ Turn:{verb:'turned',color:'#aaa0e6'}
+};
+const NODES=[
+ {id:'root',name:'Root mountain',x:0,z:0},
+ {id:'west',name:'West archive',x:-7,z:1},
+ {id:'northwest',name:'Northern shelf',x:-4,z:-6},
+ {id:'northeast',name:'Distant cairn',x:4,z:-6},
+ {id:'east',name:'Eastern register',x:7,z:1},
+ {id:'southwest',name:'Low sediment',x:-5,z:6},
+ {id:'southeast',name:'Future peak',x:5,z:6}
+];
+const FOUNDATION=[
+ 'Every line must become a stratum.',
+ 'The water keeps the lower archive.',
+ 'Language compresses into readable layers.',
+ 'A history is written as the peak.',
+ 'Stone is the grammar of slow pressure.',
+ 'Consequence changes the silhouette.',
+ 'Spawn carries pressure to another shore.',
+ 'Nothing is fixed; every layer bears weight.',
+ 'The mountain remembers what the interface forgets.',
+ 'Open RCC — Text Is the Mountain'
+];
+function makeNodes(){return NODES.map((n,index)=>({...n,condition:'Quiet',energy:0,layers:index===0?FOUNDATION.map((text,i)=>({id:`foundation-${i}`,text,type:i===FOUNDATION.length-1?'title':'foundation',mode:'Stone',created:0})):FOUNDATION.slice(0,7).map((text,i)=>({id:`foundation-${index}-${i}`,text:i===3?n.name:text,type:'foundation',mode:'Stone',created:0}))}))}
+const baseField={nodes:makeNodes(),links:[],ripples:[]};
+const app={phase:'REST',mode:'Stone',focusId:'root',field:deep(baseField),events:[],latestLine:'',latestTherefore:'',active:null,undone:null,preview:null,previewIndex:null,reading:false,autoplay:false,autoplayTimer:null,autoIndex:0,ambient:true,atmosphere:0,api:{endpoint:'',model:'',key:'',storage:'session'},justAdded:new Set(),camera:{rx:-2,ry:0,zoom:1}};
+const atmosphereNames=['Blue hour','Warm dawn','Aurora night'];
+const autoLines=['The archive learns the shape of rain.','A quiet machine dreams in sediment.','Memory bends where the shore cannot follow.','The future arrives as a thin illuminated layer.','Every threshold keeps the pressure of crossing.','A distant mountain answers without speaking.'];
+
+const ui={
+ atmo:$('#atmo'),links:$('#links'),world:$('#world'),stage:$('#mountainStage'),mountains:$('#mountains'),reflection:$('#reflection .mountain-stack'),stone:$('#impactStone'),
+ hero:$('#hero'),focusLabel:$('#focusLabel'),composerWrap:$('#composerWrap'),input:$('#lineInput'),drop:$('#dropBtn'),modeBtn:$('#modeBtn'),modeMenu:$('#modeMenu'),hint:$('#composerHint'),target:$('#targetLabel'),
+ ritual:$('#ritualPanel'),eyebrow:$('#ritualEyebrow'),title:$('#ritualTitle'),copy:$('#ritualCopy'),line:$('#ritualLine'),progress:$('#progress'),progressBar:$('#progress i'),actions:$('#ritualActions'),
+ historyTrace:$('#historyTrace'),traceDots:$('#traceDots'),menuBtn:$('#menuBtn'),menuDrawer:$('#menuDrawer'),historyDrawer:$('#historyDrawer'),backdrop:$('#drawerBackdrop'),historyList:$('#historyList'),
+ historyRow:$('#historyRow'),historyCount:$('#historyCount'),exportRow:$('#exportRow'),readingRow:$('#readingRow'),autoRow:$('#autoplayRow'),autoValue:$('#autoplayValue'),autoChip:$('#autoChip'),atmoValue:$('#atmosphereValue'),motionValue:$('#motionValue'),apiValue:$('#apiValue'),
+ previewBanner:$('#previewBanner'),previewTitle:$('#previewTitle'),previewMeta:$('#previewMeta'),apiModal:$('#apiModal'),exportModal:$('#exportModal'),reading:$('#reading'),readingLine:$('#readingLine'),toastRegion:$('#toastRegion')
+};
+
+function snapshot(){return deep(app.field)}
+function visibleField(){return app.preview||app.field}
+function focusNode(){return visibleField().nodes.find(n=>n.id===app.focusId)||visibleField().nodes[0]}
+function liveFocusNode(){return app.field.nodes.find(n=>n.id===app.focusId)||app.field.nodes[0]}
+function toast(message,duration=2600){const el=document.createElement('div');el.className='toast';el.textContent=message;ui.toastRegion.appendChild(el);setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(-5px)';setTimeout(()=>el.remove(),260)},duration)}
+function wait(ms,op){return new Promise((resolve,reject)=>{if(op.cancelled)return reject(new DOMException('Stopped','AbortError'));const id=setTimeout(()=>{op.timers.delete(id);op.cancelled?reject(new DOMException('Stopped','AbortError')):resolve()},ms);op.timers.add(id)})}
+function addAction(label,fn,primary=false,danger=false){const b=document.createElement('button');b.className=primary?'primary-btn':'ghost-btn';if(danger)b.classList.add('danger');b.textContent=label;b.onclick=fn;ui.actions.appendChild(b)}
+function setPhase(phase){app.phase=phase;updateUI()}
+function closeMode(){ui.modeMenu.classList.remove('open');ui.modeBtn.setAttribute('aria-expanded','false')}
+function setMode(mode){if(!MODES[mode])return;app.mode=mode;ui.modeBtn.firstElementChild.textContent=mode;closeMode();updateUI()}
+
+function renderMountains(){
+ const field=visibleField(),focus=focusNode();ui.mountains.innerHTML='';
+ const main=buildMountain(focus,true);ui.mountains.appendChild(main);
+ const others=field.nodes.filter(n=>n.id!==focus.id).slice(0,6);
+ others.forEach((node,i)=>{const m=buildMountain(node,false,i);m.addEventListener('click',e=>{e.stopPropagation();if(app.phase==='WORKING'||app.preview)return;app.focusId=node.id;renderAll();toast(`${node.name} brought into focus.`)});ui.mountains.appendChild(m)});
+ ui.reflection.innerHTML=main.querySelector('.mountain-stack').innerHTML;
+ ui.focusLabel.innerHTML=`<b>${escapeHtml(focus.name)}</b><span>${escapeHtml(focus.condition)} · ${Math.max(0,focus.layers.length-FOUNDATION.length)} authored strata</span>`;
+}
+function buildMountain(node,isMain,pos=0){
+ const m=document.createElement('div');m.className=`mountain ${isMain?'main':'satellite'}`;m.dataset.node=node.id;if(!isMain)m.dataset.pos=String(pos);
+ const glow=document.createElement('div');glow.className='mountain-glow';m.appendChild(glow);
+ const stack=document.createElement('div');stack.className='mountain-stack';m.appendChild(stack);
+ const source=isMain?node.layers.slice(-20):node.layers.slice(-9);
+ const count=Math.max(source.length,isMain?10:7);const maxHeight=isMain?Math.min(innerHeight*.54,520):170;const step=clamp(maxHeight/(count+.7),isMain?20:13,isMain?44:22);const baseWidth=isMain?96:96;
+ source.forEach((layer,i)=>{
+   const t=i/Math.max(1,count-1),rnd=seeded(hashString(`${node.id}|${layer.id}|${i}`));
+   const slab=document.createElement('div');const kind=layer.type||'consequence';
+   slab.className=`stratum ${kind==='foundation'?'foundation':''} ${kind==='title'?'title-layer':''} ${kind==='user'?'user-layer':''} ${kind==='consequence'?'consequence':''} ${kind==='therefore'?'therefore':''} ${kind==='branch'?'branch':''} mode-${layer.mode||'Stone'} ${app.justAdded.has(layer.id)?'entering':''}`;
+   const width=clamp(baseWidth-(isMain?43:37)*t+(rnd()-.5)*(isMain?7:9),isMain?48:52,100);
+   slab.style.setProperty('--w',`${width}%`);slab.style.setProperty('--y',`-${i*step}px`);slab.style.setProperty('--rot',`${(rnd()-.5)*(isMain?2.4:4.4)}deg`);slab.style.setProperty('--z',`${(rnd()-.5)*(isMain?18:8)}px`);slab.style.setProperty('--h',`${isMain?clamp(step+8,28,44):clamp(step+6,20,29)}px`);
+   const text=document.createElement('div');text.className='stratum-text';text.textContent=layer.text;slab.appendChild(text);stack.appendChild(slab);
+ });
+ const name=document.createElement('div');name.className='mountain-name';name.textContent=node.name;m.appendChild(name);return m;
+}
+function renderTrace(){ui.traceDots.innerHTML='';app.events.slice(-9).forEach((_,i,a)=>{const d=document.createElement('i');d.className=`trace-dot${i===a.length-1?' current':''}`;ui.traceDots.appendChild(d)})}
+function renderHistory(){ui.historyList.innerHTML='';const start=document.createElement('button');start.className=`history-item${app.previewIndex===-1?' active':''}`;start.innerHTML='<small>Start</small><b>Quiet geology</b><span>Before the first authored layer</span>';start.onclick=()=>previewHistory(-1);ui.historyList.appendChild(start);app.events.forEach((ev,i)=>{const b=document.createElement('button');b.className=`history-item${app.previewIndex===i?' active':''}`;b.innerHTML=`<small>${i===app.events.length-1?'Now':`Stone ${i+1}`} · ${escapeHtml(ev.mode)}</small><b>${escapeHtml(ev.therefore||ev.line)}</b><span>${escapeHtml(ev.nodeName)} · ${ev.added.length} new strata${ev.interrupted?' · interrupted':''}</span>`;b.onclick=()=>previewHistory(i);ui.historyList.appendChild(b)})}
+function renderAll(){renderMountains();renderHistory();renderTrace();drawLinks(now());updateUI()}
+
+function updateUI(){
+ const hasEvents=app.events.length>0,working=app.phase==='WORKING',prepared=Boolean(ui.input.value.trim()),hasLine=Boolean(app.latestLine||app.latestTherefore);
+ ui.hero.classList.toggle('hidden',hasEvents||prepared||working||app.phase!=='REST');
+ ui.composerWrap.classList.toggle('hidden',working||['CHANGED','RECOVERY','FAULT'].includes(app.phase)||app.reading||Boolean(app.preview));
+ ui.input.disabled=working||Boolean(app.preview);ui.modeBtn.disabled=working||Boolean(app.preview);ui.drop.disabled=!prepared||working||Boolean(app.preview);
+ ui.historyTrace.classList.toggle('show',hasEvents&&['REST','READY'].includes(app.phase)&&!app.preview&&!app.reading);ui.historyRow.hidden=!hasEvents;ui.exportRow.hidden=!hasEvents;ui.readingRow.hidden=!hasLine;
+ ui.historyCount.textContent=`${app.events.length} ${app.events.length===1?'stone':'stones'}`;ui.autoValue.textContent=app.autoplay?'Pause':'Start';ui.autoChip.classList.toggle('show',app.autoplay);ui.atmoValue.textContent=atmosphereNames[app.atmosphere];ui.motionValue.textContent=app.ambient?'Full':'Reduced';ui.apiValue.textContent=app.api.endpoint?'Connected':'Local';
+ const f=focusNode();ui.target.textContent=`Accreting at ${f.name}`;ui.hint.textContent=app.preview?'Preview only. Restore explicitly to make this field live.':'Drag to orbit. Select a distant peak to bring it forward.';
+ ui.ritual.classList.remove('show');ui.actions.innerHTML='';ui.progress.hidden=false;ui.progressBar.style.width='0';ui.line.textContent='';ui.copy.textContent='';
+ if(app.phase==='WORKING'&&app.active){ui.ritual.classList.add('show');ui.eyebrow.textContent='Accreting';ui.title.textContent=`A new stratum enters ${app.active.nodeName}`;ui.copy.textContent=app.active.status;ui.line.textContent=app.latestLine?`“${app.latestLine}”`:'';ui.progressBar.style.width=`${Math.round(app.active.progress*100)}%`;addAction('Stop',stopOperation,false,true)}
+ else if(app.phase==='CHANGED'){const ev=app.events.at(-1);if(ev){ui.ritual.classList.add('show');ui.eyebrow.textContent=ev.interrupted?'Interrupted, but preserved':'Mountain changed';ui.title.textContent=`${ev.nodeName} ${MODES[ev.mode].verb} around your line`;ui.copy.textContent=ev.interrupted?`${ev.added.length} completed strata remain.`:'The new silhouette remains until you withdraw it or add another layer.';ui.line.textContent=`“${ev.therefore||ev.added.at(-1)?.text||ev.line}”`;ui.progress.hidden=true;addAction('Undo this stone',undoLast,false,true);addAction('Continue',continueField,true);if('speechSynthesis'in window)addAction('Read aloud',()=>speak(ev.therefore||ev.line))}}
+ else if(app.phase==='RECOVERY'&&app.undone){ui.ritual.classList.add('show');ui.eyebrow.textContent='Earlier field restored';ui.title.textContent='The latest strata were lifted away';ui.copy.textContent='The removed stone remains recoverable until another destructive change.';ui.line.textContent=`“${app.undone.line}”`;ui.progress.hidden=true;addAction('Keep restored field',()=>{app.undone=null;setPhase('REST')},true);addAction('Restore removed stone',restoreUndone)}
+ else if(app.phase==='FAULT'&&app.active){ui.ritual.classList.add('show');ui.eyebrow.textContent='Remote voice stopped';ui.title.textContent='The mountain kept what arrived';ui.copy.textContent=app.active.error||'The remote generator did not finish.';ui.line.textContent=app.latestLine?`“${app.latestLine}”`:'';ui.progress.hidden=true;addAction('Finish locally',finishLocally,true);addAction('Keep partial result',()=>finalizeOperation(true));addAction('Undo stone',()=>{finalizeOperation(true);undoLast()},false,true)}
+ ui.previewBanner.classList.toggle('show',Boolean(app.preview));
+}
+
+function localConsequences(line,mode,node){const words=tokenize(line),seed=hashString(`${line}|${mode}|${node.id}|${app.events.length}`),rnd=seeded(seed);const key=words[Math.floor(rnd()*Math.max(1,words.length))]||'silence';const pick=a=>a[Math.floor(rnd()*a.length)];const materials=['granite memory','a seam of amber pressure','a dark shelf of attention','a mineral echo','a patient fault line','an illuminated archive'];const verbs=['compresses into','leans against','erodes','carries','folds beneath','hardens around'];const distances=['the nearest shore','a future peak','the lower archive','the reflecting water','the oldest layer','a distant cairn'];const modeLines={Stone:[`The word “${key}” becomes ${pick(materials)}.`,`The line ${pick(verbs)} ${pick(distances)}.`,`A readable pressure settles beneath what comes next.`,`The mountain keeps the sentence after the voice is gone.`],Obstacle:[`Resistance gathers around “${key}.”`,`The stratum refuses the shortest route upward.`,`A fault opens between the line and ${pick(distances)}.`,`What cannot pass here begins to travel sideways.`],Goal:[`The surrounding layers incline toward “${key}.”`,`A thin illuminated seam gathers from ${pick(distances)}.`,`The peak reorganizes itself around an arrival.`,`Even distant sediment begins to face this layer.`],Turn:[`The mountain reverses the pressure carried by “${key}.”`,`An older sentence becomes newly visible from below.`,`The next layer must answer in another direction.`,`The silhouette turns without forgetting its weight.`]};const fragments=modeLines[mode];const therefore=`Therefore, ${key} now changes the mountain’s direction of reading.`;return{fragments,therefore,branch:rnd()>.58}}
+async function remoteConsequences(line,mode,node,signal){const response=await fetch(app.api.endpoint,{method:'POST',headers:{'Content-Type':'application/json',...(app.api.key?{Authorization:`Bearer ${app.api.key}`}:{})},signal,body:JSON.stringify({model:app.api.model||undefined,temperature:.9,response_format:{type:'json_object'},messages:[{role:'system',content:'You are the voice of a geological poetry world. Return strict JSON with fragments: exactly four concise poetic sentences, therefore: one concise sentence beginning with Therefore, and branch: boolean. Use stone, strata, pressure, water, reflection, mountain, archive, erosion, or light as imagery. Do not explain.'},{role:'user',content:`Line: ${line}\nMask: ${mode}\nMountain: ${node.name}\nCondition: ${node.condition}`} ]})});if(!response.ok)throw new Error(`Endpoint returned ${response.status}`);const data=await response.json();const content=data.choices?.[0]?.message?.content||data.output_text||'';const parsed=typeof content==='string'?JSON.parse(content):content;if(!Array.isArray(parsed.fragments)||parsed.fragments.length<4||!parsed.therefore)throw new Error('The endpoint response did not match the mountain format.');return{fragments:parsed.fragments.slice(0,4).map(String),therefore:String(parsed.therefore),branch:Boolean(parsed.branch)}}
+
+async function dropStone(lineOverride){if(app.phase==='WORKING'||app.preview)return;const line=(lineOverride||ui.input.value).trim();if(!line)return;pauseAutoplay();app.undone=null;const node=liveFocusNode(),before=snapshot();const op={id:uid('op'),line,mode:app.mode,nodeId:node.id,nodeName:node.name,before,beforeCondition:node.condition,added:[],fragments:[],therefore:'',branch:null,progress:.05,status:'The stone is falling toward the water.',cancelled:false,timers:new Set(),controller:new AbortController(),source:app.api.endpoint?'remote':'local'};app.active=op;app.phase='WORKING';app.latestLine=line;ui.input.value='';ui.stone.classList.remove('fall');void ui.stone.offsetWidth;ui.stone.classList.add('fall');app.field.ripples.push({id:uid('r'),nodeId:node.id,start:now()+.65,amp:1});updateUI();try{await wait(760,op);appendLayer(node,{text:line,type:'user',mode:op.mode,stoneId:op.id},op);node.condition=op.mode==='Obstacle'?'Resisting':op.mode==='Goal'?'Gathering':op.mode==='Turn'?'Turning':'Listening';op.progress=.18;op.status='The original line has become a readable layer.';renderAll();let result;if(app.api.endpoint){try{result=await remoteConsequences(line,op.mode,node,op.controller.signal)}catch(err){if(op.cancelled)throw err;op.error=`${err.message} Your original line remains in the mountain.`;app.phase='FAULT';renderAll();return}}else{await wait(260,op);result=localConsequences(line,op.mode,node)}await applyConsequences(result,op,node)}catch(err){if(err.name!=='AbortError')console.error(err)}finally{ui.stone.classList.remove('fall')}}
+function appendLayer(node,data,op){const layer={id:uid('layer'),created:Date.now(),...data};node.layers.push(layer);node.energy=clamp(node.energy+.12,0,1);op.added.push(layer);app.justAdded.add(layer.id);setTimeout(()=>{app.justAdded.delete(layer.id)},1000);app.latestLine=layer.text;app.field.ripples.push({id:uid('r'),nodeId:node.id,start:now(),amp:.35});return layer}
+async function applyConsequences(result,op,node){for(let i=0;i<result.fragments.length;i++){await wait(540,op);if(op.cancelled)return;const text=String(result.fragments[i]);appendLayer(node,{text,type:'consequence',mode:op.mode,stoneId:op.id},op);op.fragments.push(text);op.progress=.24+(i+1)*.12;op.status=`Compressing consequence ${i+1} of ${result.fragments.length}.`;renderAll()}await wait(560,op);if(op.cancelled)return;op.therefore=String(result.therefore);appendLayer(node,{text:op.therefore,type:'therefore',mode:op.mode,stoneId:op.id},op);app.latestTherefore=op.therefore;node.condition=op.mode==='Obstacle'?'Faulted':op.mode==='Goal'?'Converging':op.mode==='Turn'?'Reoriented':'Accreting';op.progress=.88;op.status='The mountain is forming a provisional summit.';renderAll();if(result.branch){await wait(620,op);if(op.cancelled)return;const target=nearestOther(node);const branchText=`A branch from ${node.name}: ${op.therefore}`;const layer=appendLayer(target,{text:branchText,type:'branch',mode:op.mode,stoneId:op.id},op);target.condition='Awakened';op.branch={from:node.id,to:target.id,layerId:layer.id};app.field.links.push({id:uid('link'),from:node.id,to:target.id,created:now(),stoneId:op.id});op.status=`Pressure reached ${target.name}.`;op.progress=.97;renderAll()}await wait(420,op);if(op.cancelled)return;finalizeOperation(false)}
+function nearestOther(node){return app.field.nodes.filter(n=>n.id!==node.id).sort((a,b)=>Math.hypot(a.x-node.x,a.z-node.z)-Math.hypot(b.x-node.x,b.z-node.z))[0]}
+function stopOperation(){const op=app.active;if(!op)return;op.cancelled=true;op.controller.abort();op.timers.forEach(clearTimeout);op.timers.clear();finalizeOperation(true)}
+function finalizeOperation(interrupted){const op=app.active;if(!op)return;const node=app.field.nodes.find(n=>n.id===op.nodeId);const after=snapshot();const ev={id:uid('event'),line:op.line,mode:op.mode,nodeId:op.nodeId,nodeName:op.nodeName,beforeCondition:op.beforeCondition,afterCondition:node.condition,added:deep(op.added),fragments:[...op.fragments],therefore:op.therefore,branch:op.branch,before:op.before,after,interrupted,source:op.source,created:Date.now()};app.events.push(ev);app.active=null;app.phase='CHANGED';renderAll();if(app.autoplay)setTimeout(()=>{if(app.autoplay&&app.phase==='CHANGED')continueField()},2600)}
+function finishLocally(){if(!app.active)return;const op=app.active,node=app.field.nodes.find(n=>n.id===op.nodeId);app.phase='WORKING';op.error='';op.source='local fallback';op.cancelled=false;op.controller=new AbortController();op.status='The local mountain voice is completing the remaining strata.';renderAll();const result=localConsequences(op.line,op.mode,node);const done=op.fragments.length;result.fragments=result.fragments.slice(done);applyConsequences(result,op,node)}
+function continueField(){app.phase='REST';app.active=null;app.latestLine=app.latestTherefore||app.latestLine;renderAll();setTimeout(()=>ui.input.focus({preventScroll:true}),220)}
+function undoLast(){if(app.active)return;const ev=app.events.pop();if(!ev)return;app.undone=ev;app.field=deep(ev.before);app.focusId=ev.nodeId;app.latestLine=app.events.at(-1)?.therefore||app.events.at(-1)?.line||'';app.latestTherefore=app.events.at(-1)?.therefore||'';app.phase='RECOVERY';renderAll();toast('Previous mountain field restored.')}
+function restoreUndone(){const ev=app.undone;if(!ev)return;app.field=deep(ev.after);app.events.push(ev);app.focusId=ev.nodeId;app.latestLine=ev.therefore||ev.line;app.latestTherefore=ev.therefore;app.undone=null;app.phase='CHANGED';renderAll()}
+
+function previewHistory(index){app.previewIndex=index;app.preview=index===-1?deep(baseField):deep(app.events[index].after);if(index>=0)app.focusId=app.events[index].nodeId;ui.previewMeta.textContent=index===-1?'Before the first authored stratum.':`After stone ${index+1} of ${app.events.length}.`;closeDrawers();renderAll()}
+function returnCurrent(){app.preview=null;app.previewIndex=null;renderAll()}
+function restorePreview(){if(!app.preview)return;const keep=app.previewIndex;app.field=deep(app.preview);app.events=keep<0?[]:app.events.slice(0,keep+1);app.preview=null;app.previewIndex=null;app.undone=null;app.latestLine=app.events.at(-1)?.therefore||app.events.at(-1)?.line||'';app.latestTherefore=app.events.at(-1)?.therefore||'';app.phase='REST';renderAll();toast('The previewed field is now live.')}
+
+function openDrawer(drawer){closeDrawers();ui.backdrop.classList.add('open');drawer.classList.add('open');drawer.setAttribute('aria-hidden','false')}
+function closeDrawers(){ui.backdrop.classList.remove('open');$$('.drawer').forEach(d=>{d.classList.remove('open');d.setAttribute('aria-hidden','true')})}
+function closeModals(){$$('.modal-backdrop').forEach(m=>m.classList.remove('open'))}
+function enterReading(){closeDrawers();if(!(app.latestTherefore||app.latestLine))return;app.reading=true;ui.readingLine.textContent=app.latestTherefore||app.latestLine;ui.reading.classList.add('open');updateUI()}
+function exitReading(){app.reading=false;ui.reading.classList.remove('open');if('speechSynthesis' in window)speechSynthesis.cancel();updateUI()}
+function speak(text){if(!('speechSynthesis'in window)||!text)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.rate=.84;u.pitch=.9;speechSynthesis.speak(u)}
+function toggleAutoplay(){if(app.autoplay){pauseAutoplay('Autoplay paused.');return}if(app.phase==='WORKING'||app.preview)return;app.autoplay=true;ui.autoIndex=app.autoIndex||0;scheduleAuto();closeDrawers();updateUI();toast('Autoplay started. It will identify itself before each stone.')}
+function scheduleAuto(){clearTimeout(app.autoplayTimer);if(!app.autoplay)return;app.autoplayTimer=setTimeout(async()=>{if(app.phase==='REST'&&!app.preview){const line=autoLines[app.autoIndex++%autoLines.length];toast('Autoplay is placing a stone.');await dropStone(line)}scheduleAuto()},14000)}
+function pauseAutoplay(message){if(!app.autoplay)return;app.autoplay=false;clearTimeout(app.autoplayTimer);app.autoplayTimer=null;updateUI();if(message)toast(message)}
+function cycleAtmosphere(){app.atmosphere=(app.atmosphere+1)%atmosphereNames.length;updateUI();closeDrawers();toast(`${atmosphereNames[app.atmosphere]} atmosphere.`)}
+function resetCamera(){app.camera={rx:-2,ry:0,zoom:1};applyCamera();closeDrawers()}
+function applyCamera(){ui.stage.style.setProperty('--rx',`${app.camera.rx}deg`);ui.stage.style.setProperty('--ry',`${app.camera.ry}deg`);ui.stage.style.setProperty('--zoom',app.camera.zoom)}
+function newField(){if(app.phase==='WORKING')stopOperation();if(app.events.length&&!confirm('Remove every authored stratum and begin a new field?'))return;pauseAutoplay();app.field=deep(baseField);app.events=[];app.focusId='root';app.latestLine='';app.latestTherefore='';app.preview=null;app.undone=null;app.phase='REST';ui.input.value='';closeDrawers();renderAll();toast('Quiet geology restored.')}
+function download(name,content,type){const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+function exportText(){const lines=[];for(const node of app.field.nodes){const authored=node.layers.filter(l=>l.created);if(!authored.length)continue;lines.push(node.name.toUpperCase(),'');authored.forEach(l=>lines.push(l.text));lines.push('')}download('text-mountain.txt',lines.join('\n'),'text/plain');closeModals()}
+function exportJson(){download('text-mountain.json',JSON.stringify({version:2,exportedAt:new Date().toISOString(),field:app.field,events:app.events},null,2),'application/json');closeModals()}
+
+function loadApi(){let raw=sessionStorage.getItem('textMountainApi')||localStorage.getItem('textMountainApi');if(!raw)return;try{app.api={...app.api,...JSON.parse(raw)}}catch{}}
+function openApi(){closeDrawers();$('#endpointInput').value=app.api.endpoint;$('#modelInput').value=app.api.model;$('#keyInput').value=app.api.key;$('#storageSelect').value=app.api.storage;ui.apiModal.classList.add('open')}
+function saveApi(){const endpoint=$('#endpointInput').value.trim(),model=$('#modelInput').value.trim(),key=$('#keyInput').value.trim(),storage=$('#storageSelect').value;if(!endpoint){toast('Enter an endpoint or use the local mountain.');return}app.api={endpoint,model,key,storage};const raw=JSON.stringify(app.api);if(storage==='save'){localStorage.setItem('textMountainApi',raw);sessionStorage.removeItem('textMountainApi')}else{sessionStorage.setItem('textMountainApi',raw);localStorage.removeItem('textMountainApi')}closeModals();updateUI();toast('Generator connection saved.')}
+function useLocal(){app.api={endpoint:'',model:'',key:'',storage:'session'};sessionStorage.removeItem('textMountainApi');localStorage.removeItem('textMountainApi');closeModals();updateUI();toast('Using the local mountain voice.')}
+
+const atmo=ui.atmo.getContext('2d'),links=ui.links.getContext('2d');let dpr=1,stars=[];
+function resizeCanvases(){dpr=Math.min(devicePixelRatio||1,2);for(const c of [ui.atmo,ui.links]){const r=c.getBoundingClientRect();c.width=Math.max(1,Math.floor(r.width*dpr));c.height=Math.max(1,Math.floor(r.height*dpr));c.getContext('2d').setTransform(dpr,0,0,dpr,0,0)}const rnd=seeded(32448);stars=Array.from({length:130},()=>({x:rnd(),y:rnd()*.5,a:.16+rnd()*.48,s:.4+rnd()*1.25}))}
+function drawAtmosphere(t){const w=innerWidth,h=innerHeight;atmo.setTransform(dpr,0,0,dpr,0,0);const palettes=[['#31445d','#9b7983','#182b37','#07131b'],['#f2cab3','#d4846c','#344958','#0b1c26'],['#0d1831','#36365e','#142d43','#050b16']][app.atmosphere];let g=atmo.createLinearGradient(0,0,0,h);g.addColorStop(0,palettes[0]);g.addColorStop(.34,palettes[1]);g.addColorStop(.52,palettes[2]);g.addColorStop(1,palettes[3]);atmo.fillStyle=g;atmo.fillRect(0,0,w,h);
+ if(app.atmosphere===2){for(const s of stars){atmo.globalAlpha=s.a*(.75+.25*Math.sin(t*.7+s.x*20));atmo.fillStyle='#eaf6ff';atmo.fillRect(s.x*w,s.y*h,s.s,s.s)}atmo.globalAlpha=1}
+ const speed=app.ambient?.08:.012;atmo.save();atmo.globalCompositeOperation='screen';atmo.globalAlpha=app.atmosphere===2?.2:.08;for(let i=0;i<3;i++){atmo.beginPath();const y=h*(.09+i*.055);atmo.moveTo(-80,y);for(let x=-80;x<=w+80;x+=24){atmo.lineTo(x,y+Math.sin(x*.008+t*speed+i)*28+Math.sin(x*.021-t*.04)*9)}atmo.lineTo(w+80,y+110);atmo.lineTo(-80,y+90);atmo.closePath();const ag=atmo.createLinearGradient(0,y,0,y+120);ag.addColorStop(0,i%2?'rgba(116,244,207,.5)':'rgba(139,185,255,.42)');ag.addColorStop(1,'rgba(120,190,255,0)');atmo.fillStyle=ag;atmo.filter='blur(18px)';atmo.fill()}atmo.restore();atmo.filter='none';
+ const horizon=h*.54;atmo.fillStyle='rgba(7,15,21,.6)';atmo.beginPath();atmo.moveTo(0,horizon+18);for(let x=0;x<=w;x+=24){const y=horizon-8-Math.sin(x*.008)*18-Math.sin(x*.021+1.2)*8;atmo.lineTo(x,y)}atmo.lineTo(w,h);atmo.lineTo(0,h);atmo.fill();
+ const water=atmo.createLinearGradient(0,horizon,0,h);water.addColorStop(0,'rgba(42,72,82,.34)');water.addColorStop(.34,'rgba(14,31,41,.7)');water.addColorStop(1,'rgba(3,9,15,.98)');atmo.fillStyle=water;atmo.fillRect(0,horizon,w,h-horizon);
+ atmo.save();atmo.globalAlpha=.22;for(let y=horizon;y<h;y+=6+(y-horizon)*.012){const wave=Math.sin(y*.035+t*(app.ambient?.35:.05))*7;atmo.strokeStyle=`rgba(198,218,214,${.12*(1-(y-horizon)/(h-horizon))})`;atmo.lineWidth=.7;atmo.beginPath();atmo.moveTo(0,y);for(let x=0;x<=w;x+=18)atmo.lineTo(x,y+Math.sin(x*.018+t*.3)*1.5+wave*.08);atmo.stroke()}atmo.restore();drawRipples(t,horizon)}
+function nodeScreenPosition(nodeId){if(nodeId===app.focusId)return{x:innerWidth*.5,y:innerHeight*.62};const el=document.querySelector(`.mountain.satellite[data-node="${CSS.escape(nodeId)}"]`);if(!el)return{x:innerWidth*.5,y:innerHeight*.5};const r=el.getBoundingClientRect();return{x:r.left+r.width*.5,y:r.top+r.height*.72}}
+function drawRipples(t,horizon){const active=visibleField().ripples.filter(r=>t-r.start<8);for(const r of active){const p=nodeScreenPosition(r.nodeId),age=t-r.start;if(age<0)continue;const a=Math.max(0,.34-age*.045)*r.amp;for(let k=0;k<2;k++){atmo.beginPath();atmo.strokeStyle=`rgba(155,225,216,${a*(1-k*.3)})`;atmo.lineWidth=1;atmo.ellipse(p.x,Math.max(horizon,p.y+45),age*(24+k*14),age*(6+k*3),0,0,Math.PI*2);atmo.stroke()}}}
+function drawLinks(t){links.setTransform(dpr,0,0,dpr,0,0);links.clearRect(0,0,innerWidth,innerHeight);for(const link of visibleField().links){const a=nodeScreenPosition(link.from),b=nodeScreenPosition(link.to);const age=t-link.created,alpha=clamp(.55-age*.008,.18,.55);links.save();links.globalCompositeOperation='screen';links.strokeStyle=`rgba(138,222,216,${alpha})`;links.lineWidth=1.2;links.shadowColor='rgba(138,222,216,.8)';links.shadowBlur=8;links.beginPath();links.moveTo(a.x,a.y);const cx=(a.x+b.x)/2,cy=Math.min(a.y,b.y)-90-Math.abs(a.x-b.x)*.06;links.quadraticCurveTo(cx,cy,b.x,b.y);links.stroke();const q=((t*.07+hashString(link.id)%100/100)%1),u=1-q,px=u*u*a.x+2*u*q*cx+q*q*b.x,py=u*u*a.y+2*u*q*cy+q*q*b.y;links.fillStyle='rgba(240,226,180,.95)';links.beginPath();links.arc(px,py,2.2,0,Math.PI*2);links.fill();links.restore()}}
+function frame(ms){const t=ms/1000;drawAtmosphere(t);drawLinks(t);requestAnimationFrame(frame)}
+
+let drag=null,pointers=new Map(),pinch=null;
+ui.world.addEventListener('pointerdown',e=>{if(app.preview)return;ui.world.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1)drag={id:e.pointerId,x:e.clientX,y:e.clientY,ry:app.camera.ry,rx:app.camera.rx,moved:false};if(pointers.size===2){const p=[...pointers.values()];pinch={d:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),zoom:app.camera.zoom}}});
+ui.world.addEventListener('pointermove',e=>{if(pointers.has(e.pointerId))pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pinch&&pointers.size===2){const p=[...pointers.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);app.camera.zoom=clamp(pinch.zoom*d/pinch.d,.78,1.32);applyCamera();return}if(!drag||drag.id!==e.pointerId)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)>5)drag.moved=true;app.camera.ry=clamp(drag.ry+dx*.035,-15,15);app.camera.rx=clamp(drag.rx-dy*.022,-8,7);applyCamera()});
+for(const type of ['pointerup','pointercancel'])ui.world.addEventListener(type,e=>{pointers.delete(e.pointerId);if(pointers.size<2)pinch=null;if(drag?.id===e.pointerId)drag=null});
+ui.world.addEventListener('wheel',e=>{e.preventDefault();app.camera.zoom=clamp(app.camera.zoom-e.deltaY*.0008,.78,1.32);applyCamera()},{passive:false});
+
+ui.input.addEventListener('input',()=>{if(app.phase!=='WORKING'&&!app.preview){app.phase=ui.input.value.trim()?'READY':'REST';updateUI()}});ui.input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(!ui.drop.disabled)dropStone()}if(e.key==='Escape')ui.input.blur()});ui.input.addEventListener('focus',()=>pauseAutoplay('Autoplay paused because you returned to the composer.'));
+ui.drop.addEventListener('click',()=>dropStone());ui.modeBtn.addEventListener('click',()=>{if(app.phase==='WORKING'||app.preview)return;ui.modeMenu.classList.toggle('open');ui.modeBtn.setAttribute('aria-expanded',String(ui.modeMenu.classList.contains('open')))});$$('.mode-option').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));document.addEventListener('click',e=>{if(!e.target.closest('.mode-wrap'))closeMode()});
+ui.menuBtn.addEventListener('click',()=>openDrawer(ui.menuDrawer));ui.backdrop.addEventListener('click',closeDrawers);$$('.drawer-close').forEach(b=>b.addEventListener('click',closeDrawers));ui.historyTrace.addEventListener('click',()=>openDrawer(ui.historyDrawer));ui.historyRow.addEventListener('click',()=>{closeDrawers();openDrawer(ui.historyDrawer)});ui.readingRow.addEventListener('click',enterReading);ui.autoRow.addEventListener('click',toggleAutoplay);$('#atmosphereRow').addEventListener('click',cycleAtmosphere);$('#motionRow').addEventListener('click',()=>{app.ambient=!app.ambient;closeDrawers();updateUI();toast(`Ambient motion ${app.ambient?'restored':'reduced'}.`)});ui.exportRow.addEventListener('click',()=>{closeDrawers();ui.exportModal.classList.add('open')});$('#apiRow').addEventListener('click',openApi);$('#resetCameraRow').addEventListener('click',resetCamera);$('#newFieldRow').addEventListener('click',newField);
+$('#returnCurrentBtn').addEventListener('click',returnCurrent);$('#restorePreviewBtn').addEventListener('click',restorePreview);$('#exitReadingBtn').addEventListener('click',exitReading);$('#speakBtn').addEventListener('click',()=>speak(app.latestTherefore||app.latestLine));$$('.modal-close').forEach(b=>b.addEventListener('click',closeModals));$$('.modal-backdrop').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModals() }));$('#saveApiBtn').addEventListener('click',saveApi);$('#useLocalBtn').addEventListener('click',useLocal);$('#removeKeyBtn').addEventListener('click',()=>{localStorage.removeItem('textMountainApi');sessionStorage.removeItem('textMountainApi');$('#keyInput').value='';toast('Saved key removed.')});$('#exportTextBtn').addEventListener('click',exportText);$('#exportJsonBtn').addEventListener('click',exportJson);
+window.addEventListener('resize',()=>{resizeCanvases();renderMountains()});document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawers();closeModals();closeMode();if(app.reading)exitReading();if(app.preview)returnCurrent()}});
+
+loadApi();resizeCanvases();applyCamera();setMode('Stone');renderAll();requestAnimationFrame(frame);setTimeout(()=>ui.input.focus({preventScroll:true}),700);
+})();
+</script>
+</body>
+</html>

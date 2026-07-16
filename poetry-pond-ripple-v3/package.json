@@ -1,0 +1,17 @@
+{
+  "name": "poetry-pond-ripple-v3",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Dual-model Sol/Luna causal-world engine with bounded context, token routing, validated events, and inspectable consequences.",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "evals": "node run-evals.mjs",
+    "verify": "npm test && npm run evals && npm run integration",
+    "integration": "node run-openai-routing-integration.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

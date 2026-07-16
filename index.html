@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poetry Pond — Shared Index</title>
+<style>
+:root{
+  --bg:#020408; --surface:rgba(6,12,20,.92); --border:rgba(0,229,255,.16);
+  --ink:#8aa0b4; --ink-dim:#4a5d6e; --cyan:#00e5ff; --amber:#f59e0b;
+  --goal:#00ff88; --sand:#c8b89a; --alert:#ff6a5e; --violet:#c9a2ff;
+  --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --serif:Georgia,'Times New Roman',serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--mono);min-height:100vh;
+  background-image:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(0,229,255,.06),transparent),
+                   radial-gradient(ellipse 60% 40% at 80% 110%,rgba(200,184,154,.05),transparent);}
+main{max-width:1080px;margin:0 auto;padding:48px 24px 80px}
+header{margin-bottom:8px}
+h1{font-size:15px;letter-spacing:.18em;color:var(--cyan);text-transform:uppercase;
+   text-shadow:0 0 24px rgba(0,229,255,.35)}
+header .sub{font-family:var(--serif);font-style:italic;font-size:15px;color:var(--sand);margin-top:8px;line-height:1.5}
+.chain{margin:22px 0 34px;padding:12px 16px;border:1px solid var(--border);background:var(--surface);
+  font-size:10px;letter-spacing:.1em;color:var(--ink-dim);text-transform:uppercase;line-height:1.9;border-radius:3px}
+.chain b{color:var(--amber);font-weight:normal}
+section{margin-bottom:38px}
+h2{font-size:10px;letter-spacing:.16em;color:var(--amber);text-transform:uppercase;
+   margin-bottom:4px;padding-bottom:6px;border-bottom:1px solid rgba(245,158,11,.18)}
+.sec-note{font-size:10px;color:var(--ink-dim);margin:6px 0 14px;line-height:1.6}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
+a.card{display:block;text-decoration:none;color:var(--ink);border:1px solid rgba(255,255,255,.09);
+  background:var(--surface);border-radius:3px;padding:12px 14px;transition:border-color .2s,transform .15s}
+a.card:hover{border-color:var(--cyan);transform:translateY(-1px)}
+.card .name{font-size:12px;color:#dce8f0;margin-bottom:4px;line-height:1.35}
+.card .desc{font-size:10px;color:var(--ink-dim);line-height:1.55}
+.card .file{font-size:8.5px;color:var(--ink-dim);opacity:.7;margin-top:7px;word-break:break-all}
+.badges{float:right;margin-left:10px;display:flex;flex-direction:column;gap:3px;align-items:flex-end}
+.badge{font-size:8px;letter-spacing:.08em;padding:2px 7px;border-radius:2px;white-space:nowrap;text-transform:uppercase}
+.b-verified{color:var(--goal);border:1px solid rgba(0,255,136,.35);background:rgba(0,255,136,.06)}
+.b-graded{color:var(--amber);border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.06)}
+.b-server{color:var(--cyan);border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.05)}
+.b-api{color:var(--violet);border:1px solid rgba(201,162,255,.35);background:rgba(201,162,255,.06)}
+.b-ungraded{color:var(--ink-dim);border:1px solid rgba(255,255,255,.12)}
+.b-rubric{color:var(--sand);border:1px solid rgba(200,184,154,.35);background:rgba(200,184,154,.06)}
+.hero{grid-column:1/-1;border-color:rgba(0,255,136,.3)}
+.hero .name{font-size:14px;color:#fff}
+footer{margin-top:44px;font-size:9px;color:var(--ink-dim);line-height:1.8;border-top:1px solid rgba(255,255,255,.07);padding-top:14px}
+footer code{color:var(--sand)}
+@media(prefers-color-scheme:light){ /* the pond family is a dark habitat; the index stays with it */ }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Poetry Pond · Shared Index</h1>
+  <div class="sub">A text that remembers what the reader did. Every build below is one attempt at the same contract.</div>
+</header>
+
+<div class="chain">
+  <b>The rubric chain</b> (Coaxing the Ripples · Marttila · Hartsoe · Bolter):
+  action → stored change → later output shifts → reader can detect it.
+  Miss one link and the ripple fails. If the berry returns untouched, the system forgot.
+</div>
+
+<section>
+  <h2>Foundation — current</h2>
+  <div class="sec-note">The typed causal-world line. Validated event proposals, replay undo, inspectable ripple proofs, bounded LLM roles. All three servers accept a runtime API key from their settings panel — the key stays on the local server, never in the browser.</div>
+  <div class="grid">
+    <a class="card hero" href="http://127.0.0.1:8789">
+      <span class="badges">
+        <span class="badge b-verified">27/27 tests · 3/3 evals · 7/7 routing</span>
+        <span class="badge b-server">API · key panel · node :8789</span>
+      </span>
+      <div class="name">Poetry Pond — Ripple V3 · Dual-Model Causal World</div>
+      <div class="desc">V2's typed foundation plus real Responses-API integration: Luna for routine proposals and rendering, Sol reserved for hard interpretation and multi-hop causal review, with routing policies, token budgets, and stateless bounded context. OpenAI still cannot declare truth.</div>
+      <div class="file">poetry-pond-ripple-v3/ — run: <b style="color:var(--sand)">cd poetry-pond-ripple-v3 && npm run verify && npm start</b></div>
+    </a>
+    <a class="card" href="http://127.0.0.1:8787">
+      <span class="badges">
+        <span class="badge b-verified">18/18 tests · 3/3 evals</span>
+        <span class="badge b-server">API · key panel · node :8787</span>
+      </span>
+      <div class="name">Poetry Pond — Ripple V2 · Typed Causal World</div>
+      <div class="desc">Ontology-validated events, clarification instead of invented causality, exact replay undo, citation-checked rendering. Runtime key panel, mobile bottom-sheet controls, three-tab context inspector with JSONL turn logging.</div>
+      <div class="file">poetry-pond-ripple-v2/ — run: <b style="color:var(--sand)">cd poetry-pond-ripple-v2 && npm start</b></div>
+    </a>
+    <a class="card" href="http://127.0.0.1:8788">
+      <span class="badges">
+        <span class="badge b-ungraded">predecessor</span>
+        <span class="badge b-server">API · key panel · node :8788</span>
+      </span>
+      <div class="name">Poetry Pond — Sol56 Context Pond</div>
+      <div class="desc">The server-backed predecessor of V2: real 3D water and text mountain with OpenAI continuity chained by previous-response id. Now carries the same runtime key panel as V2/V3.</div>
+      <div class="file">poetry-pond-sol56/ — run: <b style="color:var(--sand)">cd poetry-pond-sol56 && npm start</b></div>
+    </a>
+  </div>
+</section>
+
+<section>
+  <h2>Graded engines — the 3D field line</h2>
+  <div class="sec-note">Client-only WebGL ponds: scalar physics mesh, sediment, Ripple Rider propagation, timeline restore. Graded against the Coaxing the Ripples deck by the Dark Matter Guardian.</div>
+  <div class="grid">
+    <a class="card" href="rcc-poetry-pond-void-remake.html">
+      <span class="badges">
+        <span class="badge b-graded">graded 76/100</span>
+        <span class="badge b-api">API · in-app key</span>
+      </span>
+      <div class="name">RCC ECO GNN — 3D Poetry Pond · Void Remake</div>
+      <div class="desc">Minimal operating surface over the full engine. Keyframed snapshots (~3h coverage), append-only restore markers, honest eviction, delta-provenance chips wiring every consequence line to its applied physics and causing stone.</div>
+      <div class="file">rcc-poetry-pond-void-remake.html</div>
+    </a>
+    <a class="card" href="rcc-eco-tool-ripple-rider.html">
+      <span class="badges"><span class="badge b-ungraded">ungraded</span><span class="badge b-api">API · in-app key</span></span>
+      <div class="name">RCC ECO GNN — Ripple Rider</div>
+      <div class="desc">The distributed line-contexts build: broadcasts routed to independent listening contexts, scored wake-ups, sanctioned silence.</div>
+      <div class="file">rcc-eco-tool-ripple-rider.html</div>
+    </a>
+    <a class="card" href="rcc-eco-accretion-field.html">
+      <span class="badges"><span class="badge b-ungraded">ungraded</span><span class="badge b-api">API · in-app key</span></span>
+      <div class="name">Open RCC — Accretion Field</div>
+      <div class="desc">Sedimentary accretion variant of the eco mesh.</div>
+      <div class="file">rcc-eco-accretion-field.html</div>
+    </a>
+    <a class="card" href="rcc-eco-tool-poetry-pond.html">
+      <span class="badges"><span class="badge b-ungraded">ungraded</span><span class="badge b-api">API · in-app key</span></span>
+      <div class="name">RCC ECO TOOL — Pond (poetry variant)</div>
+      <div class="desc">Earlier eco-tool pond surface.</div>
+      <div class="file">rcc-eco-tool-poetry-pond.html</div>
+    </a>
+    <a class="card" href="rcc-eco-tool-pond.html">
+      <span class="badges"><span class="badge b-ungraded">ungraded</span><span class="badge b-api">API · in-app key</span></span>
+      <div class="name">RCC ECO TOOL — Pond</div>
+      <div class="desc">Sibling eco-tool pond build.</div>
+      <div class="file">rcc-eco-tool-pond.html</div>
+    </a>
+  </div>
+</section>
+
+<section>
+  <h2>Fútbolmas — consequence on the pitch</h2>
+  <div class="sec-note">The Spain–Argentina line: the same action → stored change → later shift contract played as immersive Spanish-language football. Deterministic engines — no API needed. The Thunder Rigs matchday builds add an in-app AI director.</div>
+  <div class="grid">
+    <a class="card" href="futbolmas-canonical-standard.html">
+      <div class="name">FÚTBOLMAS — Canonical Standard</div>
+      <div class="desc">The reference España v Argentina immersive build.</div>
+      <div class="file">futbolmas-canonical-standard.html</div>
+    </a>
+    <a class="card" href="futbolmas-collision-consequence.html">
+      <div class="name">FÚTBOLMAS — Collision Consequence</div>
+      <div class="desc">Contact events become stored consequence: every collision alters the match that follows.</div>
+      <div class="file">futbolmas-collision-consequence.html</div>
+    </a>
+    <a class="card" href="futbolmas-3d-contact-replay.html">
+      <div class="name">FÚTBOLMAS — Pase y Tiro · Contact Replay</div>
+      <div class="desc">3D pass-and-shoot with inspectable contact replays.</div>
+      <div class="file">futbolmas-3d-contact-replay.html</div>
+    </a>
+    <a class="card" href="futbolmas-3d-playable-brain.html">
+      <div class="name">FÚTBOLMAS — Jugable · Playable Brain</div>
+      <div class="desc">Playable build with visible decision brain.</div>
+      <div class="file">futbolmas-3d-playable-brain.html</div>
+    </a>
+    <a class="card" href="futbolmas-forecast-kicks.html">
+      <div class="name">FÚTBOLMAS — Forecast Kicks</div>
+      <div class="desc">Kick outcomes forecast before commitment — consequence previewed, then stored.</div>
+      <div class="file">futbolmas-forecast-kicks.html</div>
+    </a>
+    <a class="card" href="futbolmas-22-spain-argentina-worlds.html">
+      <div class="name">FÚTBOLMAS-22 — Twelve Worlds</div>
+      <div class="desc">Spain vs Argentina across 12 parallel world variants.</div>
+      <div class="file">futbolmas-22-spain-argentina-worlds.html</div>
+    </a>
+    <a class="card" href="futbolmas-3d-spanish-immersive.html">
+      <div class="name">FÚTBOLMAS — Inmersivo</div>
+      <div class="desc">The Spanish-language immersive base build.</div>
+      <div class="file">futbolmas-3d-spanish-immersive.html</div>
+    </a>
+    <a class="card" href="futbolmas-3d-spanish-immersive (1).html">
+      <div class="name">FÚTBOLMAS — Inmersivo (revision)</div>
+      <div class="desc">Revision of the immersive base.</div>
+      <div class="file">futbolmas-3d-spanish-immersive (1).html</div>
+    </a>
+    <a class="card" href="futbolmas-3d-spanish-immersive-fun-kicks.html">
+      <div class="name">FÚTBOLMAS — Pase y Tiro · Fun Kicks</div>
+      <div class="desc">Loose, playful pass-and-shoot variant.</div>
+      <div class="file">futbolmas-3d-spanish-immersive-fun-kicks.html</div>
+    </a>
+    <a class="card" href="HELLO-WORLD-005-MATCHDAY-DIRECTOR.html">
+      <span class="badges"><span class="badge b-api">API · in-app key</span></span>
+      <div class="name">THUNDER RIGS — Hello World 005 · Matchday Director</div>
+      <div class="desc">Matchday direction over the thunder-rigs world: an in-app AI config drives the director.</div>
+      <div class="file">HELLO-WORLD-005-MATCHDAY-DIRECTOR.html</div>
+    </a>
+    <a class="card" href="HELLO-WORLD-005-MATCHDAY-ALL-AVATARS-LOCATIONS.html">
+      <span class="badges"><span class="badge b-api">API · in-app key</span></span>
+      <div class="name">THUNDER RIGS — Hello World 005 · All Avatars &amp; Locations</div>
+      <div class="desc">Full avatar and location roster for the matchday world.</div>
+      <div class="file">HELLO-WORLD-005-MATCHDAY-ALL-AVATARS-LOCATIONS.html</div>
+    </a>
+  </div>
+</section>
+
+<section>
+  <h2>Lineage — therefore engines &amp; early ponds</h2>
+  <div class="sec-note">The experiments that led here, oldest ideas first-ish. Kept for the record; not held to the current rubric.</div>
+  <div class="grid">
+    <a class="card" href="ripple_therefore_still_water_integrated.html">
+      <div class="name">RIPPLE / THEREFORE — Still Water Field</div>
+      <div class="desc">First integrated still-water consequence field.</div>
+      <div class="file">ripple_therefore_still_water_integrated.html</div>
+    </a>
+    <a class="card" href="ripple_therefore_still_water_autobranch_fixed.html">
+      <div class="name">RIPPLE / THEREFORE — Branching Consequence Field</div>
+      <div class="desc">Auto-branching consequences across the water.</div>
+      <div class="file">ripple_therefore_still_water_autobranch_fixed.html</div>
+    </a>
+    <a class="card" href="ripple_therefore_semantic_wave_field.html">
+      <div class="name">RIPPLE / THEREFORE — Semantic Wave Field</div>
+      <div class="desc">Meaning as interference pattern.</div>
+      <div class="file">ripple_therefore_semantic_wave_field.html</div>
+    </a>
+    <a class="card" href="ripple_therefore_engine_topography_live_auto.html">
+      <div class="name">RIPPLE — Interference Topography (live auto)</div>
+      <div class="desc">Self-running topographic interference engine.</div>
+      <div class="file">ripple_therefore_engine_topography_live_auto.html</div>
+    </a>
+    <a class="card" href="ripple_therefore_engine_focused.html">
+      <div class="name">RIPPLE — Focused Field</div>
+      <div class="desc">Focused single-field variant of the therefore engine.</div>
+      <div class="file">ripple_therefore_engine_focused.html</div>
+    </a>
+    <a class="card" href="poetry-pond.html">
+      <div class="name">Poetry Pond (original)</div>
+      <div class="desc">The first pond.</div>
+      <div class="file">poetry-pond.html</div>
+    </a>
+    <a class="card" href="poetry-pond-text-mountain.html">
+      <div class="name">Poetry Pond — Text Mountain</div>
+      <div class="desc">The conversation record as terrain.</div>
+      <div class="file">poetry-pond-text-mountain.html</div>
+    </a>
+    <a class="card" href="poetry-pond-true-3d.html">
+      <div class="name">Poetry Pond — True 3D Text Mountain</div>
+      <div class="desc">Client-only precursor of the V2 surface.</div>
+      <div class="file">poetry-pond-true-3d.html</div>
+    </a>
+    <a class="card" href="poetry_pond_immersive_orchestrated_stacks.html">
+      <span class="badges"><span class="badge b-api">API · in-app key</span></span>
+      <div class="name">Poetry Pond — Orchestrated Stacks</div>
+      <div class="desc">Immersive orchestrated semantic stacks: Sol orchestration over per-node Luna contexts, key held in the page's own settings.</div>
+      <div class="file">poetry_pond_immersive_orchestrated_stacks.html</div>
+    </a>
+    <a class="card" href="poetry_pond_in_world_stacks.html">
+      <div class="name">Poetry Pond — In-World Stacks</div>
+      <div class="desc">Stacks placed diegetically inside the world.</div>
+      <div class="file">poetry_pond_in_world_stacks.html</div>
+    </a>
+    <a class="card" href="accreting-mountains-actual-code.html">
+      <div class="name">Accreting Mountains</div>
+      <div class="desc">Three.js field of text mountains: stone / consequence / spawn strata, connected peaks, undo, local persistence.</div>
+      <div class="file">accreting-mountains-actual-code.html</div>
+    </a>
+    <a class="card" href="open-rcc-accretion-field.html">
+      <div class="name">Open RCC Accretion Field — Semantic Fisheye Mountains</div>
+      <div class="desc">Semantic fisheye compression over accreting mountain stacks.</div>
+      <div class="file">open-rcc-accretion-field.html</div>
+    </a>
+    <a class="card" href="ripples-v2.html">
+      <div class="name">RIPPLES v2 — World Jockey</div>
+      <div class="desc">World-jockey steering interface over the ripple field.</div>
+      <div class="file">ripples-v2.html</div>
+    </a>
+    <a class="card" href="tchaikovsky-ripple-simulator-v2.html">
+      <div class="name">Tchaikovsky Ripple Simulator v2</div>
+      <div class="desc">Cultural Memory Express — consequence as cultural transmission.</div>
+      <div class="file">tchaikovsky-ripple-simulator-v2.html</div>
+    </a>
+  </div>
+</section>
+
+<section>
+  <h2>Theory &amp; rubric</h2>
+  <div class="sec-note">What the builds are answerable to. The highlighter deck is the active grading rubric.</div>
+  <div class="grid">
+    <a class="card" href="coaxing_ripples_editable_highlighter_clean.pptx">
+      <span class="badges"><span class="badge b-rubric">active rubric</span></span>
+      <div class="name">Coaxing the Ripples — Highlighter Deck (.pptx)</div>
+      <div class="desc">The ten-slide contract: consequence not decoration · the four-link chain · the blueberry test · whispers / ecologies / simulation · relevance over memory · bounded autonomy · author the field · four reader tests · readable history.</div>
+      <div class="file">coaxing_ripples_editable_highlighter_clean.pptx</div>
+    </a>
+    <a class="card" href="coaxing-the-ripples(1).html">
+      <div class="name">Coaxing the Ripples — Essay</div>
+      <div class="desc">Thoughts on distant writing of interactive works (Marttila · Hartsoe · Bolter).</div>
+      <div class="file">coaxing-the-ripples(1).html</div>
+    </a>
+    <a class="card" href="ripples-conference-presentation-rebuilt.html">
+      <div class="name">Conference Presentation — Rebuilt</div>
+      <div class="desc">HTML deck of the talk.</div>
+      <div class="file">ripples-conference-presentation-rebuilt.html</div>
+    </a>
+    <a class="card" href="RIPPLES%20Worldtext%20Generator%20Specification_RIPPLES_%20Theoretical%20Framework,%20Technical%20Specification,%20and%20Operative%20Methodologies%20for%20Latent%20Ecological%20Interfaces.md">
+      <div class="name">RIPPLES — Worldtext Generator Specification</div>
+      <div class="desc">Theoretical framework and operative methodology for latent ecological interfaces.</div>
+      <div class="file">RIPPLES Worldtext Generator Specification….md</div>
+    </a>
+  </div>
+</section>
+
+<footer>
+  Serve this index and every static build: <code>python3 -m http.server 8931</code> in this directory → <code>http://localhost:8931/index.html</code>.<br>
+  Server builds run separately: V3 <code>:8789</code> · V2 <code>:8787</code> · Sol56 <code>:8788</code> (each: <code>cd &lt;dir&gt; &amp;&amp; npm start</code>).<br>
+  API badges: <span style="color:var(--cyan)">server key panel</span> = paste a key in the build's settings, held by its local server only ·
+  <span style="color:var(--violet)">in-app key</span> = the page has its own key field (browser storage) ·
+  no badge = fully local, no API needed.<br>
+  Status badges are earned, not decorative: <span style="color:var(--goal)">verified</span> = suite run and passing here · <span style="color:var(--amber)">graded</span> = Dark Matter Guardian score against the rubric deck · unlabeled = not yet assessed.
+</footer>
+</main>
+</body>
+</html>

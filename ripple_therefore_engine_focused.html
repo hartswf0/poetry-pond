@@ -1,0 +1,1950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>RIPPLE — Focused Field</title>
+<style>
+:root {
+  color-scheme: light;
+  --paper: #fff;
+  --ink: #0a0a0a;
+  --muted: rgba(0,0,0,.46);
+  --soft: rgba(0,0,0,.08);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--paper); color: var(--ink); }
+body { font-family: var(--mono); }
+button, input, select { font: inherit; color: inherit; }
+button { background: var(--paper); border: 1px solid var(--ink); cursor: pointer; }
+button:hover, button:focus-visible { background: var(--ink); color: var(--paper); outline: none; }
+button:disabled { opacity: .35; cursor: wait; }
+input, select { background: var(--paper); border: 1px solid var(--ink); outline: none; }
+input:focus, select:focus { box-shadow: 0 0 0 2px var(--ink); }
+::selection { background: var(--ink); color: var(--paper); }
+* { scrollbar-width: thin; scrollbar-color: var(--ink) transparent; }
+
+#app { position: relative; width: 100%; height: 100%; background: var(--paper); }
+#workspace, #fieldShell, #fieldViewport { position: absolute; inset: 0; min-width: 0; min-height: 0; }
+#fieldCanvas { width: 100%; height: 100%; display: block; background: var(--paper); touch-action: none; }
+#fieldViewport { cursor: grab; }
+#fieldViewport.dragging { cursor: grabbing; }
+
+#statusRail {
+  position: fixed; z-index: 30; top: 18px; left: 50%; transform: translateX(-50%);
+  width: min(920px, calc(100vw - 32px)); height: 42px;
+  display: grid; grid-template-columns: auto minmax(0,1fr) auto auto;
+  align-items: center; border: 1px solid var(--ink); background: rgba(255,255,255,.96);
+}
+.status-item { height: 100%; border: 0; border-right: 1px solid var(--ink); padding: 0 13px; background: transparent; font-size: 10px; text-transform: uppercase; letter-spacing: .07em; white-space: nowrap; }
+#statusTitle { font-weight: 900; letter-spacing: .14em; }
+#focusStatus { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 14px; font-size: 10px; color: var(--muted); }
+#historyButton, #apiButton { height: 100%; border: 0; border-left: 1px solid var(--ink); padding: 0 16px; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+#apiButton.api-live::before { content: '● '; }
+#statusState, #statusMode, #statusSelection, #statusEvent, #statusRoute, #statusBinding, #statusPressure, #statusSpacer { display: none; }
+
+#groundWitness {
+  position: fixed; z-index: 20; left: 50%; top: 70px; transform: translateX(-50%);
+  display: flex; gap: 8px; pointer-events: none; font-size: 9px; text-transform: uppercase; color: var(--muted);
+}
+.ground-cell { display: none; }
+.ground-cell:nth-child(1), .ground-cell:nth-child(3) { display: inline-flex; gap: 5px; }
+.ground-cell b { color: var(--ink); }
+
+#commandLine {
+  position: fixed; z-index: 30; left: 50%; bottom: 22px; transform: translateX(-50%);
+  width: min(760px, calc(100vw - 30px)); min-height: 58px;
+  display: grid; grid-template-columns: 108px minmax(0,1fr) 88px;
+  border: 1px solid var(--ink); background: rgba(255,255,255,.97);
+  box-shadow: 0 12px 34px rgba(0,0,0,.08);
+}
+#modeButton { border: 0; border-right: 1px solid var(--ink); font-size: 10px; font-weight: 800; }
+#stoneInput { border: 0; min-width: 0; padding: 0 17px; font-size: 14px; }
+#commitButton { border: 0; border-left: 1px solid var(--ink); font-size: 11px; font-weight: 900; text-transform: uppercase; }
+#playButton, #recordButton { display: none; }
+#fieldHelp { display: none; }
+
+#ledgerPanel {
+  position: fixed; z-index: 60; top: 0; bottom: 0; left: 0; width: min(430px, 92vw);
+  background: var(--paper); border-right: 1px solid var(--ink);
+  display: grid; grid-template-rows: 58px auto minmax(0,1fr);
+  transform: translateX(-102%); transition: transform .2s ease;
+}
+body.history-open #ledgerPanel { transform: translateX(0); }
+#drawerBackdrop, #modalBackdrop { position: fixed; inset: 0; background: rgba(255,255,255,.72); opacity: 0; pointer-events: none; transition: opacity .2s; }
+#drawerBackdrop { z-index: 55; }
+body.history-open #drawerBackdrop { opacity: 1; pointer-events: auto; }
+.panel-head { display: grid; grid-template-columns: 1fr auto; border-bottom: 1px solid var(--ink); }
+.panel-title { display: flex; align-items: center; padding: 0 16px; font-size: 12px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; }
+.head-actions { display: flex; }
+.head-actions button { min-width: 52px; border: 0; border-left: 1px solid var(--ink); }
+#historyClose { font-size: 18px; }
+#selectionCard { padding: 15px; border-bottom: 1px solid var(--ink); display: grid; gap: 8px; max-height: 35vh; overflow: auto; }
+.selection-kicker { font-size: 9px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.selection-title { font-size: 17px; font-weight: 900; }
+.selection-text { font-size: 12px; line-height: 1.5; }
+.selection-grid { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--ink); }
+.selection-grid > div { padding: 7px; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
+.selection-grid > div:nth-child(2n) { border-right: 0; }
+.selection-grid > div:nth-last-child(-n+2) { border-bottom: 0; }
+.selection-grid small { display: block; font-size: 8px; color: var(--muted); text-transform: uppercase; }
+.selection-grid strong { display: block; margin-top: 3px; font-size: 10px; }
+#selectionOps { display: flex; flex-wrap: wrap; gap: 6px; }
+#selectionOps button { min-height: 30px; padding: 5px 8px; font-size: 8px; text-transform: uppercase; }
+#ledgerWrap { min-height: 0; display: grid; grid-template-rows: 42px minmax(0,1fr) auto; }
+#ledgerFilterRow { display: grid; grid-template-columns: 1fr 42px; border-bottom: 1px solid var(--ink); }
+#ledgerFilter { border: 0; padding: 0 12px; min-width: 0; }
+#ledgerFilterClear { border: 0; border-left: 1px solid var(--ink); }
+#ledger { min-height: 0; overflow: auto; }
+.ledger-entry { width: 100%; border: 0; border-bottom: 1px solid var(--soft); text-align: left; padding: 11px 13px; display: grid; grid-template-columns: 78px 1fr; gap: 10px; }
+.ledger-entry:hover, .ledger-entry.is-selected { background: var(--ink); color: var(--paper); }
+.ledger-meta { font-size: 9px; font-weight: 900; }
+.ledger-meta small { display: block; margin-top: 4px; font-size: 8px; font-weight: 400; opacity: .65; }
+.ledger-body strong { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.ledger-body p { margin: 4px 0 0; font-size: 11px; line-height: 1.4; }
+.ledger-empty { padding: 30px 16px; text-align: center; color: var(--muted); font-size: 10px; }
+#eventRail { display: none; }
+#systemDetails { border-top: 1px solid var(--ink); }
+#systemDetails summary { padding: 11px 13px; cursor: pointer; font-size: 9px; font-weight: 900; text-transform: uppercase; }
+.system-body { display: grid; gap: 9px; padding: 12px; }
+.system-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.system-actions button { min-height: 34px; font-size: 9px; text-transform: uppercase; }
+.metrics-line { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 9px; text-transform: uppercase; color: var(--muted); }
+#importInput { display: none; }
+
+#apiModal {
+  position: fixed; z-index: 80; left: 50%; top: 50%; transform: translate(-50%,-46%) scale(.98);
+  width: min(520px, calc(100vw - 30px)); max-height: calc(100vh - 40px); overflow: auto;
+  background: var(--paper); border: 1px solid var(--ink); opacity: 0; pointer-events: none; transition: opacity .16s, transform .16s;
+}
+body.api-open #apiModal { opacity: 1; pointer-events: auto; transform: translate(-50%,-50%) scale(1); }
+#modalBackdrop { z-index: 75; background: rgba(255,255,255,.82); }
+body.api-open #modalBackdrop { opacity: 1; pointer-events: auto; }
+.api-head { height: 56px; display: grid; grid-template-columns: 1fr 56px; border-bottom: 1px solid var(--ink); }
+.api-head h2 { margin: 0; display: flex; align-items: center; padding: 0 16px; font-size: 12px; text-transform: uppercase; letter-spacing: .1em; }
+#apiClose { border: 0; border-left: 1px solid var(--ink); font-size: 18px; }
+.api-body { padding: 16px; display: grid; gap: 11px; }
+.api-note { margin: 0; font-size: 10px; line-height: 1.5; color: var(--muted); }
+.api-body label { display: grid; gap: 5px; font-size: 9px; text-transform: uppercase; font-weight: 900; }
+.api-body input { width: 100%; min-height: 40px; padding: 0 10px; }
+.api-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.api-actions button { min-height: 40px; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+#apiStatus { padding: 9px; border: 1px solid var(--ink); font-size: 9px; line-height: 1.4; }
+.api-advanced { border-top: 1px solid var(--ink); margin-top: 5px; padding-top: 10px; }
+.api-advanced summary { cursor: pointer; font-size: 9px; font-weight: 900; text-transform: uppercase; }
+.api-advanced .system-actions { margin-top: 10px; }
+
+@media (max-width: 700px) {
+  #statusRail { top: 10px; width: calc(100vw - 20px); grid-template-columns: auto minmax(0,1fr) auto auto; }
+  #statusTitle { padding: 0 10px; font-size: 9px; }
+  #focusStatus { font-size: 8px; padding: 0 8px; }
+  #historyButton, #apiButton { padding: 0 10px; font-size: 9px; }
+  #groundWitness { top: 60px; }
+  #commandLine { bottom: 12px; width: calc(100vw - 20px); grid-template-columns: 86px minmax(0,1fr) 68px; min-height: 54px; }
+  #stoneInput { font-size: 12px; padding: 0 10px; }
+  #modeButton, #commitButton { font-size: 9px; }
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header id="statusRail" aria-label="Field controls">
+    <button class="status-item" id="statusTitle" title="Center field">RIPPLE</button>
+    <div id="focusStatus">0 active nodes · local fallback</div>
+    <button id="historyButton" type="button">History <span id="historyCount">0</span></button>
+    <button id="apiButton" type="button">API</button>
+
+    <button class="status-item" id="statusState"><b>READY</b></button>
+    <button class="status-item" id="statusMode"><b>NEUTRAL</b></button>
+    <button class="status-item" id="statusSelection"><b>FIELD</b></button>
+    <button class="status-item" id="statusEvent"><b>—</b></button>
+    <button class="status-item" id="statusRoute"><b>ADD API</b></button>
+    <button class="status-item" id="statusBinding"><b>VALID</b></button>
+    <button class="status-item" id="statusPressure"><b>0</b></button>
+    <span id="statusSpacer"></span>
+  </header>
+
+  <main id="workspace">
+    <section id="fieldShell">
+      <div id="fieldViewport">
+        <canvas id="fieldCanvas"></canvas>
+        <div id="fieldHelp"></div>
+      </div>
+      <div id="groundWitness">
+        <div class="ground-cell">Node <b id="groundAddress">FIELD</b></div>
+        <div class="ground-cell">Anchor <b id="groundAnchor">ORIGIN</b></div>
+        <div class="ground-cell">Records <b id="groundLayers">0</b></div>
+        <div class="ground-cell">Camera <b id="groundCamera">BASE</b></div>
+        <div class="ground-cell">Binding <b id="groundBinding">VALID</b></div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="commandLine">
+    <button id="modeButton" title="Click to change how the input is treated">Neutral</button>
+    <input id="stoneInput" type="text" autocomplete="off" placeholder="Type something to place in the field…">
+    <button id="commitButton">Send</button>
+    <button id="playButton" aria-pressed="false">Auto continue</button>
+    <button id="recordButton" aria-pressed="false">Record canvas</button>
+  </footer>
+
+  <div id="drawerBackdrop"></div>
+  <aside id="ledgerPanel" aria-label="History drawer">
+    <div class="panel-head">
+      <div class="panel-title">History</div>
+      <div class="head-actions">
+        <button id="exportTranscriptButton" title="Export text">TXT</button>
+        <button id="exportJsonButton" title="Export complete state">JSON</button>
+        <button id="historyClose" title="Close">×</button>
+      </div>
+    </div>
+    <section id="selectionCard"></section>
+    <section id="ledgerWrap">
+      <div id="ledgerFilterRow">
+        <input id="ledgerFilter" type="search" placeholder="Search history" autocomplete="off">
+        <button id="ledgerFilterClear" title="Clear">×</button>
+      </div>
+      <div id="ledger"></div>
+      <details id="systemDetails">
+        <summary>Files and advanced controls</summary>
+        <div class="system-body">
+          <div class="system-actions">
+            <button id="saveLocalButton">Save local</button>
+            <button id="loadLocalButton">Load local</button>
+            <button id="importButton">Import JSON</button>
+            <button id="clearFieldButton">Clear field</button>
+            <button type="button" onclick="document.getElementById('recordButton').click()">Record canvas</button>
+            <button type="button" onclick="document.getElementById('playButton').click()">Auto continue</button>
+          </div>
+          <input id="importInput" type="file" accept="application/json,.json">
+          <div id="systemMetrics"></div>
+        </div>
+      </details>
+    </section>
+  </aside>
+
+  <nav id="eventRail" aria-label="Recent events"><div id="eventRailScroller"></div></nav>
+
+  <div id="modalBackdrop"></div>
+  <section id="apiModal" role="dialog" aria-modal="true" aria-label="API setup">
+    <div class="api-head">
+      <h2>Add OpenAI API</h2>
+      <button id="apiClose" type="button" title="Close">×</button>
+    </div>
+    <div class="api-body">
+      <p class="api-note">For a local prototype, the key is sent directly from this browser to the endpoint below. Do not publish a file containing a key. Use a server-side proxy for deployment.</p>
+      <label>API key<input id="apiKey" type="password" placeholder="sk-…" autocomplete="off"></label>
+      <label>Model<input id="apiModel" value="gpt-5.6-luna" spellcheck="false"></label>
+      <label>Endpoint<input id="apiEndpoint" value="https://api.openai.com/v1/responses" spellcheck="false"></label>
+      <label><span><input id="rememberKey" type="checkbox"> Remember on this device</span></label>
+      <div id="apiStatus">Local fallback is active.</div>
+      <div class="api-actions">
+        <button id="saveApiButton">Use API</button>
+        <button id="clearApiButton">Disconnect</button>
+      </div>
+      <details class="api-advanced">
+        <summary>Files and maintenance</summary>
+        <div class="system-actions">
+          <button type="button" onclick="document.getElementById('saveLocalButton').click()">Save local</button>
+          <button type="button" onclick="document.getElementById('loadLocalButton').click()">Load local</button>
+          <button type="button" onclick="document.getElementById('exportJsonButton').click()">Export JSON</button>
+          <button type="button" onclick="document.getElementById('importButton').click()">Import JSON</button>
+        </div>
+      </details>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const APP_VERSION = '4.0.0';
+  const STORAGE_KEY = 'ripple-therefore-focused-field-v4';
+  const API_KEY_STORAGE = 'ripple-therefore-api-key-v4';
+  const MODES = ['NEUTRAL', 'OBSTACLE', 'GOAL', 'SHIFT'];
+  const EVENT_GLYPH = {
+    SYSTEM: '·', INPUT: '●', RESULT: '→', STONE: '●', FRAGMENT: '·', THEREFORE: '→', SPAWN: '↗',
+    BRANCH: '↗', OBSTACLE: '×', GOAL: '◎', SHIFT: '↯', PORTAL: '◯',
+    FAILURE: 'X', RECOVERY: 'R'
+  };
+
+  const els = Object.fromEntries([
+    'statusTitle','statusState','statusMode','statusSelection','statusEvent','statusRoute','statusBinding','statusPressure',
+    'selectionCard','selectionOps','ledger','ledgerFilter','ledgerFilterClear','eventRailScroller',
+    'fieldViewport','fieldCanvas','groundAddress','groundAnchor','groundLayers','groundCamera','groundBinding',
+    'modeButton','stoneInput','commitButton','playButton','recordButton','exportTranscriptButton','exportJsonButton',
+    'systemDetails','apiEndpoint','apiModel','apiKey','rememberKey','apiStatus','saveApiButton','clearApiButton',
+    'saveLocalButton','loadLocalButton','importButton','importInput','clearFieldButton','systemMetrics',
+    'historyButton','historyClose','apiButton','apiClose','modalBackdrop','drawerBackdrop','focusStatus','historyCount'
+  ].map(id => [id, document.getElementById(id)]));
+
+  const ctx = els.fieldCanvas.getContext('2d', { alpha: false });
+
+  const state = {
+    version: APP_VERSION,
+    mode: 'NEUTRAL',
+    machineState: 'READY',
+    route: 'FALLBACK',
+    bindingValid: true,
+    nodes: [],
+    events: [],
+    branches: [],
+    ripples: [],
+    portals: [],
+    selection: { kind: 'field', id: null, eventId: null, layerId: null },
+    camera: { yaw: -0.72, pitch: 0.57, zoom: 1, panX: 0, panY: 0, anchorNodeId: null },
+    generation: { pending: false, abortController: null },
+    autoplay: false,
+    autoAt: 0,
+    simTime: 0,
+    nextEventNumber: 1,
+    nextLayerNumber: 1,
+    nextBranchNumber: 1,
+    nextRippleNumber: 1,
+    nextPortalNumber: 1,
+    api: {
+      endpoint: 'https://api.openai.com/v1/responses',
+      model: 'gpt-5.6-luna',
+      key: '',
+      remember: false
+    },
+    recording: { active: false, recorder: null, chunks: [], startedAt: 0 },
+    filter: ''
+  };
+
+  const renderState = {
+    width: 0,
+    height: 0,
+    dpr: 1,
+    hitRegions: [],
+    branchHitRegions: [],
+    pointer: { down: false, dragged: false, x: 0, y: 0, startX: 0, startY: 0 },
+    lastFrame: performance.now(),
+    terrainRevision: 0
+  };
+
+  function createField() {
+    const size = 12;
+    const center = (size - 1) / 2;
+    const radius = 5.65;
+    const spacing = 76;
+    const nodes = [];
+    for (let gy = 0; gy < size; gy++) {
+      for (let gx = 0; gx < size; gx++) {
+        const dx = gx - center;
+        const dz = gy - center;
+        if (Math.hypot(dx, dz) <= radius) {
+          const id = `N${String(nodes.length + 1).padStart(3, '0')}`;
+          nodes.push({
+            id,
+            gx,
+            gy,
+            coord: `${gx},${gy}`,
+            x: dx * spacing,
+            z: dz * spacing,
+            mode: 'NEUTRAL',
+            layers: [],
+            incoming: [],
+            outgoing: []
+          });
+        }
+      }
+    }
+    return nodes;
+  }
+
+  state.nodes = createField();
+
+  function nowIso() { return new Date().toISOString(); }
+  function safeStorageGet(key) {
+    try { return window.localStorage.getItem(key); }
+    catch (_) { return null; }
+  }
+  function safeStorageSet(key, value) {
+    try { window.localStorage.setItem(key, value); return true; }
+    catch (_) { return false; }
+  }
+  function safeStorageRemove(key) {
+    try { window.localStorage.removeItem(key); return true; }
+    catch (_) { return false; }
+  }
+  function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+  function choose(list) { return list[Math.floor(Math.random() * list.length)]; }
+  function normalizeText(value) { return String(value ?? '').replace(/\s+/g, ' ').trim(); }
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+  function fileStamp() {
+    return new Date().toISOString().replace(/[:.]/g, '-');
+  }
+  function currentNode() {
+    if (state.selection.kind === 'node' || state.selection.kind === 'layer' || state.selection.kind === 'event') {
+      return state.nodes.find(node => node.id === state.selection.id) || null;
+    }
+    if (state.selection.kind === 'branch') {
+      const branch = state.branches.find(item => item.id === state.selection.id);
+      return branch ? state.nodes.find(node => node.id === branch.sourceNodeId) || null : null;
+    }
+    return null;
+  }
+  function currentEvent() {
+    return state.events.find(event => event.id === state.selection.eventId) || null;
+  }
+  function currentLayer() {
+    const node = currentNode();
+    if (!node) return null;
+    return node.layers.find(layer => layer.id === state.selection.layerId) || null;
+  }
+  function nodeById(id) { return state.nodes.find(node => node.id === id) || null; }
+  function eventById(id) { return state.events.find(event => event.id === id) || null; }
+  function layerById(node, id) { return node?.layers.find(layer => layer.id === id) || null; }
+
+  function getAnchorNode() {
+    return nodeById(state.camera.anchorNodeId) || currentNode() || state.nodes.find(node => node.layers.length) || null;
+  }
+
+  function setMachineState(next) {
+    state.machineState = next;
+    renderStatus();
+  }
+
+  function recordEvent(type, data = {}) {
+    const id = `E${String(state.nextEventNumber++).padStart(4, '0')}`;
+    const parentId = data.parentId !== undefined
+      ? data.parentId
+      : (state.events.length ? state.events[state.events.length - 1].id : null);
+    const event = {
+      id,
+      type,
+      glyph: EVENT_GLYPH[type] || '?',
+      text: normalizeText(data.text || ''),
+      nodeId: data.nodeId || null,
+      layerId: data.layerId || null,
+      sourceNodeId: data.sourceNodeId || null,
+      destinationNodeId: data.destinationNodeId || null,
+      branchId: data.branchId || null,
+      parentId,
+      route: data.route || state.route,
+      timestamp: nowIso(),
+      simTime: state.simTime,
+      bindingId: data.bindingId || data.layerId || data.branchId || data.nodeId || id,
+      detail: data.detail || ''
+    };
+    state.events.push(event);
+    if (document.body.classList.contains('history-open')) {
+      renderLedger();
+      renderEventRail();
+    }
+    renderStatus();
+    renderMetrics();
+    queueSave();
+    return event;
+  }
+
+  function addLayer(node, type, text, options = {}) {
+    const layer = {
+      id: `L${String(state.nextLayerNumber++).padStart(4, '0')}`,
+      type,
+      text: normalizeText(text),
+      createdAt: nowIso(),
+      eventId: null,
+      bindingId: null
+    };
+    const event = recordEvent(type, {
+      text: layer.text,
+      nodeId: node.id,
+      layerId: layer.id,
+      sourceNodeId: options.sourceNodeId || null,
+      destinationNodeId: options.destinationNodeId || null,
+      parentId: options.parentId,
+      route: options.route,
+      detail: options.detail,
+      bindingId: layer.id
+    });
+    layer.eventId = event.id;
+    layer.bindingId = layer.id;
+    node.layers.push(layer);
+    emitRipple(node, type === 'INPUT' || type === 'STONE' ? 1.2 : 0.8);
+    renderState.terrainRevision++;
+    return { layer, event };
+  }
+
+  function emitRipple(node, strength = 1) {
+    state.ripples.push({
+      id: `R${state.nextRippleNumber++}`,
+      nodeId: node.id,
+      age: 0,
+      duration: 2.2,
+      strength
+    });
+  }
+
+  function openPortal(node) {
+    const existing = state.portals.find(portal => portal.nodeId === node.id && portal.age < portal.duration);
+    if (existing) existing.age = 0;
+    else state.portals.push({
+      id: `P${state.nextPortalNumber++}`,
+      nodeId: node.id,
+      age: 0,
+      duration: 2.4,
+      seed: Math.random() * 1000
+    });
+    const event = recordEvent('PORTAL', {
+      text: `Terrain cut opened at ${node.coord}`,
+      nodeId: node.id,
+      bindingId: `PORTAL-${node.id}-${Date.now()}`
+    });
+    selectEvent(event.id);
+  }
+
+  function createBranch(source, destination, payload, options = {}) {
+    if (!source || !destination || source.id === destination.id) return null;
+    const branch = {
+      id: `B${String(state.nextBranchNumber++).padStart(4, '0')}`,
+      sourceNodeId: source.id,
+      destinationNodeId: destination.id,
+      sourceEventId: options.sourceEventId || source.layers.at(-1)?.eventId || null,
+      destinationEventId: null,
+      createdAt: nowIso(),
+      text: normalizeText(payload || 'Continue')
+    };
+    const spawn = addLayer(destination, options.type || 'SPAWN', branch.text, {
+      sourceNodeId: source.id,
+      destinationNodeId: destination.id,
+      parentId: branch.sourceEventId,
+      route: options.route || state.route,
+      detail: `From ${source.coord}`
+    });
+    branch.destinationEventId = spawn.event.id;
+    spawn.event.branchId = branch.id;
+    spawn.event.bindingId = branch.id;
+    state.branches.push(branch);
+    source.outgoing.push(branch.id);
+    destination.incoming.push(branch.id);
+    emitRipple(destination, 1);
+    queueSave();
+    return { branch, spawnEvent: spawn.event, branchEvent: spawn.event };
+  }
+
+  function selectField() {
+    state.selection = { kind: 'field', id: null, eventId: null, layerId: null };
+    state.bindingValid = true;
+    renderAllUI();
+  }
+
+  function selectNode(nodeId) {
+    const node = nodeById(nodeId);
+    if (!node) return declareNullBinding(`Missing node ${nodeId}`);
+    state.selection = { kind: 'node', id: node.id, eventId: node.layers.at(-1)?.eventId || null, layerId: null };
+    state.camera.anchorNodeId = node.id;
+    state.bindingValid = true;
+    renderAllUI();
+  }
+
+  function selectLayer(nodeId, layerId) {
+    const node = nodeById(nodeId);
+    const layer = layerById(node, layerId);
+    if (!node || !layer) return declareNullBinding(`Layer ${layerId} did not resolve`);
+    state.selection = { kind: 'layer', id: node.id, eventId: layer.eventId, layerId: layer.id };
+    state.camera.anchorNodeId = node.id;
+    state.bindingValid = Boolean(eventById(layer.eventId));
+    if (!state.bindingValid) declareNullBinding(`Layer ${layer.id} has no event`);
+    renderAllUI();
+  }
+
+  function selectEvent(eventId) {
+    const event = eventById(eventId);
+    if (!event) return declareNullBinding(`Missing event ${eventId}`);
+    if (event.branchId) {
+      state.selection = { kind: 'branch', id: event.branchId, eventId: event.id, layerId: null };
+      const branch = state.branches.find(item => item.id === event.branchId);
+      if (branch) state.camera.anchorNodeId = branch.sourceNodeId;
+      state.bindingValid = Boolean(branch);
+    } else if (event.nodeId) {
+      const node = nodeById(event.nodeId);
+      const layer = event.layerId ? layerById(node, event.layerId) : null;
+      state.selection = {
+        kind: layer ? 'event' : 'node',
+        id: event.nodeId,
+        eventId: event.id,
+        layerId: layer?.id || null
+      };
+      state.camera.anchorNodeId = event.nodeId;
+      state.bindingValid = Boolean(node) && (!event.layerId || Boolean(layer));
+    } else {
+      state.selection = { kind: 'event', id: null, eventId: event.id, layerId: null };
+      state.bindingValid = true;
+    }
+    if (!state.bindingValid) declareNullBinding(`Event ${event.id} has a broken object reference`);
+    renderAllUI();
+    scrollSelectedLedgerEntry();
+    scrollSelectedEventMark();
+  }
+
+  function selectBranch(branchId) {
+    const branch = state.branches.find(item => item.id === branchId);
+    if (!branch) return declareNullBinding(`Missing branch ${branchId}`);
+    const event = state.events.find(item => item.branchId === branchId && item.type === 'BRANCH');
+    state.selection = { kind: 'branch', id: branch.id, eventId: event?.id || null, layerId: null };
+    state.camera.anchorNodeId = branch.sourceNodeId;
+    state.bindingValid = Boolean(nodeById(branch.sourceNodeId) && nodeById(branch.destinationNodeId));
+    if (!state.bindingValid) declareNullBinding(`Branch ${branchId} has a missing endpoint`);
+    renderAllUI();
+  }
+
+  function declareNullBinding(reason) {
+    state.bindingValid = false;
+    setMachineState('NULL BINDING');
+    recordEvent('FAILURE', { text: reason, detail: 'REBIND or remove the orphan reference.' });
+    renderAllUI();
+  }
+
+  function validateBindings() {
+    let valid = true;
+    for (const event of state.events) {
+      if (event.nodeId && !nodeById(event.nodeId)) valid = false;
+      if (event.layerId) {
+        const node = nodeById(event.nodeId);
+        if (!layerById(node, event.layerId)) valid = false;
+      }
+      if (event.branchId && !state.branches.find(branch => branch.id === event.branchId)) valid = false;
+    }
+    for (const branch of state.branches) {
+      if (!nodeById(branch.sourceNodeId) || !nodeById(branch.destinationNodeId)) valid = false;
+    }
+    state.bindingValid = valid;
+    if (valid && state.machineState === 'NULL BINDING') state.machineState = 'READY';
+    return valid;
+  }
+
+  function appendSystemEvent(text, detail = '') {
+    return recordEvent('SYSTEM', { text, detail, bindingId: `SYSTEM-${Date.now()}` });
+  }
+
+  function pickTargetNode() {
+    const selected = currentNode();
+    if (selected) return selected;
+    const empty = state.nodes.filter(node => node.layers.length === 0);
+    if (empty.length) {
+      return empty.sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0];
+    }
+    return state.nodes.reduce((best, node) => node.layers.length < best.layers.length ? node : best, state.nodes[0]);
+  }
+
+  function pickSpawnNode(source, coordText = '') {
+    const normalized = normalizeText(coordText).replace(/[\[\]()]/g, '');
+    if (normalized) {
+      const exact = state.nodes.find(node => node.coord === normalized || node.id === normalized);
+      if (exact && exact.id !== source.id) return exact;
+    }
+    const empty = state.nodes.filter(node => node.id !== source.id && node.layers.length === 0);
+    if (empty.length) {
+      return empty.sort((a, b) => {
+        const da = Math.hypot(a.x - source.x, a.z - source.z);
+        const db = Math.hypot(b.x - source.x, b.z - source.z);
+        return da - db;
+      })[0];
+    }
+    const others = state.nodes.filter(node => node.id !== source.id);
+    return choose(others) || null;
+  }
+
+  function inferMode(text, fallback = state.mode) {
+    const lower = text.toLowerCase();
+    if (/block|fail|risk|barrier|cannot|obstacle|conflict|error/.test(lower)) return 'OBSTACLE';
+    if (/goal|must|target|finish|achieve|objective|deliver/.test(lower)) return 'GOAL';
+    if (/change|shift|turn|transform|replace|move|remake/.test(lower)) return 'SHIFT';
+    return fallback;
+  }
+
+  function fallbackGenerate(command, node, mode) {
+    const clean = command.replace(/\s+/g, ' ').trim();
+    const modeLead = {
+      NEUTRAL: 'Place the request in the field and preserve its source.',
+      OBSTACLE: 'Expose the blocking condition and attach it to the request.',
+      GOAL: 'State the next verifiable completion condition.',
+      SHIFT: 'Replace one declared condition while preserving the original record.'
+    }[mode];
+    const wantsBranch = /\b(branch|spawn|continue|move|send|route)\b/i.test(clean);
+    return {
+      result: `${modeLead} Result: ${clean.slice(0, 120)}`,
+      spawn: wantsBranch ? { coordinate: '', text: `Continue: ${clean.slice(0, 96)}` } : null,
+      mode: inferMode(clean, mode)
+    };
+  }
+
+  function parseJsonObject(text) {
+    const raw = String(text || '').trim();
+    try { return JSON.parse(raw); } catch (_) {}
+    const first = raw.indexOf('{');
+    const last = raw.lastIndexOf('}');
+    if (first >= 0 && last > first) {
+      try { return JSON.parse(raw.slice(first, last + 1)); } catch (_) {}
+    }
+    return null;
+  }
+
+  function validateGenerationResult(result) {
+    if (!result || typeof result !== 'object') throw new Error('The API returned no usable object.');
+    const resultText = normalizeText(result.result || result.therefore || result.consequence || '');
+    if (!resultText) throw new Error('The API returned no result text.');
+    const mode = MODES.includes(String(result.mode || '').toUpperCase())
+      ? String(result.mode).toUpperCase()
+      : state.mode;
+    let spawn = null;
+    if (result.spawn && typeof result.spawn === 'object') {
+      const text = normalizeText(result.spawn.text || result.spawn.payload || '');
+      if (text) spawn = { coordinate: normalizeText(result.spawn.coordinate || ''), text };
+    }
+    return { result: resultText, spawn, mode };
+  }
+
+  async function apiGenerate(command, node, mode) {
+    const recent = node.layers.slice(-4).map(layer => `${layer.type}: ${layer.text}`);
+    const liveCoordinates = state.nodes.filter(item => item.layers.length).map(item => item.coord);
+    const emptyCoordinates = state.nodes.filter(item => !item.layers.length).map(item => item.coord);
+    const prompt = [
+      'Convert the literal user input into one concise, concrete field result.',
+      'Do not produce a list. Do not explain the interface. Do not use metaphor.',
+      'Only request a spawn when the user explicitly asks to branch, continue, move, send, route, or create another node.',
+      `Input: ${command}`,
+      `Mode: ${mode}`,
+      `Target: ${node.coord}`,
+      `Recent records: ${recent.join(' | ') || 'none'}`,
+      `Active coordinates: ${liveCoordinates.join(' ') || 'none'}`,
+      `Available coordinates: ${emptyCoordinates.slice(0, 40).join(' ') || 'none'}`
+    ].join('\n');
+
+    const schema = {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        result: { type: 'string', description: 'One concise concrete result, maximum two sentences.' },
+        mode: { type: 'string', enum: MODES },
+        spawn: {
+          anyOf: [
+            {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                coordinate: { type: 'string' },
+                text: { type: 'string' }
+              },
+              required: ['coordinate', 'text']
+            },
+            { type: 'null' }
+          ]
+        }
+      },
+      required: ['result', 'mode', 'spawn']
+    };
+
+    state.generation.abortController = new AbortController();
+    const response = await fetch(state.api.endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.api.key}`
+      },
+      signal: state.generation.abortController.signal,
+      body: JSON.stringify({
+        model: state.api.model,
+        store: false,
+        max_output_tokens: 450,
+        input: [
+          { role: 'developer', content: 'Return only the requested structured field result.' },
+          { role: 'user', content: prompt }
+        ],
+        text: {
+          format: {
+            type: 'json_schema',
+            name: 'field_result',
+            strict: true,
+            schema
+          }
+        }
+      })
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`API ${response.status}: ${text.slice(0, 240)}`);
+    }
+    const data = await response.json();
+    const text = data?.output_text || data?.output
+      ?.flatMap(item => item?.content || [])
+      ?.find(item => item?.type === 'output_text')?.text;
+    return validateGenerationResult(parseJsonObject(text));
+  }
+
+  async function generateResult(command, node, mode) {
+    if (!state.api.key) {
+      state.route = 'FALLBACK';
+      renderStatus();
+      await sleep(220);
+      return fallbackGenerate(command, node, mode);
+    }
+    state.route = 'API';
+    renderStatus();
+    try {
+      return await apiGenerate(command, node, mode);
+    } catch (error) {
+      recordEvent('FAILURE', {
+        text: `API generation failed: ${error.message}`,
+        nodeId: node.id,
+        route: 'API',
+        detail: 'The input was preserved. Local fallback was used.'
+      });
+      state.route = 'FALLBACK';
+      renderStatus();
+      return fallbackGenerate(command, node, mode);
+    }
+  }
+
+  async function processStone(rawCommand, options = {}) {
+    const command = normalizeText(rawCommand);
+    if (!command) {
+      setMachineState('TYPE SOMETHING');
+      els.stoneInput.focus();
+      return;
+    }
+    if (state.generation.pending) return;
+
+    state.generation.pending = true;
+    setMachineState('WORKING');
+    updateCommandAvailability();
+    const target = options.targetNode || pickTargetNode();
+    target.mode = state.mode;
+    state.camera.anchorNodeId = target.id;
+    selectNode(target.id);
+
+    const input = addLayer(target, 'INPUT', command, { route: 'USER' });
+    selectEvent(input.event.id);
+
+    let result;
+    try {
+      result = validateGenerationResult(await generateResult(command, target, state.mode));
+    } catch (error) {
+      recordEvent('FAILURE', { text: error.message, nodeId: target.id });
+      result = fallbackGenerate(command, target, state.mode);
+    }
+
+    const output = addLayer(target, 'RESULT', result.result, {
+      parentId: input.event.id,
+      route: state.route
+    });
+    target.mode = result.mode;
+    state.mode = result.mode;
+    selectEvent(output.event.id);
+
+    if (result.spawn?.text) {
+      const destination = pickSpawnNode(target, result.spawn.coordinate);
+      if (destination) {
+        const branchResult = createBranch(target, destination, result.spawn.text, {
+          sourceEventId: output.event.id,
+          route: state.route,
+          type: 'SPAWN'
+        });
+        if (branchResult) selectEvent(branchResult.spawnEvent.id);
+      }
+    }
+
+    state.generation.pending = false;
+    state.generation.abortController = null;
+    setMachineState('READY');
+    updateCommandAvailability();
+    els.stoneInput.value = '';
+    if (!options.auto) els.stoneInput.focus();
+    renderAllUI();
+  }
+
+  function cycleMode() {
+    state.mode = MODES[(MODES.indexOf(state.mode) + 1) % MODES.length];
+    renderAllUI();
+  }
+
+  function applyModeToSelection() {
+    const node = currentNode();
+    if (!node) return;
+    node.mode = state.mode;
+    const event = recordEvent(state.mode === 'NEUTRAL' ? 'SYSTEM' : state.mode, {
+      text: `Node ${node.coord} mode set to ${state.mode}`,
+      nodeId: node.id,
+      bindingId: node.id
+    });
+    emitRipple(node, 0.8);
+    selectEvent(event.id);
+  }
+
+  function manualBranch() {
+    const source = currentNode();
+    if (!source) return;
+    const destination = pickSpawnNode(source);
+    if (!destination) {
+      recordEvent('FAILURE', { text: 'Manual branch failed: no different node exists.', nodeId: source.id });
+      return;
+    }
+    const sourceText = currentLayer()?.text || source.layers.at(-1)?.text || `NODE ${source.coord}`;
+    const result = createBranch(source, destination, `BRANCH: ${sourceText.slice(0, 82)}`, {
+      sourceEventId: currentEvent()?.id || source.layers.at(-1)?.eventId || null,
+      route: 'MANUAL'
+    });
+    if (result) selectBranch(result.branch.id);
+  }
+
+  function deleteSelectedBranch() {
+    if (state.selection.kind !== 'branch') return;
+    const index = state.branches.findIndex(branch => branch.id === state.selection.id);
+    if (index < 0) return;
+    const branch = state.branches[index];
+    const source = nodeById(branch.sourceNodeId);
+    const destination = nodeById(branch.destinationNodeId);
+    const outIndex = source?.outgoing.indexOf(branch.id) ?? -1;
+    const inIndex = destination?.incoming.indexOf(branch.id) ?? -1;
+    if (outIndex >= 0) source.outgoing.splice(outIndex, 1);
+    if (inIndex >= 0) destination.incoming.splice(inIndex, 1);
+    state.branches.splice(index, 1);
+    recordEvent('RECOVERY', { text: `Branch ${branch.id} removed`, bindingId: branch.id });
+    selectField();
+  }
+
+  function clearField() {
+    const accepted = window.confirm('Clear every node, event, branch, portal, and saved local state?');
+    if (!accepted) return;
+    state.nodes = createField();
+    state.events = [];
+    state.branches = [];
+    state.ripples = [];
+    state.portals = [];
+    state.selection = { kind: 'field', id: null, eventId: null, layerId: null };
+    state.camera.anchorNodeId = null;
+    state.nextEventNumber = 1;
+    state.nextLayerNumber = 1;
+    state.nextBranchNumber = 1;
+    state.nextRippleNumber = 1;
+    state.nextPortalNumber = 1;
+    state.machineState = 'READY';
+    state.bindingValid = true;
+    safeStorageRemove(STORAGE_KEY);
+    appendSystemEvent('Field cleared.');
+    renderAllUI();
+  }
+
+  function metrics() {
+    const live = state.nodes.filter(node => node.layers.length).length;
+    const results = state.events.filter(event => event.type === 'RESULT' || event.type === 'THEREFORE').length;
+    const obstacle = state.nodes.filter(node => node.mode === 'OBSTACLE').length;
+    const goals = state.nodes.filter(node => node.mode === 'GOAL').length;
+    const shifts = state.nodes.filter(node => node.mode === 'SHIFT').length;
+    const portals = state.events.filter(event => event.type === 'PORTAL').length;
+    const pressure = live * 0.5 + results * 0.8 + obstacle + goals * 0.6 + shifts * 0.7 + state.branches.length * 0.5;
+    return { live, therefore: results, obstacle, goals, shifts, portals, branches: state.branches.length, pressure };
+  }
+
+  function renderStatus() {
+    const node = currentNode();
+    const event = currentEvent();
+    const m = metrics();
+    els.statusState.innerHTML = `<b>${escapeHtml(state.machineState)}</b>`;
+    els.statusMode.innerHTML = `<b>${state.mode}</b>`;
+    els.statusSelection.innerHTML = `<b>${node ? node.coord : 'FIELD'}</b>`;
+    els.statusEvent.innerHTML = `<b>${event ? event.id : '—'}</b>`;
+    els.statusRoute.innerHTML = `<span class="route-dot"></span><b>${state.route === 'API' ? state.api.model : 'ADD API'}</b>`;
+    els.statusBinding.innerHTML = `<b>${state.bindingValid ? 'VALID' : 'NULL'}</b>`;
+    els.statusPressure.innerHTML = `<b>${m.pressure.toFixed(1)}</b>`;
+    els.modeButton.textContent = state.mode.charAt(0) + state.mode.slice(1).toLowerCase();
+    els.commitButton.textContent = state.generation.pending ? '…' : 'Send';
+    els.playButton.textContent = state.autoplay ? 'Stop auto' : 'Auto continue';
+    els.playButton.setAttribute('aria-pressed', String(state.autoplay));
+    els.recordButton.textContent = state.recording.active ? 'Stop recording' : 'Record canvas';
+    els.recordButton.setAttribute('aria-pressed', String(state.recording.active));
+    if (els.focusStatus) {
+      const layer = currentLayer();
+      const text = layer?.text || event?.text || node?.layers.at(-1)?.text || '';
+      els.focusStatus.textContent = node
+        ? `${node.coord} · ${node.layers.length} ${node.layers.length === 1 ? 'record' : 'records'}${text ? ` · ${text.slice(0, 70)}` : ''}`
+        : `${m.live} active nodes · ${state.route === 'API' ? state.api.model : 'local fallback'}`;
+    }
+    if (els.historyCount) els.historyCount.textContent = String(state.events.length);
+    if (els.apiButton) {
+      els.apiButton.classList.toggle('api-live', state.route === 'API');
+      els.apiButton.textContent = state.route === 'API' ? 'API ON' : 'API';
+    }
+  }
+
+  function selectionDescription() {
+    const node = currentNode();
+    const event = currentEvent();
+    const layer = currentLayer();
+    if (state.selection.kind === 'branch') {
+      const branch = state.branches.find(item => item.id === state.selection.id);
+      if (!branch) return { kicker: 'NULL BINDING', title: 'Missing branch', text: '', fields: [] };
+      const source = nodeById(branch.sourceNodeId);
+      const destination = nodeById(branch.destinationNodeId);
+      return {
+        kicker: 'Branch Relation',
+        title: `${branch.id}: ${source?.coord || '?'} → ${destination?.coord || '?'}`,
+        text: branch.text,
+        fields: [
+          ['Source', source?.id || 'missing'], ['Destination', destination?.id || 'missing'],
+          ['Source event', branch.sourceEventId || 'none'], ['Destination event', branch.destinationEventId || 'none']
+        ],
+        operations: ['source', 'destination', 'delete-branch', 'center']
+      };
+    }
+    if (event) {
+      return {
+        kicker: `${event.type} Event`,
+        title: `${event.id}${node ? ` · ${node.coord}` : ''}`,
+        text: event.text || event.detail || 'No literal payload.',
+        fields: [
+          ['Binding', event.bindingId], ['Route', event.route],
+          ['Layer', layer?.id || event.layerId || 'none'], ['Time', event.simTime.toFixed(1)]
+        ],
+        operations: node ? ['center', 'apply-mode', 'branch', 'portal', 'select-node'] : ['rebind']
+      };
+    }
+    if (node) {
+      return {
+        kicker: 'Node Record',
+        title: `${node.id} · ${node.coord}`,
+        text: node.layers.at(-1)?.text || 'No payload has been committed to this node.',
+        fields: [
+          ['Mode', node.mode], ['Layers', String(node.layers.length)],
+          ['Incoming', String(node.incoming.length)], ['Outgoing', String(node.outgoing.length)]
+        ],
+        operations: ['center', 'apply-mode', 'branch', 'portal', 'select-top']
+      };
+    }
+    const m = metrics();
+    return {
+      kicker: 'Field Record',
+      title: 'Addressed Operational Field',
+      text: 'Select a node, layer, event, or branch. The ledger and field share one selection binding.',
+      fields: [
+        ['Nodes', String(state.nodes.length)], ['Live', String(m.live)],
+        ['Events', String(state.events.length)], ['Branches', String(m.branches)]
+      ],
+      operations: ['center-field', 'validate', 'save', 'export']
+    };
+  }
+
+  function operationButton(label, action) {
+    return `<button type="button" data-op="${action}">${label}</button>`;
+  }
+
+  function renderSelectionCard() {
+    const description = selectionDescription();
+    const labels = {
+      center: 'Center Base', 'apply-mode': 'Apply Mode', branch: 'Create Branch', portal: 'Open Portal',
+      'select-node': 'Select Node', 'select-top': 'Select Top', source: 'Select Source', destination: 'Select Destination',
+      'delete-branch': 'Remove Branch', rebind: 'Validate / Rebind', 'center-field': 'Center Field', validate: 'Validate',
+      save: 'Save Local', export: 'Export JSON'
+    };
+    const operations = (description.operations || []).map(action => operationButton(labels[action] || action, action)).join('');
+    els.selectionCard.innerHTML = `
+      <div class="selection-kicker">${escapeHtml(description.kicker)}</div>
+      <div class="selection-title">${escapeHtml(description.title)}</div>
+      <div class="selection-text">${escapeHtml(description.text)}</div>
+      <div class="selection-grid">
+        ${description.fields.map(([key, value]) => `<div><small>${escapeHtml(key)}</small><strong>${escapeHtml(value)}</strong></div>`).join('')}
+      </div>
+      <div id="selectionOps">${operations}</div>
+    `;
+  }
+
+  function renderLedger() {
+    const filter = state.filter.toLowerCase();
+    let records = [...state.events].reverse().filter(event => {
+      if (!filter) return true;
+      return [event.id, event.type, event.text, event.detail, event.nodeId, event.branchId]
+        .some(value => String(value || '').toLowerCase().includes(filter));
+    });
+    if (!filter) records = records.slice(0, 80);
+    if (!records.length) {
+      els.ledger.innerHTML = `<div class="ledger-empty">${state.events.length ? 'No matching history.' : 'Nothing here yet.'}</div>`;
+      return;
+    }
+    els.ledger.innerHTML = records.map(event => {
+      const selected = state.selection.eventId === event.id;
+      const node = nodeById(event.nodeId);
+      const relation = event.sourceNodeId || event.destinationNodeId
+        ? `${nodeById(event.sourceNodeId)?.coord || '?'} → ${nodeById(event.destinationNodeId)?.coord || node?.coord || '?'}`
+        : node?.coord || 'FIELD';
+      return `
+        <button class="ledger-entry${selected ? ' is-selected' : ''}" data-event-id="${event.id}">
+          <span class="ledger-meta">${event.glyph} ${event.id}<small>${escapeHtml(relation)}</small></span>
+          <span class="ledger-body">
+            <strong>${escapeHtml(event.type)}</strong>
+            <p>${escapeHtml(event.text || event.detail || 'No payload')}</p>
+          </span>
+        </button>
+      `;
+    }).join('');
+  }
+
+  function renderEventRail() {
+    if (!document.body.classList.contains('history-open')) return;
+    const recent = state.events.slice(-30);
+    els.eventRailScroller.innerHTML = recent.map(event => {
+      const selected = state.selection.eventId === event.id;
+      return `<button class="event-mark${selected ? ' is-selected' : ''}" data-event-id="${event.id}" title="${escapeHtml(`${event.type}: ${event.text}`)}"><span class="glyph">${event.glyph}</span></button>`;
+    }).join('');
+  }
+
+  function renderMetrics() {
+    const m = metrics();
+    els.systemMetrics.innerHTML = `
+      <div class="metrics-line">
+        <span>${m.live} active nodes</span>
+        <span>${m.therefore} results</span>
+        <span>${m.branches} branches</span>
+        <span>pressure ${m.pressure.toFixed(1)}</span>
+      </div>
+    `;
+  }
+
+  function renderGroundWitness() {
+    const node = currentNode();
+    els.groundAddress.textContent = node?.coord || 'FIELD';
+    els.groundAnchor.textContent = getAnchorNode()?.coord || 'ORIGIN';
+    els.groundLayers.textContent = String(node?.layers.length || 0);
+    els.groundCamera.textContent = `BASE ${Math.round(state.camera.zoom * 100)}%`;
+    els.groundBinding.textContent = state.bindingValid ? 'VALID' : 'NULL';
+  }
+
+  function renderApiControls() {
+    els.apiEndpoint.value = state.api.endpoint;
+    els.apiModel.value = state.api.model;
+    els.apiKey.value = state.api.key;
+    els.rememberKey.checked = state.api.remember;
+    els.apiStatus.textContent = state.api.key ? `API route armed with model ${state.api.model}.` : 'Fallback route active.';
+  }
+
+  function renderAllUI() {
+    validateBindings();
+    renderStatus();
+    renderGroundWitness();
+    renderMetrics();
+    updateCommandAvailability();
+    if (document.body.classList.contains('history-open')) {
+      renderSelectionCard();
+      renderLedger();
+      renderEventRail();
+    }
+  }
+
+  function updateCommandAvailability() {
+    els.commitButton.disabled = state.generation.pending;
+    els.modeButton.disabled = state.generation.pending;
+    els.playButton.disabled = false;
+  }
+
+  function scrollSelectedLedgerEntry() {
+    if (!document.body.classList.contains('history-open')) return;
+    requestAnimationFrame(() => {
+      els.ledger.querySelector(`[data-event-id="${state.selection.eventId}"]`)?.scrollIntoView({ block: 'nearest' });
+    });
+  }
+
+  function scrollSelectedEventMark() {
+    if (!document.body.classList.contains('history-open')) return;
+    requestAnimationFrame(() => {
+      els.eventRailScroller.querySelector(`[data-event-id="${state.selection.eventId}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+  }
+
+  function worldToScreen(x, y, z) {
+    const anchor = getAnchorNode();
+    const targetX = anchor?.x || 0;
+    const targetZ = anchor?.z || 0;
+    const dx = x - targetX;
+    const dz = z - targetZ;
+    const cy = Math.cos(state.camera.yaw);
+    const sy = Math.sin(state.camera.yaw);
+    const rx = dx * cy - dz * sy;
+    const rz = dx * sy + dz * cy;
+    const scale = clamp(Math.min(renderState.width / 1080, renderState.height / 820), 0.5, 1.42) * state.camera.zoom;
+    const anchorX = renderState.width * 0.5 + state.camera.panX;
+    const anchorY = renderState.height * 0.62 + state.camera.panY;
+    return {
+      x: anchorX + rx * scale,
+      y: anchorY + (rz * Math.sin(state.camera.pitch) - y) * scale,
+      depth: rz,
+      scale
+    };
+  }
+
+  function resizeCanvas() {
+    const rect = els.fieldViewport.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    renderState.width = Math.max(1, rect.width);
+    renderState.height = Math.max(1, rect.height);
+    renderState.dpr = dpr;
+    els.fieldCanvas.width = Math.floor(rect.width * dpr);
+    els.fieldCanvas.height = Math.floor(rect.height * dpr);
+    els.fieldCanvas.style.width = `${rect.width}px`;
+    els.fieldCanvas.style.height = `${rect.height}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function line(x1, y1, x2, y2, width = 1) {
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+  function drawModeBase(node, p, selected) {
+    const size = selected ? 18 : 13;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.lineWidth = selected ? 3 : 1;
+    ctx.fillStyle = selected ? '#000' : '#fff';
+    ctx.strokeStyle = '#000';
+    ctx.fillRect(-size / 2, -size / 2, size, size);
+    ctx.strokeRect(-size / 2, -size / 2, size, size);
+    if (selected) {
+      ctx.strokeStyle = '#000';
+      ctx.strokeRect(-size / 2 - 4, -size / 2 - 4, size + 8, size + 8);
+      ctx.strokeStyle = '#fff';
+    }
+    if (node.mode === 'OBSTACLE') {
+      line(-size / 2 + 2, -size / 2 + 2, size / 2 - 2, size / 2 - 2, selected ? 2 : 1);
+      line(size / 2 - 2, -size / 2 + 2, -size / 2 + 2, size / 2 - 2, selected ? 2 : 1);
+    } else if (node.mode === 'GOAL') {
+      ctx.strokeRect(-size / 2 + 3, -size / 2 + 3, size - 6, size - 6);
+    } else if (node.mode === 'SHIFT') {
+      line(-size / 2 + 1, size / 2 - 1, size / 2 - 1, -size / 2 + 1, selected ? 2 : 1);
+      line(-size / 2 + 3, 0, size / 2 - 3, 0, selected ? 2 : 1);
+    }
+    ctx.restore();
+    return size;
+  }
+
+  function irregularLoop(node, level, strength) {
+    const points = [];
+    const segments = 42;
+    const radius = 32 + level * 17 + strength * 3;
+    const seed = node.gx * 13.7 + node.gy * 29.3 + level * 7.1;
+    for (let i = 0; i <= segments; i++) {
+      const angle = i / segments * Math.PI * 2;
+      const wobble = 1 + Math.sin(angle * 3 + seed) * 0.08 + Math.cos(angle * 7 - seed) * 0.035;
+      points.push({
+        x: node.x + Math.cos(angle) * radius * wobble,
+        z: node.z + Math.sin(angle) * radius * wobble
+      });
+    }
+    return points;
+  }
+
+  function drawTerrain() {
+    ctx.strokeStyle = '#000';
+    ctx.fillStyle = '#fff';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    const fieldCenter = worldToScreen(0, -2, 0);
+    const fieldRadius = 455 * fieldCenter.scale;
+    ctx.save();
+    ctx.globalAlpha = 0.26;
+    ctx.beginPath();
+    ctx.ellipse(fieldCenter.x, fieldCenter.y, fieldRadius, fieldRadius * Math.sin(state.camera.pitch), 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    const gridCoordinates = [-304, -152, 0, 152, 304];
+    ctx.globalAlpha = 0.1;
+    for (const v of gridCoordinates) {
+      const a = worldToScreen(-410, -1, v);
+      const b = worldToScreen(410, -1, v);
+      line(a.x, a.y, b.x, b.y, 0.6);
+      const c = worldToScreen(v, -1, -410);
+      const d = worldToScreen(v, -1, 410);
+      line(c.x, c.y, d.x, d.y, 0.6);
+    }
+    ctx.restore();
+
+    const anchors = state.nodes.filter(node => node.layers.length || currentNode()?.id === node.id);
+    for (const node of anchors) {
+      const strength = clamp(node.layers.length, 1, 5);
+      const levels = Math.min(3, 1 + Math.ceil(strength / 2));
+      for (let level = 0; level < levels; level++) {
+        const points = irregularLoop(node, level, strength);
+        ctx.save();
+        ctx.globalAlpha = 0.28 - level * 0.06;
+        ctx.beginPath();
+        points.forEach((point, index) => {
+          const p = worldToScreen(point.x, -4 - level * .4, point.z);
+          if (index === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
+
+  function drawBranches() {
+    renderState.branchHitRegions = [];
+    for (const branch of state.branches) {
+      const source = nodeById(branch.sourceNodeId);
+      const destination = nodeById(branch.destinationNodeId);
+      if (!source || !destination) continue;
+      const a = worldToScreen(source.x, Math.max(18, source.layers.length * 25), source.z);
+      const b = worldToScreen(destination.x, Math.max(18, destination.layers.length * 25), destination.z);
+      const selected = state.selection.kind === 'branch' && state.selection.id === branch.id;
+      const mx = (a.x + b.x) / 2;
+      const my = Math.min(a.y, b.y) - 70 - Math.abs(a.x - b.x) * 0.08;
+      ctx.save();
+      ctx.lineWidth = selected ? 4 : 1.5;
+      ctx.setLineDash(selected ? [] : [7, 5]);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo(mx, my, b.x, b.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const t = 0.92;
+      const px = (1 - t) * (1 - t) * a.x + 2 * (1 - t) * t * mx + t * t * b.x;
+      const py = (1 - t) * (1 - t) * a.y + 2 * (1 - t) * t * my + t * t * b.y;
+      ctx.translate(px, py);
+      ctx.rotate(Math.atan2(b.y - my, b.x - mx));
+      ctx.beginPath();
+      ctx.moveTo(0, 0); ctx.lineTo(-10, -5); ctx.lineTo(-10, 5); ctx.closePath();
+      ctx.fillStyle = '#000'; ctx.fill();
+      ctx.restore();
+      renderState.branchHitRegions.push({ id: branch.id, a, b, control: { x: mx, y: my } });
+    }
+  }
+
+  function wrapCanvasText(text, maxChars = 22) {
+    const words = normalizeText(text).split(' ');
+    const lines = [];
+    let line = '';
+    for (const word of words) {
+      const next = line ? `${line} ${word}` : word;
+      if (next.length > maxChars && line) {
+        lines.push(line);
+        line = word;
+      } else line = next;
+      if (lines.length === 1) break;
+    }
+    if (line && lines.length < 2) lines.push(line);
+    return lines.slice(0, 2);
+  }
+
+  function drawNode(node) {
+    const selectedNode = currentNode()?.id === node.id;
+    const active = node.layers.length > 0;
+    const base = worldToScreen(node.x, 0, node.z);
+
+    if (!active && !selectedNode) {
+      const size = 3.5;
+      ctx.save();
+      ctx.globalAlpha = 0.24;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(base.x - size / 2, base.y - size / 2, size, size);
+      ctx.restore();
+      renderState.hitRegions.push({ kind: 'node', id: node.id, x: base.x, y: base.y, w: 18, h: 18, depth: base.depth });
+      return;
+    }
+
+    const size = drawModeBase(node, base, selectedNode && state.selection.kind === 'node');
+    const visibleLayerStart = Math.max(0, node.layers.length - 4);
+    renderState.hitRegions.push({ kind: 'node', id: node.id, x: base.x, y: base.y, w: size + 16, h: size + 16, depth: base.depth });
+
+    ctx.save();
+    ctx.font = selectedNode ? 'bold 9px ui-monospace, monospace' : '8px ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#000';
+    ctx.fillText(node.coord, base.x, base.y + size / 2 + 5);
+    ctx.restore();
+
+    for (let index = visibleLayerStart; index < node.layers.length; index++) {
+      const layer = node.layers[index];
+      const local = index - visibleLayerStart;
+      const yWorld = 34 + local * 38;
+      const p = worldToScreen(node.x, yWorld, node.z);
+      const selected = state.selection.layerId === layer.id || state.selection.eventId === layer.eventId;
+      const width = selected ? 232 : 176;
+      const height = selected ? 38 : 28;
+      ctx.save();
+      ctx.fillStyle = selected ? '#000' : '#fff';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = selected ? 2 : 1;
+      ctx.fillRect(p.x - width / 2, p.y - height / 2, width, height);
+      ctx.strokeRect(p.x - width / 2, p.y - height / 2, width, height);
+      ctx.fillStyle = selected ? '#fff' : '#000';
+      ctx.font = selected ? 'bold 10px ui-monospace, monospace' : '9px ui-monospace, monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      const label = `${EVENT_GLYPH[layer.type] || '·'} ${layer.text}`;
+      ctx.fillText(label.slice(0, selected ? 43 : 31), p.x - width / 2 + 8, p.y);
+      ctx.restore();
+      renderState.hitRegions.push({ kind: 'layer', nodeId: node.id, id: layer.id, eventId: layer.eventId, x: p.x, y: p.y, w: width, h: height, depth: base.depth - index * .001 });
+    }
+
+    if (node.layers.length > 4) {
+      const p = worldToScreen(node.x, 18, node.z);
+      ctx.save();
+      ctx.font = '8px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#000';
+      ctx.fillText(`+${node.layers.length - 4}`, p.x + 16, p.y + 4);
+      ctx.restore();
+    }
+  }
+
+  function drawRipples(delta) {
+    for (const ripple of state.ripples) ripple.age += delta;
+    state.ripples = state.ripples.filter(ripple => ripple.age < ripple.duration);
+    ctx.save();
+    ctx.strokeStyle = '#000';
+    for (const ripple of state.ripples) {
+      const node = nodeById(ripple.nodeId);
+      if (!node) continue;
+      const p = worldToScreen(node.x, -1, node.z);
+      const progress = ripple.age / ripple.duration;
+      const radius = (18 + progress * 115 * ripple.strength) * p.scale;
+      ctx.lineWidth = progress < 0.5 ? 2 : 1;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, radius, radius * Math.sin(state.camera.pitch), 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawPortals(delta) {
+    for (const portal of state.portals) portal.age += delta;
+    state.portals = state.portals.filter(portal => portal.age < portal.duration);
+    for (const portal of state.portals) {
+      const node = nodeById(portal.nodeId);
+      if (!node) continue;
+      const p = worldToScreen(node.x, -3, node.z);
+      const half = portal.duration / 2;
+      const openness = portal.age < half ? portal.age / half : 1 - (portal.age - half) / half;
+      const radius = 18 + openness * 55;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let i = 0; i <= 36; i++) {
+        const angle = i / 36 * Math.PI * 2;
+        const wobble = 1 + Math.sin(angle * 7 + portal.seed) * .08;
+        const x = Math.cos(angle) * radius * wobble;
+        const y = Math.sin(angle) * radius * .5 * wobble;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, radius + 9, (radius + 9) * .5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function drawSelectionConnector() {
+    if (!document.body.classList.contains('history-open')) return;
+    const node = currentNode();
+    if (!node) return;
+    const p = worldToScreen(node.x, 0, node.z);
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.setLineDash([4, 6]);
+    line(0, Math.min(renderState.height - 20, p.y), p.x - 18, p.y, 1);
+    ctx.restore();
+  }
+
+  function renderField(delta = 0) {
+    ctx.save();
+    ctx.setTransform(renderState.dpr, 0, 0, renderState.dpr, 0, 0);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, renderState.width, renderState.height);
+    ctx.strokeStyle = '#000';
+    ctx.fillStyle = '#000';
+    renderState.hitRegions = [];
+
+    drawTerrain();
+    drawBranches();
+
+    const sorted = [...state.nodes].sort((a, b) => {
+      const pa = worldToScreen(a.x, 0, a.z);
+      const pb = worldToScreen(b.x, 0, b.z);
+      return pa.depth - pb.depth;
+    });
+    sorted.forEach(drawNode);
+    drawRipples(delta);
+    drawPortals(delta);
+    drawSelectionConnector();
+
+    if (!state.nodes.some(node => node.layers.length)) {
+      ctx.save();
+      ctx.font = 'bold 18px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#000';
+      ctx.fillText('COMMIT THE FIRST LITERAL PAYLOAD', renderState.width / 2, renderState.height * .18);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  function hitTest(x, y) {
+    const regions = renderState.hitRegions;
+    for (let index = regions.length - 1; index >= 0; index--) {
+      const region = regions[index];
+      if (Math.abs(x - region.x) <= region.w / 2 && Math.abs(y - region.y) <= region.h / 2) return region;
+    }
+    for (const branch of renderState.branchHitRegions) {
+      let min = Infinity;
+      for (let i = 0; i <= 24; i++) {
+        const t = i / 24;
+        const bx = (1 - t) * (1 - t) * branch.a.x + 2 * (1 - t) * t * branch.control.x + t * t * branch.b.x;
+        const by = (1 - t) * (1 - t) * branch.a.y + 2 * (1 - t) * t * branch.control.y + t * t * branch.b.y;
+        min = Math.min(min, Math.hypot(x - bx, y - by));
+      }
+      if (min < 8) return { kind: 'branch', id: branch.id };
+    }
+    return null;
+  }
+
+  function handleCanvasClick(x, y) {
+    const hit = hitTest(x, y);
+    if (!hit) return selectField();
+    if (hit.kind === 'node') selectNode(hit.id);
+    if (hit.kind === 'layer') selectLayer(hit.nodeId, hit.id);
+    if (hit.kind === 'branch') selectBranch(hit.id);
+  }
+
+  function centerOnSelection() {
+    const node = currentNode();
+    state.camera.anchorNodeId = node?.id || null;
+    state.camera.panX = 0;
+    state.camera.panY = 0;
+    renderGroundWitness();
+  }
+
+  function centerField() {
+    state.camera.anchorNodeId = null;
+    state.camera.panX = 0;
+    state.camera.panY = 0;
+    state.camera.zoom = 0.92;
+    selectField();
+  }
+
+  function exportTranscript() {
+    const lines = [
+      '# RIPPLE TRANSCRIPT',
+      '',
+      `Exported: ${nowIso()}`,
+      `Version: ${APP_VERSION}`,
+      ''
+    ];
+    for (const event of state.events) {
+      const node = nodeById(event.nodeId);
+      lines.push(`## ${event.id} — ${event.type}${node ? ` — ${node.coord}` : ''}`);
+      lines.push(event.text || event.detail || '');
+      lines.push(`Binding: ${event.bindingId}`);
+      lines.push(`Route: ${event.route}`);
+      lines.push('');
+    }
+    downloadBlob(new Blob([lines.join('\n')], { type: 'text/markdown' }), `ripple-transcript-${fileStamp()}.md`);
+  }
+
+  function exportJson() {
+    const payload = serializeState();
+    downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), `ripple-field-${fileStamp()}.json`);
+  }
+
+  function serializeState() {
+    return {
+      version: APP_VERSION,
+      exportedAt: nowIso(),
+      mode: state.mode,
+      machineState: state.machineState,
+      route: state.route,
+      nodes: state.nodes,
+      events: state.events,
+      branches: state.branches,
+      selection: state.selection,
+      camera: state.camera,
+      counters: {
+        nextEventNumber: state.nextEventNumber,
+        nextLayerNumber: state.nextLayerNumber,
+        nextBranchNumber: state.nextBranchNumber,
+        nextRippleNumber: state.nextRippleNumber,
+        nextPortalNumber: state.nextPortalNumber
+      },
+      api: { endpoint: state.api.endpoint, model: state.api.model }
+    };
+  }
+
+  let saveTimer = null;
+  function queueSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveLocal, 250);
+  }
+  function saveLocal() {
+    try {
+      if (!safeStorageSet(STORAGE_KEY, JSON.stringify(serializeState()))) throw new Error('Storage is unavailable.');
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function restorePayload(payload) {
+    if (!payload || !Array.isArray(payload.nodes) || !Array.isArray(payload.events)) throw new Error('Invalid field file.');
+    state.mode = MODES.includes(payload.mode) ? payload.mode : 'NEUTRAL';
+    state.machineState = 'READY';
+    state.route = state.api.key ? 'API' : 'FALLBACK';
+    state.nodes = payload.nodes;
+    state.events = payload.events;
+    state.branches = Array.isArray(payload.branches) ? payload.branches : [];
+    state.selection = payload.selection || { kind: 'field', id: null, eventId: null, layerId: null };
+    state.camera = { ...state.camera, ...(payload.camera || {}) };
+    state.nextEventNumber = payload.counters?.nextEventNumber || state.events.length + 1;
+    state.nextLayerNumber = payload.counters?.nextLayerNumber || state.nodes.reduce((sum, node) => sum + node.layers.length, 0) + 1;
+    state.nextBranchNumber = payload.counters?.nextBranchNumber || state.branches.length + 1;
+    state.nextRippleNumber = payload.counters?.nextRippleNumber || 1;
+    state.nextPortalNumber = payload.counters?.nextPortalNumber || 1;
+    if (payload.api?.endpoint) state.api.endpoint = payload.api.endpoint;
+    if (payload.api?.model) state.api.model = payload.api.model;
+    state.ripples = [];
+    state.portals = [];
+    validateBindings();
+    renderApiControls();
+    renderAllUI();
+  }
+
+  function loadLocal() {
+    const raw = safeStorageGet(STORAGE_KEY);
+    if (!raw) {
+      appendSystemEvent('No local field state exists.');
+      return false;
+    }
+    try {
+      restorePayload(JSON.parse(raw));
+      appendSystemEvent('Local field state loaded.');
+      return true;
+    } catch (error) {
+      recordEvent('FAILURE', { text: `Local load failed: ${error.message}` });
+      return false;
+    }
+  }
+
+  async function startRecording() {
+    if (!els.fieldCanvas.captureStream || typeof MediaRecorder === 'undefined') {
+      recordEvent('FAILURE', { text: 'Canvas recording is not supported by this browser.' });
+      return;
+    }
+    const stream = els.fieldCanvas.captureStream(30);
+    const candidates = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+    const mimeType = candidates.find(type => MediaRecorder.isTypeSupported(type)) || '';
+    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    state.recording.chunks = [];
+    recorder.ondataavailable = event => { if (event.data?.size) state.recording.chunks.push(event.data); };
+    recorder.onstop = () => {
+      const blob = new Blob(state.recording.chunks, { type: recorder.mimeType || 'video/webm' });
+      downloadBlob(blob, `ripple-field-${fileStamp()}.webm`);
+      stream.getTracks().forEach(track => track.stop());
+      state.recording.active = false;
+      state.recording.recorder = null;
+      recordEvent('SYSTEM', { text: 'Canvas recording completed and downloaded.' });
+      renderStatus();
+    };
+    recorder.start(250);
+    state.recording.active = true;
+    state.recording.recorder = recorder;
+    state.recording.startedAt = performance.now();
+    recordEvent('SYSTEM', { text: 'Canvas recording started.' });
+    renderStatus();
+  }
+
+  function stopRecording() {
+    const recorder = state.recording.recorder;
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
+  }
+
+  function toggleAutoplay() {
+    state.autoplay = !state.autoplay;
+    state.autoAt = performance.now() + 500;
+    renderStatus();
+  }
+
+  function buildAutoStone() {
+    const node = currentNode() || choose(state.nodes.filter(item => item.layers.length));
+    const seed = node?.layers.at(-1)?.text || 'The field contains no committed payload.';
+    const lead = choose(['CONTINUE', 'BRANCH', 'TEST', 'REVERSE', 'GROUND']);
+    return `${lead}: ${seed.slice(0, 90)}`;
+  }
+
+  function handleSelectionOperation(action) {
+    const node = currentNode();
+    const branch = state.selection.kind === 'branch' ? state.branches.find(item => item.id === state.selection.id) : null;
+    if (action === 'center') centerOnSelection();
+    if (action === 'apply-mode') applyModeToSelection();
+    if (action === 'branch') manualBranch();
+    if (action === 'portal' && node) openPortal(node);
+    if (action === 'select-node' && node) selectNode(node.id);
+    if (action === 'select-top' && node?.layers.length) selectLayer(node.id, node.layers.at(-1).id);
+    if (action === 'source' && branch) selectNode(branch.sourceNodeId);
+    if (action === 'destination' && branch) selectNode(branch.destinationNodeId);
+    if (action === 'delete-branch') deleteSelectedBranch();
+    if (action === 'rebind' || action === 'validate') {
+      const valid = validateBindings();
+      recordEvent(valid ? 'RECOVERY' : 'FAILURE', { text: valid ? 'Binding index validated.' : 'Binding validation failed.' });
+      renderAllUI();
+    }
+    if (action === 'center-field') centerField();
+    if (action === 'save') { saveLocal(); appendSystemEvent('Local field state saved.'); }
+    if (action === 'export') exportJson();
+  }
+
+  function applyApiSettings() {
+    state.api.endpoint = normalizeText(els.apiEndpoint.value) || state.api.endpoint;
+    state.api.model = normalizeText(els.apiModel.value) || state.api.model;
+    state.api.key = normalizeText(els.apiKey.value);
+    state.api.remember = els.rememberKey.checked;
+    if (state.api.remember && state.api.key) safeStorageSet(API_KEY_STORAGE, state.api.key);
+    else safeStorageRemove(API_KEY_STORAGE);
+    state.route = state.api.key ? 'API' : 'FALLBACK';
+    els.apiStatus.textContent = state.api.key ? `API route armed with model ${state.api.model}.` : 'Fallback route active.';
+    appendSystemEvent(state.api.key ? 'API route armed.' : 'Fallback route active.');
+    renderStatus();
+    document.body.classList.remove('api-open');
+  }
+
+  function clearApiSettings() {
+    state.api.key = '';
+    state.api.remember = false;
+    safeStorageRemove(API_KEY_STORAGE);
+    els.apiKey.value = '';
+    els.rememberKey.checked = false;
+    state.route = 'FALLBACK';
+    els.apiStatus.textContent = 'Fallback route active.';
+    appendSystemEvent('API credential cleared.');
+    renderStatus();
+    document.body.classList.remove('api-open');
+  }
+
+  function bindEvents() {
+    els.modeButton.addEventListener('click', cycleMode);
+    els.commitButton.addEventListener('click', () => processStone(els.stoneInput.value));
+    els.stoneInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter') processStone(els.stoneInput.value);
+      if (event.key === 'Escape') els.stoneInput.value = '';
+    });
+    els.playButton.addEventListener('click', toggleAutoplay);
+    els.recordButton.addEventListener('click', () => state.recording.active ? stopRecording() : startRecording());
+    els.exportTranscriptButton.addEventListener('click', exportTranscript);
+    els.exportJsonButton.addEventListener('click', exportJson);
+
+    els.ledger.addEventListener('click', event => {
+      const button = event.target.closest('[data-event-id]');
+      if (button) selectEvent(button.dataset.eventId);
+    });
+    els.eventRailScroller.addEventListener('click', event => {
+      const button = event.target.closest('[data-event-id]');
+      if (button) selectEvent(button.dataset.eventId);
+    });
+    els.selectionCard.addEventListener('click', event => {
+      const button = event.target.closest('[data-op]');
+      if (button) handleSelectionOperation(button.dataset.op);
+    });
+    els.ledgerFilter.addEventListener('input', () => {
+      state.filter = els.ledgerFilter.value;
+      renderLedger();
+    });
+    els.ledgerFilterClear.addEventListener('click', () => {
+      state.filter = '';
+      els.ledgerFilter.value = '';
+      renderLedger();
+    });
+
+    els.statusTitle.addEventListener('click', centerField);
+    els.statusState.addEventListener('click', () => { state.filter = state.machineState; els.ledgerFilter.value = state.filter; renderLedger(); });
+    els.statusMode.addEventListener('click', cycleMode);
+    els.statusSelection.addEventListener('click', centerOnSelection);
+    els.statusEvent.addEventListener('click', () => currentEvent() && selectEvent(currentEvent().id));
+    els.statusRoute.addEventListener('click', () => els.apiButton?.click());
+    els.statusBinding.addEventListener('click', () => handleSelectionOperation('validate'));
+    els.statusPressure.addEventListener('click', () => els.historyButton?.click());
+
+    els.saveApiButton.addEventListener('click', applyApiSettings);
+    els.clearApiButton.addEventListener('click', clearApiSettings);
+    els.saveLocalButton.addEventListener('click', () => { saveLocal(); appendSystemEvent('Local field state saved.'); });
+    els.loadLocalButton.addEventListener('click', loadLocal);
+    els.importButton.addEventListener('click', () => els.importInput.click());
+    els.importInput.addEventListener('change', async () => {
+      const file = els.importInput.files?.[0];
+      if (!file) return;
+      try {
+        restorePayload(JSON.parse(await file.text()));
+        appendSystemEvent(`Imported ${file.name}.`);
+      } catch (error) {
+        recordEvent('FAILURE', { text: `Import failed: ${error.message}` });
+      } finally {
+        els.importInput.value = '';
+      }
+    });
+    els.clearFieldButton.addEventListener('click', clearField);
+
+    els.fieldCanvas.addEventListener('pointerdown', event => {
+      const rect = els.fieldCanvas.getBoundingClientRect();
+      renderState.pointer.down = true;
+      renderState.pointer.dragged = false;
+      renderState.pointer.x = event.clientX - rect.left;
+      renderState.pointer.y = event.clientY - rect.top;
+      renderState.pointer.startX = renderState.pointer.x;
+      renderState.pointer.startY = renderState.pointer.y;
+      els.fieldViewport.classList.add('dragging');
+      els.fieldCanvas.setPointerCapture(event.pointerId);
+    });
+    els.fieldCanvas.addEventListener('pointermove', event => {
+      if (!renderState.pointer.down) return;
+      const rect = els.fieldCanvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const dx = x - renderState.pointer.x;
+      const dy = y - renderState.pointer.y;
+      if (Math.hypot(x - renderState.pointer.startX, y - renderState.pointer.startY) > 5) renderState.pointer.dragged = true;
+      if (renderState.pointer.dragged) {
+        if (event.shiftKey) {
+          state.camera.panX += dx;
+          state.camera.panY += dy;
+        } else {
+          state.camera.yaw += dx * 0.006;
+          state.camera.pitch = clamp(state.camera.pitch + dy * 0.003, 0.22, 1.05);
+        }
+      }
+      renderState.pointer.x = x;
+      renderState.pointer.y = y;
+    });
+    els.fieldCanvas.addEventListener('pointerup', event => {
+      const rect = els.fieldCanvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      if (!renderState.pointer.dragged) handleCanvasClick(x, y);
+      renderState.pointer.down = false;
+      els.fieldViewport.classList.remove('dragging');
+    });
+    els.fieldCanvas.addEventListener('pointercancel', () => {
+      renderState.pointer.down = false;
+      els.fieldViewport.classList.remove('dragging');
+    });
+    els.fieldCanvas.addEventListener('dblclick', event => {
+      const rect = els.fieldCanvas.getBoundingClientRect();
+      const hit = hitTest(event.clientX - rect.left, event.clientY - rect.top);
+      const node = hit?.kind === 'node' ? nodeById(hit.id) : hit?.kind === 'layer' ? nodeById(hit.nodeId) : currentNode();
+      if (node) openPortal(node);
+    });
+    els.fieldCanvas.addEventListener('wheel', event => {
+      event.preventDefault();
+      state.camera.zoom = clamp(state.camera.zoom * (event.deltaY > 0 ? 0.9 : 1.1), 0.42, 2.5);
+      renderGroundWitness();
+    }, { passive: false });
+
+    window.addEventListener('keydown', event => {
+      if (event.target.matches('input, textarea, select')) return;
+      if (event.key.toLowerCase() === 'm') cycleMode();
+      if (event.key.toLowerCase() === 'b') manualBranch();
+      if (event.key.toLowerCase() === 'p' && currentNode()) openPortal(currentNode());
+      if (event.code === 'Space') { event.preventDefault(); toggleAutoplay(); }
+      if (event.key === 'Escape') selectField();
+    });
+
+    const openHistory = () => {
+      document.body.classList.add('history-open');
+      renderSelectionCard();
+      renderLedger();
+      renderEventRail();
+    };
+    const closeHistory = () => document.body.classList.remove('history-open');
+    const openApi = () => {
+      document.body.classList.add('api-open');
+      renderApiControls();
+      setTimeout(() => els.apiKey.focus(), 50);
+    };
+    const closeApi = () => document.body.classList.remove('api-open');
+    els.historyButton?.addEventListener('click', openHistory);
+    els.historyClose?.addEventListener('click', closeHistory);
+    els.drawerBackdrop?.addEventListener('click', closeHistory);
+    els.apiButton?.addEventListener('click', openApi);
+    els.apiClose?.addEventListener('click', closeApi);
+    els.modalBackdrop?.addEventListener('click', closeApi);
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+      if (document.body.classList.contains('api-open')) closeApi();
+      else if (document.body.classList.contains('history-open')) closeHistory();
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+  }
+
+  function animationLoop(now) {
+    const delta = Math.min(0.05, (now - renderState.lastFrame) / 1000);
+    renderState.lastFrame = now;
+    state.simTime += delta;
+
+    if (state.autoplay && !state.generation.pending && now >= state.autoAt) {
+      state.autoAt = now + 3000;
+      processStone(buildAutoStone(), { auto: true });
+    }
+
+    renderField(delta);
+    requestAnimationFrame(animationLoop);
+  }
+
+  function boot() {
+    const rememberedKey = safeStorageGet(API_KEY_STORAGE) || '';
+    state.api.key = rememberedKey;
+    state.api.remember = Boolean(rememberedKey);
+    state.route = rememberedKey ? 'API' : 'FALLBACK';
+    bindEvents();
+    resizeCanvas();
+    renderApiControls();
+
+    const raw = safeStorageGet(STORAGE_KEY);
+    if (raw) {
+      try { restorePayload(JSON.parse(raw)); }
+      catch (_) { appendSystemEvent('Stored field state was invalid. A new field was created.'); }
+    }
+    if (!state.events.length) {
+      appendSystemEvent('Field ready.');
+    }
+    renderAllUI();
+    els.stoneInput.focus();
+    requestAnimationFrame(animationLoop);
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

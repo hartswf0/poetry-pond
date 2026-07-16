@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#101b24">
+<title>ACCRETING MOUNTAINS</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M5 86 35 28l15 24 13-15 32 49Z' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+:root{
+  --ink:#101b24;
+  --paper:#f6f2e8;
+  --line:rgba(224,238,241,.42);
+  --muted:#9fb2bc;
+  --glow:#e7e4bf;
+  --water:#102f46;
+  --safe-bottom:max(14px,env(safe-area-inset-bottom));
+  --safe-top:max(12px,env(safe-area-inset-top));
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#0d1820;color:var(--paper);font-family:"Arial Narrow","Helvetica Neue",Arial,sans-serif;touch-action:none;overscroll-behavior:none}
+button,input{font:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--paper);outline-offset:3px}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+#grain{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.65'/%3E%3C/svg%3E")}
+#shade{position:fixed;inset:0;pointer-events:none;z-index:3;background:linear-gradient(180deg,rgba(5,12,18,.08),transparent 26%,transparent 72%,rgba(4,9,13,.38))}
+
+/* Only the menu remains in the top lane. No title bar, clock, or world labels. */
+#topbar{position:fixed;z-index:20;top:var(--safe-top);left:max(12px,env(safe-area-inset-left));width:46px;height:46px;display:block;background:transparent}
+#menu-button{width:46px;height:46px;border:1px solid rgba(235,239,232,.42);background:#101b24;color:var(--paper);font-size:20px;line-height:1;box-shadow:0 5px 18px rgba(0,0,0,.18)}
+#brand,#clock{display:none!important}
+body.empty-state #menu-button{opacity:.42}
+
+/* The start instruction is the only message before the first line. */
+#truth{position:fixed;z-index:15;left:50%;top:16vh;transform:translateX(-50%);width:min(680px,calc(100vw - 40px));text-align:center;pointer-events:none;transition:opacity .28s,visibility .28s}
+#truth-state{font-size:9px;letter-spacing:.32em;color:#d8e4e7;text-transform:uppercase}
+#truth-line{margin-top:10px;font-size:clamp(28px,5vw,54px);font-weight:650;line-height:1.02;text-wrap:balance;text-shadow:0 3px 18px rgba(0,0,0,.5)}
+#truth-meta{max-width:560px;margin:12px auto 0;font-size:clamp(10px,1.6vw,14px);line-height:1.5;letter-spacing:.06em;color:#d8e4e7}
+body.has-strata #truth{opacity:0;visibility:hidden}
+
+/* Mountain titles and floating metadata are intentionally absent. */
+#world-labels,.world-label{display:none!important}
+
+/* Bottom composer: the one permanent operation. */
+#composer{position:fixed;z-index:25;left:max(14px,env(safe-area-inset-left));right:max(14px,env(safe-area-inset-right));bottom:var(--safe-bottom);display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:stretch;max-width:780px;margin:0 auto;padding:9px;background:#101b24;border:1px solid rgba(224,238,241,.35)}
+#mode-button,#add-button{min-height:48px;border:1px solid rgba(224,238,241,.4);background:#101b24;color:var(--paper);font-size:10px;font-weight:700;letter-spacing:.12em;padding:0 14px;text-transform:uppercase}
+#mode-button{min-width:104px}
+#add-button{min-width:132px;background:var(--paper);color:var(--ink);border-color:var(--paper)}
+#add-button:disabled{background:#263640;color:#80919b;border-color:#41525c;cursor:not-allowed}
+#composer-input{min-width:0;border:1px solid rgba(224,238,241,.35);background:#0b151c;color:var(--paper);padding:0 14px;font-size:16px;letter-spacing:.01em;user-select:text;-webkit-user-select:text}
+#composer-input::placeholder{color:#71848e}
+
+/* Contextual menu. */
+#menu{position:fixed;z-index:40;top:calc(var(--safe-top) + 54px);left:max(12px,env(safe-area-inset-left));width:min(330px,calc(100vw - 24px));max-height:calc(100dvh - 154px);overflow:auto;background:#f5f1e8;color:#101b24;border:2px solid #101b24;box-shadow:8px 8px 0 rgba(16,27,36,.72);display:none}
+body.menu-open #menu{display:block}
+.menu-head{padding:12px 14px;border-bottom:2px solid #101b24}
+.menu-head b{display:block;font-size:12px;letter-spacing:.08em}
+.menu-head span{display:block;margin-top:5px;font-size:9px;letter-spacing:.12em;color:#4b606b}
+.menu-section{padding:10px;border-bottom:1px solid #101b24}
+.menu-section h2{font-size:9px;letter-spacing:.2em;margin:2px 4px 8px;text-transform:uppercase}
+.menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.menu-grid button,.menu-wide{min-height:44px;border:1px solid #101b24;background:#f5f1e8;color:#101b24;font-size:9px;font-weight:700;letter-spacing:.1em;padding:8px;text-transform:uppercase}
+.menu-grid button.active,.menu-grid button:active,.menu-wide:active{background:#101b24;color:#f5f1e8}
+.menu-wide{width:100%}
+.menu-wide:disabled{opacity:.42;text-decoration:line-through}
+#mode-explain{font-size:10px;line-height:1.45;color:#314751;padding:10px 4px 2px}
+
+/* History is not shown until requested. */
+#history{position:fixed;z-index:35;top:calc(var(--safe-top) + 54px);right:max(12px,env(safe-area-inset-right));bottom:calc(var(--safe-bottom) + 76px);width:min(390px,calc(100vw - 24px));background:#101b24;border:1px solid rgba(224,238,241,.38);display:none;flex-direction:column}
+body.history-open #history{display:flex}
+#history-head{display:flex;align-items:center;justify-content:space-between;padding:11px 12px;border-bottom:1px solid rgba(224,238,241,.28)}
+#history-head b{font-size:10px;letter-spacing:.16em}
+#history-close{width:34px;height:34px;border:1px solid rgba(224,238,241,.35);background:#101b24;color:var(--paper)}
+#history-list{overflow:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
+.history-row{border:1px solid rgba(224,238,241,.25);background:#0d1820;color:var(--paper);padding:9px;text-align:left}
+.history-row.selected{border-color:var(--glow);background:#1a2a33}
+.history-row b{display:block;font-size:10px;line-height:1.25}
+.history-row span{display:block;margin-top:5px;font-size:8px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+#history-empty{padding:20px;font-size:10px;line-height:1.5;color:var(--muted)}
+
+/* Work, fault and trace states. */
+#work{position:fixed;z-index:50;left:50%;top:50%;transform:translate(-50%,-50%);display:none;min-width:250px;padding:16px;background:#f5f1e8;color:#101b24;border:2px solid #101b24;box-shadow:8px 8px 0 rgba(16,27,36,.6);text-align:center}
+body.working #work{display:block}
+#work b{display:block;font-size:12px;letter-spacing:.18em}
+#work span{display:block;margin:8px 0 12px;font-size:10px;line-height:1.4;color:#405661}
+#stop-button{width:100%;min-height:46px;border:2px solid #101b24;background:#101b24;color:#f5f1e8;font-size:10px;font-weight:700;letter-spacing:.14em}
+#trace{position:fixed;z-index:60;left:50%;bottom:calc(var(--safe-bottom) + 78px);transform:translate(-50%,12px);max-width:min(620px,calc(100vw - 28px));padding:9px 12px;background:#f5f1e8;color:#101b24;border:1px solid #101b24;font-size:10px;font-weight:700;letter-spacing:.08em;opacity:0;pointer-events:none;transition:.18s}
+#trace.show{opacity:1;transform:translate(-50%,0)}
+#fallback{position:fixed;z-index:100;inset:0;display:none;align-items:center;justify-content:center;padding:24px;background:#f5f1e8;color:#101b24;text-align:center}
+#fallback div{max-width:520px}
+#fallback h1{font-size:28px;margin-bottom:12px}
+#fallback p{font-size:14px;line-height:1.6}
+
+body.quiet #topbar,body.quiet #truth,body.quiet #world-labels,body.quiet #shade{display:none}
+body.quiet #composer{opacity:.88}
+body.quiet #composer:not(:focus-within){grid-template-columns:44px minmax(0,1fr) 44px}
+body.quiet #composer:not(:focus-within) #mode-button,body.quiet #composer:not(:focus-within) #add-button{font-size:0;min-width:44px;padding:0}
+body.quiet #composer:not(:focus-within) #mode-button::after{content:'◐';font-size:16px}
+body.quiet #composer:not(:focus-within) #add-button::after{content:'▶';font-size:15px}
+
+@media (max-width:700px){
+  #truth{top:13vh}
+  #truth-line{font-size:clamp(30px,9vw,44px)}
+  #composer{grid-template-columns:76px minmax(0,1fr) 70px;gap:6px;padding:7px}
+  #mode-button,#add-button{min-width:0;padding:0 7px;font-size:8px}
+  #composer-input{font-size:14px;padding:0 9px}
+  #history{left:10px;right:10px;width:auto}
+  .world-label{min-width:108px;max-width:150px;padding:5px 7px}
+  .world-label b{font-size:8px}.world-label span{font-size:7px}
+}
+@media (max-height:650px){
+  #truth{display:none}
+  #composer{bottom:8px}
+  #history{bottom:72px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<canvas id="gl" aria-label="Navigable field of text mountains"></canvas>
+<div id="grain" aria-hidden="true"></div>
+<div id="shade" aria-hidden="true"></div>
+
+<header id="topbar">
+  <button id="menu-button" aria-label="Open operations">☰</button>
+</header>
+
+<section id="truth" aria-live="polite">
+  <div id="truth-state">START</div>
+  <div id="truth-line">Write one line into the mountain.</div>
+  <div id="truth-meta">The line becomes the first stratum. Its consequence moves through the water.</div>
+</section>
+
+<div id="world-labels"></div>
+
+<section id="composer" aria-label="Add a textual stratum">
+  <button id="mode-button" title="Change operation">STONE</button>
+  <input id="composer-input" maxlength="140" autocomplete="off" spellcheck="true" placeholder="Write one line into the mountain">
+  <button id="add-button">ADD STRATUM</button>
+</section>
+
+<aside id="menu" aria-label="Operations">
+  <div class="menu-head"><b>OPERATIONS</b><span id="menu-object">NO STRATA YET</span></div>
+  <section class="menu-section">
+    <h2>View</h2>
+    <div class="menu-grid">
+      <button id="field-view" class="active">Field</button>
+      <button id="focus-view">Focus</button>
+      <button id="quiet-view">Quiet</button>
+      <button id="reset-view">Base Camera</button>
+    </div>
+  </section>
+  <section class="menu-section">
+    <h2>Current mountain</h2>
+    <div class="menu-grid">
+      <button id="history-open">History</button>
+      <button id="undo-button">Undo</button>
+      <button id="export-button">Export</button>
+      <button id="clear-field">Clear Field</button>
+    </div>
+    <p id="mode-explain">Stone adds a durable layer to the selected mountain.</p>
+  </section>
+  <section class="menu-section">
+    <button id="close-menu" class="menu-wide">Return to mountain</button>
+  </section>
+</aside>
+
+<aside id="history" aria-label="History">
+  <div id="history-head"><b>FIELD HISTORY</b><button id="history-close" aria-label="Close history">×</button></div>
+  <div id="history-list"></div>
+</aside>
+
+<section id="work" role="status" aria-live="assertive">
+  <b>ACCRETING</b>
+  <span id="work-detail">The line is becoming a physical layer.</span>
+  <button id="stop-button">STOP ACTIVE WORK</button>
+</section>
+<div id="trace" role="status" aria-live="polite"></div>
+<div id="fallback"><div><h1>TEXT REMAINS</h1><p>The 3D field could not start. The browser may be offline or WebGL may be unavailable. Reopen this file with an internet connection and hardware acceleration enabled.</p></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $ = id => document.getElementById(id);
+const canvas = $('gl');
+const body = document.body;
+const prefersReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const MODES = {
+  STONE:{label:'STONE',explain:'Stone adds a durable layer to the selected mountain.',face:'#11191e',text:'#eee6d6',edge:0x302c28,stone:0x30343a},
+  CONSEQUENCE:{label:'CONSEQUENCE',explain:'Consequence adds a bright result layer that remains bound to its cause.',face:'#e9e5d9',text:'#151a1d',edge:0x9e8a65,stone:0x6d6254},
+  SPAWN:{label:'SPAWN',explain:'Spawn turns the line into the first stratum of a new connected mountain.',face:'#2b2118',text:'#ffd897',edge:0xc2843a,stone:0x5b4330}
+};
+
+const START_INSTRUCTION = 'Write one line into the mountain.';
+const initialMountainDef = {id:'focus',name:'MOUNTAIN',position:[0,0,0],scale:1.12,lines:[]};
+
+let renderer, scene, camera, controls, water, stars, rippleAnchor;
+const rippleBursts=[];
+const raycaster=new THREE.Raycaster();
+const pointer=new THREE.Vector2();
+let currentMode='STONE';
+let selectedMountainId='focus';
+let selectedLayerId=null;
+let viewMode='FOCUS';
+let workToken=null;
+let undoStack=[];
+let history=[];
+let connections=[];
+let cameraFlight=null;
+let traceTimer=0;
+let idSerial=100;
+const mountains=new Map();
+const interactiveMeshes=[];
+const labels=new Map();
+const clock=new THREE.Clock();
+const arcMaterials=[];
+
+function hashString(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function rng(seed){let s=seed>>>0;return()=>{s=(s+0x6D2B79F5)|0;let t=Math.imul(s^(s>>>15),1|s);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296}}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function uid(prefix='id'){return prefix+'-'+(++idSerial)}
+
+function trace(message){
+  const el=$('trace');
+  el.textContent=message;
+  el.classList.add('show');
+  clearTimeout(traceTimer);
+  traceTimer=setTimeout(()=>el.classList.remove('show'),2400);
+}
+
+function updateClock(){
+  const el=$('clock');
+  if(!el)return;
+  const d=new Date();
+  el.textContent=[d.getHours(),d.getMinutes(),d.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');
+}
+
+function createRenderer(){
+  renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,1.65));
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.05;
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+}
+
+function createScene(){
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x8ca7b2);
+  scene.fog=new THREE.FogExp2(0x78919a,.018);
+
+  camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.1,180);
+  camera.position.set(0,3.2,14);
+  camera.lookAt(0,.7,0);
+
+  controls=new OrbitControls(camera,canvas);
+  controls.enableDamping=true;
+  controls.dampingFactor=.06;
+  controls.enablePan=false;
+  controls.minDistance=6;
+  controls.maxDistance=36;
+  controls.maxPolarAngle=Math.PI*.49;
+  controls.minPolarAngle=Math.PI*.28;
+  controls.target.set(0,.7,0);
+
+  const hemi=new THREE.HemisphereLight(0xf0f4ef,0x173040,2.0);
+  scene.add(hemi);
+  const key=new THREE.DirectionalLight(0xffe4bb,3.2);
+  key.position.set(-10,18,12);key.castShadow=true;
+  key.shadow.mapSize.set(2048,2048);key.shadow.camera.near=1;key.shadow.camera.far=60;
+  key.shadow.camera.left=-28;key.shadow.camera.right=28;key.shadow.camera.top=28;key.shadow.camera.bottom=-28;
+  scene.add(key);
+  const fill=new THREE.DirectionalLight(0xa9d9ff,1.3);fill.position.set(16,8,-14);scene.add(fill);
+  const rim=new THREE.DirectionalLight(0xffc36e,1.0);rim.position.set(0,5,-18);scene.add(rim);
+
+  createSky();
+  createWater();
+  createStars();
+  createRippleSystem();
+}
+
+function createSky(){
+  const geo=new THREE.SphereGeometry(95,32,18);
+  const mat=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,uniforms:{
+    top:{value:new THREE.Color(0x274e68)},mid:{value:new THREE.Color(0x879eaa)},horizon:{value:new THREE.Color(0xf0c39a)},bottom:{value:new THREE.Color(0x243a48)}
+  },vertexShader:`varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+  fragmentShader:`varying vec3 vP;uniform vec3 top;uniform vec3 mid;uniform vec3 horizon;uniform vec3 bottom;void main(){float h=normalize(vP).y;vec3 c=h>0.28?mix(mid,top,smoothstep(.28,.9,h)):h>-0.05?mix(horizon,mid,smoothstep(-.05,.28,h)):mix(bottom,horizon,smoothstep(-.55,-.05,h));gl_FragColor=vec4(c,1.);}`});
+  scene.add(new THREE.Mesh(geo,mat));
+}
+
+function createWater(){
+  const geo=new THREE.PlaneGeometry(150,150,150,150);
+  const mat=new THREE.ShaderMaterial({transparent:false,fog:true,uniforms:{
+    time:{value:0},deep:{value:new THREE.Color(0x0a2639)},shallow:{value:new THREE.Color(0x3d7182)},glint:{value:new THREE.Color(0xf6e2bb)},fogColor:{value:scene.fog.color},fogDensity:{value:scene.fog.density}
+  },vertexShader:`
+    uniform float time;varying vec3 vWorld;varying float vWave;
+    void main(){vec3 p=position;float w=sin(p.x*.46+time*.38)*.055+sin(p.y*.31-time*.27)*.045+sin((p.x+p.y)*.17+time*.19)*.035;p.z+=w;vWave=w;vec4 world=modelMatrix*vec4(p,1.);vWorld=world.xyz;gl_Position=projectionMatrix*viewMatrix*world;}
+  `,fragmentShader:`
+    uniform vec3 deep;uniform vec3 shallow;uniform vec3 glint;uniform vec3 fogColor;uniform float fogDensity;varying vec3 vWorld;varying float vWave;
+    void main(){vec3 V=normalize(cameraPosition-vWorld);float fres=pow(1.-max(V.y,0.),2.2);float shine=pow(max(dot(normalize(vec3(.25,1.,.2)),V),0.),18.);vec3 c=mix(deep,shallow,.26+fres*.5+vWave*1.8);c+=glint*shine*.16;float dist=length(cameraPosition-vWorld);float fog=1.-exp(-fogDensity*fogDensity*dist*dist);c=mix(c,fogColor,clamp(fog,0.,1.));gl_FragColor=vec4(c,1.);}
+  `});
+  water=new THREE.Mesh(geo,mat);water.rotation.x=-Math.PI/2;water.position.y=0;water.receiveShadow=true;scene.add(water);
+}
+
+function createStars(){
+  const count=180;const pos=new Float32Array(count*3);
+  const r=rng(42);
+  for(let i=0;i<count;i++){const rad=25+r()*50;const a=r()*Math.PI*2;pos[i*3]=Math.cos(a)*rad;pos[i*3+1]=12+r()*32;pos[i*3+2]=Math.sin(a)*rad}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const mat=new THREE.PointsMaterial({color:0xd9edf3,size:.08,transparent:true,opacity:.45,depthWrite:false});
+  stars=new THREE.Points(geo,mat);scene.add(stars);
+}
+
+
+function createRippleRing(radius,opacity=.18){
+  const geometry=new THREE.RingGeometry(radius-.028,radius+.028,128);
+  const material=new THREE.MeshBasicMaterial({color:0xffefd1,transparent:true,opacity,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending});
+  const ring=new THREE.Mesh(geometry,material);ring.rotation.x=-Math.PI/2;ring.position.y=.045;return ring;
+}
+
+function createRippleSystem(){
+  rippleAnchor=new THREE.Group();
+  [1.45,2.05,2.75,3.6].forEach((radius,index)=>{
+    const ring=createRippleRing(radius,.15-index*.022);ring.userData.phase=index*.9;rippleAnchor.add(ring);
+  });
+  rippleAnchor.visible=false;scene.add(rippleAnchor);
+}
+
+function updateRippleAnchor(){
+  if(!rippleAnchor)return;
+  const mountain=mountains.get(selectedMountainId);
+  rippleAnchor.visible=Boolean(mountain&&mountain.lines.length);
+  if(mountain)rippleAnchor.position.set(mountain.position.x,0,mountain.position.z);
+}
+
+function emitRipple(position,strength=1){
+  const started=performance.now();
+  for(let i=0;i<4;i++){
+    const ring=createRippleRing(.55,.5);
+    ring.position.set(position.x,.052,position.z);
+    ring.userData={started,delay:i*180,duration:2100+i*160,strength};
+    scene.add(ring);rippleBursts.push(ring);
+  }
+}
+
+function updateRipples(now){
+  if(rippleAnchor?.visible){
+    rippleAnchor.children.forEach((ring,index)=>{
+      ring.material.opacity=.075+.035*Math.sin(now*.0012+ring.userData.phase);
+      const pulse=1+.025*Math.sin(now*.0009+index*.7);ring.scale.setScalar(pulse);
+    });
+  }
+  for(let i=rippleBursts.length-1;i>=0;i--){
+    const ring=rippleBursts[i];const data=ring.userData;const elapsed=now-data.started-data.delay;
+    if(elapsed<0){ring.visible=false;continue}
+    ring.visible=true;const k=clamp(elapsed/data.duration,0,1);const eased=1-Math.pow(1-k,2);
+    const scale=.7+eased*(7.2*data.strength);ring.scale.setScalar(scale);ring.material.opacity=(1-k)*.42;
+    if(k>=1){scene.remove(ring);ring.geometry.dispose();ring.material.dispose();rippleBursts.splice(i,1)}
+  }
+}
+
+function makeSlabGeometry(width,height,depth,seed){
+  const r=rng(seed);const x=width/2,y=height/2;
+  const pts=[
+    [-x*(.94+r()*.07),-y*(.85+r()*.12)],
+    [ x*(.93+r()*.08),-y*(.91+r()*.09)],
+    [ x*(.98+r()*.04), y*(.83+r()*.16)],
+    [-x*(.94+r()*.08), y*(.88+r()*.10)]
+  ];
+  const shape=new THREE.Shape();shape.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)shape.lineTo(pts[i][0],pts[i][1]);shape.closePath();
+  const geo=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:true,bevelSegments:1,bevelSize:.045,bevelThickness:.045,curveSegments:1});
+  geo.translate(0,0,-depth/2);geo.computeVertexNormals();return geo;
+}
+
+function wrapText(ctx,text,maxWidth,maxLines){
+  const words=String(text).trim().split(/\s+/).filter(Boolean);const lines=[];let line='';let index=0;
+  while(index<words.length&&lines.length<maxLines){
+    const word=words[index];const test=line?line+' '+word:word;
+    if(!line||ctx.measureText(test).width<=maxWidth){line=test;index++;continue}
+    lines.push(line);line='';
+  }
+  if(line&&lines.length<maxLines)lines.push(line);
+  if(index<words.length&&lines.length){
+    let tail=(lines.at(-1)+' '+words.slice(index).join(' ')).trim();
+    while(tail.length>1&&ctx.measureText(tail+'…').width>maxWidth)tail=tail.slice(0,-1).trimEnd();
+    lines[lines.length-1]=tail+'…';
+  }
+  return lines.length?lines:[''];
+}
+
+function createTextTexture(text,mode,widthWorld,selected=false){
+  const cfg=MODES[mode]||MODES.STONE;
+  const w=1024,h=220;const cv=document.createElement('canvas');cv.width=w;cv.height=h;const ctx=cv.getContext('2d');
+  ctx.fillStyle=selected?'#f7f3e8':cfg.face;ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle=selected?'#ffffff':mode==='CONSEQUENCE'?'#171d21':'#d4c7ae';ctx.lineWidth=selected?15:7;ctx.strokeRect(5,5,w-10,h-10);
+  let size=82;const maxWidth=w-70;
+  while(size>42){ctx.font=`700 ${size}px "Arial Narrow",Arial,sans-serif`;if(ctx.measureText(text).width<=maxWidth*1.75)break;size-=4}
+  const lines=wrapText(ctx,text,maxWidth,2);
+  ctx.fillStyle=selected?'#10161a':cfg.text;ctx.textAlign='center';ctx.textBaseline='middle';
+  if(lines.length===1)ctx.fillText(lines[0],w/2,h/2+3);
+  else{ctx.font=`700 ${Math.min(size,62)}px "Arial Narrow",Arial,sans-serif`;ctx.fillText(lines[0],w/2,h*.36);ctx.fillText(lines[1],w/2,h*.68)}
+  const tx=new THREE.CanvasTexture(cv);tx.colorSpace=THREE.SRGBColorSpace;tx.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  return tx;
+}
+
+function createMountain(def){
+  const m={
+    id:def.id||uid('mountain'),name:def.name||'UNTITLED_MOUNTAIN',position:new THREE.Vector3(...(def.position||[0,0,0])),scale:def.scale||1,
+    lines:(def.lines||[]).map((l,i)=>({id:l.id||uid('layer'),mode:l.mode||'STONE',text:l.text||'',created:l.created||Date.now()+i})),
+    group:new THREE.Group(),reflection:null,baseMarker:new THREE.Object3D(),layers:[]
+  };
+  m.group.position.copy(m.position);m.group.scale.setScalar(m.scale);m.group.name=m.name;scene.add(m.group);
+  m.baseMarker.position.set(0,.25,0);m.group.add(m.baseMarker);
+  mountains.set(m.id,m);createMountainLabel(m);rebuildMountain(m,false);return m;
+}
+
+function disposeObject(obj){
+  obj.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(mat=>{if(mat.map)mat.map.dispose();mat.dispose()})}});
+}
+
+function rebuildMountain(m,animateNew=true){
+  interactiveMeshes.splice(0,interactiveMeshes.length,...interactiveMeshes.filter(mesh=>mesh.userData.mountainId!==m.id));
+  while(m.group.children.length>1){const child=m.group.children[1];m.group.remove(child);disposeObject(child)}
+  m.layers=[];
+  const count=Math.max(m.lines.length,1);const seedBase=hashString(m.id);
+  m.lines.forEach((line,i)=>{
+    const t=count<=1?0:i/(count-1);const r=rng(seedBase+i*97);const lower=1-t;
+    const width=clamp((6.9*(.56+.46*Math.pow(lower,.58))+(r()-.5)*.64),3.15,7.4);
+    const depth=clamp(width*(.42+(r()-.5)*.06),1.55,3.1);
+    const height=.64+(r()-.5)*.06;
+    const slab=new THREE.Mesh(makeSlabGeometry(width,height,depth,seedBase+i*13),new THREE.MeshStandardMaterial({color:MODES[line.mode].stone,roughness:.94,metalness:.02,flatShading:true}));
+    slab.position.set((r()-.5)*.18,.34+i*.68,(r()-.5)*.08);slab.rotation.set((r()-.5)*.008,0,(r()-.5)*.012);
+    slab.castShadow=true;slab.receiveShadow=true;slab.userData={mountainId:m.id,layerId:line.id,type:'slab'};
+    m.group.add(slab);interactiveMeshes.push(slab);
+
+    const selected=line.id===selectedLayerId;
+    const tx=createTextTexture(line.text,line.mode,width,selected);
+    const labelMat=new THREE.MeshBasicMaterial({map:tx,transparent:false,toneMapped:false,side:THREE.DoubleSide});
+    const label=new THREE.Mesh(new THREE.PlaneGeometry(width*.94,height*.78),labelMat);
+    label.position.set(slab.position.x,slab.position.y,slab.position.z+depth/2+.07);
+    label.rotation.copy(slab.rotation);label.userData={mountainId:m.id,layerId:line.id,type:'label'};
+    m.group.add(label);interactiveMeshes.push(label);
+
+    const edge=new THREE.LineSegments(new THREE.EdgesGeometry(slab.geometry,28),new THREE.LineBasicMaterial({color:selected?0xfff1c7:MODES[line.mode].edge,transparent:true,opacity:selected?1:.5}));
+    edge.position.copy(slab.position);edge.rotation.copy(slab.rotation);m.group.add(edge);
+    m.layers.push({data:line,slab,label,edge});
+
+    if(animateNew&&i===count-1&&!prefersReduced){slab.scale.set(1,.05,1);label.scale.set(1,.05,1);edge.scale.set(1,.05,1);const start=performance.now();const grow=now=>{const k=clamp((now-start)/650,0,1);const e=1-Math.pow(1-k,3);slab.scale.y=label.scale.y=edge.scale.y=e;if(k<1)requestAnimationFrame(grow)};requestAnimationFrame(grow)}
+  });
+  createReflection(m);
+  updateMountainLabel(m);
+}
+
+function createReflection(m){
+  if(m.reflection){scene.remove(m.reflection);disposeObject(m.reflection)}
+  const refl=new THREE.Group();refl.position.copy(m.position);refl.scale.set(m.scale,-m.scale,m.scale);
+  m.group.children.slice(1).forEach(child=>{
+    const clone=child.clone();
+    if(clone.material){clone.material=clone.material.clone();clone.material.transparent=true;clone.material.opacity=child.userData.type==='label'?.09:.12;clone.material.depthWrite=false;clone.material.color?.multiplyScalar?.(.58)}
+    refl.add(clone);
+  });
+  refl.position.y=-.04;refl.renderOrder=-1;m.reflection=refl;scene.add(refl);
+}
+
+function createMountainLabel(m){}
+function updateMountainLabel(m){}
+
+function createConnection(aId,bId){
+  if(connections.some(c=>(c.a===aId&&c.b===bId)||(c.a===bId&&c.b===aId)))return;
+  const a=mountains.get(aId),b=mountains.get(bId);if(!a||!b)return;
+  const p0=a.position.clone().add(new THREE.Vector3(0,1.2*a.scale,0));
+  const p2=b.position.clone().add(new THREE.Vector3(0,1.1*b.scale,0));
+  const mid=p0.clone().lerp(p2,.5);mid.y+=3.2+p0.distanceTo(p2)*.12;
+  const curve=new THREE.QuadraticBezierCurve3(p0,mid,p2);
+  const mat=new THREE.MeshBasicMaterial({color:0xf0e7bd,transparent:true,opacity:.62,blending:THREE.AdditiveBlending,depthWrite:false});
+  const tube=new THREE.Mesh(new THREE.TubeGeometry(curve,48,.026,5,false),mat);tube.userData={type:'connection',a:aId,b:bId};scene.add(tube);connections.push({a:aId,b:bId,mesh:tube,material:mat,phase:Math.random()*Math.PI*2});arcMaterials.push(mat)
+}
+
+function initialField(){
+  createMountain(initialMountainDef);
+  selectMountain('focus',false);
+  setView('FOCUS',false);
+  renderHistory();
+  syncTruth();
+  updateRippleAnchor();
+}
+
+function selectMountain(id,fly=true){
+  const m=mountains.get(id);if(!m)return;
+  selectedMountainId=id;selectedLayerId=m.lines.at(-1)?.id||null;
+  mountains.forEach(mm=>{updateMountainLabel(mm);mm.layers.forEach(layer=>{const selected=layer.data.id===selectedLayerId&&mm.id===id;layer.edge.material.color.setHex(selected?0xfff1c7:MODES[layer.data.mode].edge);layer.edge.material.opacity=selected?1:.5})});
+  updateRippleAnchor();syncTruth();renderHistory();if(fly)focusCamera(m);
+}
+
+function selectLayer(mountainId,layerId,fly=true){
+  const m=mountains.get(mountainId);if(!m)return;selectedMountainId=mountainId;selectedLayerId=layerId;
+  mountains.forEach(mm=>mm.layers.forEach(layer=>{const selected=mm.id===mountainId&&layer.data.id===layerId;layer.edge.material.color.setHex(selected?0xfff1c7:MODES[layer.data.mode].edge);layer.edge.material.opacity=selected?1:.5;if(layer.label.material.map){const old=layer.label.material.map;layer.label.material.map=createTextTexture(layer.data.text,layer.data.mode,5,selected);layer.label.material.needsUpdate=true;old.dispose()}}));
+  mountains.forEach(updateMountainLabel);updateRippleAnchor();syncTruth();renderHistory();if(fly)focusCamera(m)
+}
+
+function focusCamera(m,distance=10){
+  if(!m)return;
+  const worldBase=m.position.clone();
+  const height=Math.max(.72,m.lines.length*.68*m.scale);
+  const targetY=m.lines.length?height*.48:.5;
+  const readableDistance=clamp(8.8+height*.34,9,14.5);
+  const desired=new THREE.Vector3(worldBase.x,targetY+1.1,worldBase.z+readableDistance);
+  const target=new THREE.Vector3(worldBase.x,targetY,worldBase.z);
+  startCameraFlight(desired,target);
+}
+
+function startCameraFlight(position,target){
+  cameraFlight={start:performance.now(),duration:prefersReduced?1:850,fromPos:camera.position.clone(),toPos:position.clone(),fromTarget:controls.target.clone(),toTarget:target.clone()};
+}
+
+function setView(mode,fly=true){
+  viewMode=mode;
+  $('field-view').classList.toggle('active',mode==='FIELD');
+  $('focus-view').classList.toggle('active',mode==='FOCUS');
+  const selected=mountains.get(selectedMountainId);
+  if(mode==='FIELD'){
+    const populated=[...mountains.values()].filter(m=>m.lines.length);
+    if(populated.length<=1){if(fly)focusCamera(selected);}
+    else{
+      const center=populated.reduce((sum,m)=>sum.add(m.position),new THREE.Vector3()).multiplyScalar(1/populated.length);
+      const spread=Math.max(...populated.map(m=>m.position.distanceTo(center)),4);
+      const maxHeight=Math.max(...populated.map(m=>m.lines.length*.68*m.scale),1);
+      if(fly)startCameraFlight(new THREE.Vector3(center.x,maxHeight*.45+4.2,center.z+15+spread*1.15),new THREE.Vector3(center.x,maxHeight*.28,center.z));
+    }
+  }else if(fly){focusCamera(selected);}
+  updateRippleAnchor();
+  syncTruth();
+}
+
+function serialize(){
+  return {mountains:[...mountains.values()].map(m=>({id:m.id,name:m.name,position:m.position.toArray(),scale:m.scale,lines:m.lines.map(l=>({...l}))})),connections:connections.map(c=>({a:c.a,b:c.b})),history:history.map(h=>({...h})),selectedMountainId,selectedLayerId,viewMode,currentMode};
+}
+function pushUndo(){undoStack.push(serialize());if(undoStack.length>30)undoStack.shift();$('undo-button').disabled=false}
+function restoreSnapshot(s){
+  connections.forEach(c=>{scene.remove(c.mesh);disposeObject(c.mesh)});connections=[];arcMaterials.length=0;
+  mountains.forEach(m=>{scene.remove(m.group);if(m.reflection)scene.remove(m.reflection);disposeObject(m.group);if(m.reflection)disposeObject(m.reflection);labels.get(m.id)?.remove()});mountains.clear();labels.clear();interactiveMeshes.length=0;
+  s.mountains.forEach(createMountain);s.connections.forEach(c=>createConnection(c.a,c.b));history=s.history||[];selectedMountainId=s.selectedMountainId||s.mountains[0]?.id;selectedLayerId=s.selectedLayerId;viewMode=s.viewMode||'FIELD';currentMode=s.currentMode||'STONE';syncMode();
+  const selectedMountain=mountains.get(selectedMountainId);const selectedExists=selectedMountain?.lines.some(line=>line.id===selectedLayerId);
+  if(selectedExists)selectLayer(selectedMountainId,selectedLayerId,false);else selectMountain(selectedMountainId,false);
+  setView(viewMode,false);renderHistory();syncTruth();
+}
+
+function undo(){
+  if(!undoStack.length){trace('No reversible change exists.');return}
+  const s=undoStack.pop();restoreSnapshot(s);trace('Previous field restored.');$('undo-button').disabled=!undoStack.length
+}
+
+function renderHistory(){
+  const list=$('history-list');list.innerHTML='';
+  if(!history.length){list.innerHTML='<div id="history-empty">No changes have accumulated yet. Add a stratum or spawn a mountain.</div>';return}
+  [...history].reverse().forEach(item=>{
+    const b=document.createElement('button');b.className='history-row'+(item.layerId===selectedLayerId?' selected':'');b.innerHTML=`<b>${escapeHTML(item.text)}</b><span>${item.mode} · ${escapeHTML(item.mountainName)}</span>`;b.addEventListener('click',()=>{selectLayer(item.mountainId,item.layerId,true);body.classList.remove('history-open')});list.appendChild(b)
+  })
+}
+function escapeHTML(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+function syncMode(){const cfg=MODES[currentMode];$('mode-button').textContent=cfg.label;$('mode-explain').textContent=cfg.explain}
+function cycleMode(){const keys=Object.keys(MODES);currentMode=keys[(keys.indexOf(currentMode)+1)%keys.length];syncMode();trace(`${currentMode.toLowerCase()} operation ready.`)}
+
+function beginWork(detail){
+  if(workToken)return null;const token={cancelled:false,id:Date.now()};workToken=token;body.classList.add('working');$('work-detail').textContent=detail;$('add-button').disabled=true;return token
+}
+function endWork(token,message){if(token!==workToken)return;workToken=null;body.classList.remove('working');$('add-button').disabled=false;if(message)trace(message)}
+function stopWork(){if(!workToken)return;workToken.cancelled=true;endWork(workToken,'Active work stopped. Existing strata remain.')}
+
+function addCurrentLine(){
+  const input=$('composer-input');const text=input.value.trim();if(!text||workToken)return;
+  const source=mountains.get(selectedMountainId);if(!source)return;
+  pushUndo();const token=beginWork(currentMode==='SPAWN'?'The line is locating a new base.':'The line is becoming a physical layer.');
+  setTimeout(()=>{
+    if(!token||token.cancelled)return;
+    if(currentMode==='SPAWN')spawnMountainFromLine(source,text,token);
+    else{
+      const line={id:uid('layer'),mode:currentMode,text,created:Date.now()};source.lines.push(line);selectedLayerId=line.id;history.push({mountainId:source.id,mountainName:source.name,layerId:line.id,mode:line.mode,text:line.text,created:line.created});rebuildMountain(source,true);selectLayer(source.id,line.id,false);setView('FOCUS',true);emitRipple(source.position,1.15);input.value='';saveLocal();endWork(token,'New stratum fixed to the mountain.');syncTruth();
+    }
+  },prefersReduced?30:520)
+}
+
+function spawnMountainFromLine(source,text,token){
+  const r=rng(hashString(text+Date.now()));const angle=r()*Math.PI*2;const dist=7+r()*5;let pos=source.position.clone().add(new THREE.Vector3(Math.cos(angle)*dist,0,Math.sin(angle)*dist));
+  for(let tries=0;tries<8;tries++){if([...mountains.values()].every(m=>m.position.distanceTo(pos)>4.5))break;pos=source.position.clone().add(new THREE.Vector3(Math.cos(angle+tries*.7)*(dist+tries*.7),0,Math.sin(angle+tries*.7)*(dist+tries*.7)))}
+  const id=uid('mountain');const name='MOUNTAIN';const line={id:uid('layer'),mode:'SPAWN',text,created:Date.now()};
+  const m=createMountain({id,name,position:pos.toArray(),scale:.54+r()*.18,lines:[line]});createConnection(source.id,m.id);history.push({mountainId:m.id,mountainName:m.name,layerId:line.id,mode:'SPAWN',text,created:line.created});selectedMountainId=m.id;selectedLayerId=line.id;$('composer-input').value='';setView('FOCUS',false);selectMountain(m.id,true);emitRipple(source.position,.85);emitRipple(m.position,1.1);saveLocal();endWork(token,'A connected mountain has spawned.');syncTruth()
+}
+
+function clearField(){
+  const total=[...mountains.values()].reduce((sum,m)=>sum+m.lines.length,0);
+  if(!total)return;
+  if(!confirm('Clear every stratum and return to the empty water?'))return;
+  pushUndo();
+  const empty={mountains:[{...initialMountainDef,lines:[]}],connections:[],history:[],selectedMountainId:'focus',selectedLayerId:null,viewMode:'FOCUS',currentMode:'STONE'};
+  restoreSnapshot(empty);
+  saveLocal();
+  trace('The field is empty. Write the first line.');
+}
+
+function exportField(){
+  const blob=new Blob([JSON.stringify(serialize(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='accreting-mountains-field.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);trace('Field exported.')
+}
+function saveLocal(){try{localStorage.setItem('accreting-mountains-v3',JSON.stringify(serialize()))}catch(_){} }
+function loadLocal(){
+  try{const raw=localStorage.getItem('accreting-mountains-v3');if(!raw)return false;const s=JSON.parse(raw);if(!s?.mountains?.length)return false;restoreSnapshot(s);return true}catch(_){return false}
+}
+
+function syncTruth(){
+  const m=mountains.get(selectedMountainId);
+  const layer=m?.lines.find(l=>l.id===selectedLayerId)||m?.lines.at(-1);
+  const total=[...mountains.values()].reduce((sum,mountain)=>sum+mountain.lines.length,0);
+  const empty=total===0;
+  body.classList.toggle('empty-state',empty);
+  body.classList.toggle('has-strata',!empty);
+  if(empty){
+    $('truth-state').textContent='START';
+    $('truth-line').textContent=START_INSTRUCTION;
+    $('truth-meta').textContent='The line becomes the first stratum. Its consequence moves through the water.';
+    $('menu-object').textContent='NO STRATA YET';
+  }else{
+    $('truth-state').textContent=workToken?'WORKING':'READY';
+    $('truth-line').textContent=layer?.text||'';
+    $('truth-meta').textContent='';
+    $('menu-object').textContent=`${total} STRATA`;
+  }
+  $('history-open').disabled=!history.length;
+  $('undo-button').disabled=!undoStack.length;
+  $('export-button').disabled=empty;
+  updateRippleAnchor();
+}
+
+function updateLabels(){}
+
+function raySelect(event){
+  if(body.classList.contains('menu-open')||body.classList.contains('history-open')||workToken)return;
+  const rect=canvas.getBoundingClientRect();pointer.x=((event.clientX-rect.left)/rect.width)*2-1;pointer.y=-((event.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,camera);
+  const hits=raycaster.intersectObjects(interactiveMeshes,false);if(!hits.length)return;const u=hits[0].object.userData;if(u?.mountainId&&u?.layerId)selectLayer(u.mountainId,u.layerId,true)
+}
+canvas.addEventListener('pointerup',raySelect);
+
+function updateCameraFlight(now){
+  if(!cameraFlight)return;const k=clamp((now-cameraFlight.start)/cameraFlight.duration,0,1);const e=1-Math.pow(1-k,3);camera.position.lerpVectors(cameraFlight.fromPos,cameraFlight.toPos,e);controls.target.lerpVectors(cameraFlight.fromTarget,cameraFlight.toTarget,e);if(k>=1)cameraFlight=null
+}
+
+function animate(now=0){
+  requestAnimationFrame(animate);const dt=clock.getDelta();if(water)water.material.uniforms.time.value+=dt;if(stars)stars.rotation.y+=dt*.002;
+  updateCameraFlight(now);controls.update();updateLabels();updateRipples(now);connections.forEach((c,i)=>{c.material.opacity=.43+.2*Math.sin(now*.0012+c.phase+i)});renderer.render(scene,camera)
+}
+
+function resetBaseCamera(){const m=mountains.get(selectedMountainId);focusCamera(m);trace('Camera returned to the readable face at the selected base.');}
+
+function bindUI(){
+  $('menu-button').addEventListener('click',()=>body.classList.toggle('menu-open'));
+  $('close-menu').addEventListener('click',()=>body.classList.remove('menu-open'));
+  $('mode-button').addEventListener('click',cycleMode);
+  $('add-button').addEventListener('click',addCurrentLine);
+  $('composer-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();addCurrentLine()}});
+  $('field-view').addEventListener('click',()=>setView('FIELD',true));
+  $('focus-view').addEventListener('click',()=>setView('FOCUS',true));
+  $('quiet-view').addEventListener('click',()=>{body.classList.toggle('quiet');$('quiet-view').classList.toggle('active',body.classList.contains('quiet'));body.classList.remove('menu-open')});
+  $('reset-view').addEventListener('click',resetBaseCamera);
+  $('history-open').addEventListener('click',()=>{body.classList.add('history-open');body.classList.remove('menu-open');renderHistory()});
+  $('history-close').addEventListener('click',()=>body.classList.remove('history-open'));
+  $('undo-button').addEventListener('click',undo);
+  $('export-button').addEventListener('click',exportField);
+  $('clear-field').addEventListener('click',clearField);
+  $('stop-button').addEventListener('click',stopWork);
+  addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+  addEventListener('keydown',e=>{if(e.key==='Escape'){body.classList.remove('menu-open','history-open');if(body.classList.contains('quiet'))body.classList.remove('quiet')}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();undo()}})
+}
+
+try{
+  createRenderer();createScene();initialField();bindUI();syncMode();
+  trace('Write the first line.');
+  animate();
+}catch(error){console.error(error);$('fallback').style.display='flex'}
+</script>
+</body>
+</html>

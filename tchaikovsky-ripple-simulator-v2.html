@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>TCHAIKOVSKY_RIPPLE_SIMULATOR // CULTURAL MEMORY EXPRESS</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;700&family=Special+Elite&display=swap');
+
+:root{
+  --bg:#040302;
+  --coal:#0a0906;
+  --surface:rgba(14,12,10,.88);
+  --surface-soft:rgba(10,9,7,.82);
+  --border:rgba(200,169,110,.18);
+  --border-bright:rgba(200,169,110,.4);
+  --cyan:#48c9b0;
+  --cyan-dim:rgba(72,201,176,.15);
+  --cyan-glow:rgba(72,201,176,.55);
+  --teal:#2db8a4;
+  --amber:#d4a017;
+  --magenta:#c43fa0;
+  --ink:#e9d7be;
+  --paper:#f1ede1;
+  --paper-dim:#cbbba1;
+  --sepia:#c8a96e;
+  --manila:#d4b896;
+  --mono:'Share Tech Mono',monospace;
+  --serif:'EB Garamond',serif;
+  --display:'Cinzel',serif;
+  --typewriter:'Special Elite',cursive;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{
+  width:100%;height:100%;
+  overflow:hidden;
+  background:var(--bg);
+  font-family:var(--mono);
+  color:var(--ink);
+  cursor:crosshair;
+}
+
+/* ─── CANVAS ─── */
+#canvas-bg{
+  position:fixed;inset:0;
+  z-index:1;
+}
+
+/* ─── SCANLINES ─── */
+.scanlines{
+  position:fixed;inset:0;
+  z-index:99;
+  pointer-events:none;
+  background:repeating-linear-gradient(
+    0deg,transparent,transparent 2px,
+    rgba(200,169,110,.022) 2px,rgba(200,169,110,.022) 4px
+  );
+}
+
+/* ─── GRAIN ─── */
+.grain{
+  position:fixed;inset:0;
+  z-index:98;
+  pointer-events:none;
+  opacity:.35;
+  mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.1'/%3E%3C/svg%3E");
+}
+
+/* ─── MASTER LAYOUT ─── */
+#ui{
+  position:fixed;inset:0;
+  z-index:10;
+  display:grid;
+  grid-template-rows:44px 1fr 296px;
+  pointer-events:none;
+}
+
+/* ─────────────────────────────
+   TOP RAIL
+───────────────────────────── */
+#top-rail{
+  display:flex;
+  align-items:stretch;
+  border-bottom:1px solid var(--border);
+  background:rgba(4,3,2,.92);
+  backdrop-filter:blur(12px);
+  pointer-events:auto;
+  position:relative;
+  overflow:hidden;
+}
+
+#top-rail::after{
+  content:'';
+  position:absolute;
+  bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan),var(--magenta),var(--cyan),transparent);
+  animation:rail-sweep 4s linear infinite;
+}
+@keyframes rail-sweep{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+
+#sys-title{
+  display:flex;
+  align-items:center;
+  padding:0 14px;
+  border-right:1px solid var(--border);
+  font-family:var(--display);
+  font-size:9px;
+  letter-spacing:.4em;
+  color:var(--cyan);
+  text-shadow:0 0 14px var(--cyan-glow);
+  white-space:nowrap;
+  flex-shrink:0;
+  gap:8px;
+}
+
+#sys-title .dot{
+  width:5px;height:5px;
+  background:var(--cyan);
+  border-radius:50%;
+  box-shadow:0 0 8px var(--cyan);
+  animation:blink 1.6s ease-in-out infinite;
+  flex-shrink:0;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+#rail-svg-wrap{
+  flex:1;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+}
+
+#rail-svg{
+  width:100%;height:100%;
+}
+
+#rail-meta{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:0 14px;
+  border-left:1px solid var(--border);
+  font-size:9px;
+  white-space:nowrap;
+  flex-shrink:0;
+  color:rgba(200,169,110,.45);
+  letter-spacing:.1em;
+}
+
+#rail-meta span{color:var(--cyan)}
+
+/* ─────────────────────────────
+   MIDDLE TIER
+───────────────────────────── */
+#mid-tier{
+  position:relative;
+  display:flex;
+  align-items:stretch;
+  gap:0;
+  pointer-events:none;
+}
+
+/* ─── LEFT PANEL ─── */
+#left-panel{
+  width:300px;
+  display:flex;
+  flex-direction:column;
+  background:rgba(6,5,4,.82);
+  border-right:1px solid var(--border);
+  backdrop-filter:blur(14px);
+  pointer-events:auto;
+  flex-shrink:0;
+}
+
+/* ─── RIGHT PANEL ─── */
+#right-panel{
+  width:268px;
+  display:flex;
+  flex-direction:column;
+  background:rgba(6,5,4,.82);
+  border-left:1px solid var(--border);
+  backdrop-filter:blur(14px);
+  pointer-events:auto;
+  flex-shrink:0;
+  margin-left:auto;
+}
+
+/* ─── PANEL COMMON ─── */
+.p-title{
+  padding:7px 11px;
+  background:rgba(200,169,110,.06);
+  border-bottom:1px solid var(--border);
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.18em;
+  color:var(--paper-dim);
+  flex-shrink:0;
+}
+
+/* ─── STATS GRID ─── */
+#stats-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  flex-shrink:0;
+  border-bottom:1px solid var(--border);
+}
+
+.stat-cell{
+  padding:8px 10px;
+  border-right:1px solid rgba(255,255,255,.04);
+  border-bottom:1px solid rgba(255,255,255,.04);
+}
+.stat-cell:nth-child(2n){border-right:none}
+.stat-cell .sk{
+  font-size:8px;color:var(--paper-dim);
+  text-transform:uppercase;letter-spacing:.1em;
+  margin-bottom:3px;
+}
+.stat-cell .sv{
+  font-family:var(--serif);
+  font-size:14px;color:#fff;
+  line-height:1.1;
+}
+
+/* ─── LOG STREAM ─── */
+#log-wrap{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  overflow:hidden;
+}
+#log-stream{
+  flex:1;
+  overflow-y:auto;
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(72,201,176,.2) transparent;
+}
+#log-stream::-webkit-scrollbar{width:2px}
+#log-stream::-webkit-scrollbar-thumb{background:rgba(72,201,176,.2)}
+
+.le{
+  padding:3px 8px;
+  border-left:2px solid var(--border);
+  font-size:10px;
+  line-height:1.35;
+  animation:msg-in .25s ease;
+}
+.le.sys{border-color:var(--paper-dim);color:var(--paper-dim)}
+.le.cat{border-color:var(--amber);color:var(--amber)}
+.le.state{border-color:#e86060;color:#ffd9cf}
+.le.ripple{border-color:var(--cyan);color:#e0fffa}
+.le.record{border-color:#8f7ca8;color:#d8cfff}
+.le.stone{border-color:var(--magenta);color:#f4c8e8}
+@keyframes msg-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── SOURCE PANEL (right) ─── */
+#source-panel{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  border-bottom:1px solid var(--border);
+}
+
+.tabs{
+  display:flex;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.tab{
+  flex:1;border:none;
+  background:transparent;
+  color:var(--paper-dim);
+  font-family:var(--mono);
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  padding:8px 4px;
+  cursor:pointer;
+  transition:.15s;
+}
+.tab.active{color:#fff;background:rgba(255,255,255,.05)}
+.tab:hover:not(.active){color:var(--ink);background:rgba(255,255,255,.03)}
+
+#source-view{
+  flex:1;
+  overflow:auto;
+  padding:10px;
+  white-space:pre-wrap;
+  font-size:9px;
+  line-height:1.4;
+  color:var(--paper-dim);
+  scrollbar-width:thin;
+  scrollbar-color:rgba(200,169,110,.15) transparent;
+}
+
+/* ─── ENTITY LIST (right) ─── */
+#entity-panel{
+  flex-shrink:0;
+  max-height:220px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+#entity-list{
+  overflow-y:auto;
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  scrollbar-width:thin;
+}
+.e-card{
+  padding:7px 9px;
+  border:1px solid rgba(255,255,255,.07);
+  background:rgba(255,255,255,.025);
+  cursor:pointer;
+  transition:.18s;
+}
+.e-card:hover{border-color:rgba(72,201,176,.3);background:rgba(72,201,176,.05)}
+.e-card.active{border-color:rgba(72,201,176,.5);background:rgba(72,201,176,.09)}
+.e-name{font-size:10px;color:#fff;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}
+.e-meta{font-size:9px;color:var(--paper-dim);line-height:1.35}
+
+/* ─── CAR NAV (right) ─── */
+#car-nav{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  padding:8px;
+  border-top:1px solid var(--border);
+  flex-shrink:0;
+}
+.car-btn{
+  display:flex;align-items:center;gap:7px;
+  padding:5px 8px;
+  border:1px solid rgba(200,169,110,.12);
+  background:rgba(0,0,0,.4);
+  color:rgba(200,169,110,.4);
+  font-family:var(--mono);font-size:8px;
+  letter-spacing:.08em;
+  cursor:pointer;transition:.18s;text-align:left;
+}
+.car-btn:hover{border-color:rgba(72,201,176,.35);color:var(--cyan);background:rgba(72,201,176,.05)}
+.car-btn.active{border-color:rgba(72,201,176,.6);color:var(--cyan);background:rgba(72,201,176,.08);text-shadow:0 0 8px var(--cyan-glow)}
+.car-dot{width:4px;height:4px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+/* ─────────────────────────────
+   BOTTOM CHAT
+───────────────────────────── */
+#chat{
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  background:rgba(7,6,5,.94);
+  border-top:1px solid rgba(72,201,176,.3);
+  backdrop-filter:blur(18px);
+  pointer-events:auto;
+  position:relative;
+  overflow:hidden;
+}
+
+#chat::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent 0%,var(--teal) 25%,var(--cyan) 50%,var(--teal) 75%,transparent 100%);
+  box-shadow:0 0 18px rgba(72,201,176,.4);
+}
+
+/* Chat header */
+#chat-hdr{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 16px;
+  border-bottom:1px solid rgba(200,169,110,.1);
+  background:rgba(5,4,3,.8);
+  flex-shrink:0;
+}
+
+#chat-indicator{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--cyan);
+  box-shadow:0 0 8px var(--cyan);
+  animation:blink 1.8s ease-in-out infinite;
+  flex-shrink:0;
+}
+
+#chat-title{
+  font-family:var(--mono);
+  font-size:10px;letter-spacing:.22em;
+  color:var(--cyan);text-shadow:0 0 8px rgba(72,201,176,.35);
+  flex:1;
+}
+
+#chat-sub{
+  font-size:8px;letter-spacing:.1em;
+  color:rgba(200,169,110,.4);
+  font-family:var(--serif);
+  font-style:italic;
+}
+
+#chat-conn{
+  font-size:8px;letter-spacing:.12em;
+  color:rgba(72,201,176,.4);
+  border:1px solid rgba(72,201,176,.2);
+  padding:1px 5px;
+}
+
+/* Message history */
+#msg-hist{
+  overflow-y:auto;
+  padding:10px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(72,201,176,.15) transparent;
+}
+#msg-hist::-webkit-scrollbar{width:2px}
+#msg-hist::-webkit-scrollbar-thumb{background:rgba(72,201,176,.15)}
+
+.msg{
+  display:flex;
+  flex-direction:column;
+  border-left:2px solid transparent;
+  padding:5px 10px;
+  animation:msg-in .35s ease forwards;
+}
+
+.msg.narr{border-left-color:rgba(200,169,110,.25)}
+.msg.char{border-left-color:rgba(72,201,176,.55)}
+.msg.usr{
+  border-left-color:rgba(196,63,160,.5);
+  align-items:flex-end;
+  padding-left:60px;
+}
+.msg.sys{border-left-color:rgba(142,124,168,.5)}
+
+.mlbl{
+  font-size:8px;letter-spacing:.2em;
+  margin-bottom:2px;
+  font-family:var(--mono);
+}
+.msg.narr .mlbl{color:rgba(200,169,110,.4)}
+.msg.char .mlbl{color:rgba(72,201,176,.5)}
+.msg.usr .mlbl{color:rgba(196,63,160,.5);text-align:right}
+.msg.sys .mlbl{color:rgba(142,124,168,.5)}
+
+.mtxt{
+  font-family:'Special Elite',cursive;
+  font-size:11.5px;line-height:1.48;
+  color:var(--ink);
+}
+.msg.narr .mtxt{font-style:italic;color:rgba(232,213,183,.65);font-size:11px}
+.msg.usr .mtxt{color:rgba(217,100,200,.9);text-align:right;font-family:var(--mono);font-size:11px}
+.msg.sys .mtxt{color:rgba(180,165,210,.7);font-family:var(--mono);font-size:10px;letter-spacing:.06em}
+
+.msg-sep{
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(200,169,110,.08),transparent);
+  margin:3px 0;
+}
+
+/* Branch choices */
+.branches{
+  display:flex;flex-direction:column;gap:4px;
+  padding:6px 10px 6px 12px;
+}
+.br-btn{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(0,0,0,.5);
+  border:1px solid rgba(72,201,176,.18);
+  color:rgba(200,169,110,.65);
+  font-family:var(--mono);font-size:9.5px;
+  padding:5px 10px;cursor:pointer;
+  transition:.18s;text-align:left;letter-spacing:.04em;
+  position:relative;overflow:hidden;
+}
+.br-btn::before{
+  content:'';
+  position:absolute;left:0;top:0;bottom:0;width:2px;
+  background:var(--cyan);transform:scaleY(0);
+  transition:.18s;transform-origin:bottom;
+}
+.br-btn:hover{
+  border-color:rgba(72,201,176,.45);
+  color:var(--cyan);
+  background:rgba(72,201,176,.06);
+}
+.br-btn:hover::before{transform:scaleY(1)}
+.br-icon{color:var(--cyan);font-size:12px;flex-shrink:0}
+
+/* Chat input */
+#chat-foot{
+  border-top:1px solid rgba(200,169,110,.08);
+  padding:9px 14px;
+  display:flex;align-items:center;gap:9px;
+  background:rgba(5,4,3,.85);
+  flex-shrink:0;
+}
+
+#input-mode{
+  font-size:8px;letter-spacing:.14em;
+  color:rgba(200,169,110,.3);
+  border:1px solid rgba(200,169,110,.14);
+  padding:2px 6px;white-space:nowrap;
+  cursor:pointer;transition:.18s;flex-shrink:0;
+}
+#input-mode:hover{color:var(--sepia);border-color:rgba(200,169,110,.4)}
+
+#chat-input{
+  flex:1;
+  background:rgba(200,169,110,.03);
+  border:1px solid rgba(200,169,110,.14);
+  color:var(--ink);
+  font-family:var(--mono);font-size:12px;
+  padding:7px 12px;outline:none;
+  transition:.18s;letter-spacing:.03em;
+}
+#chat-input::placeholder{color:rgba(200,169,110,.2);font-size:11px}
+#chat-input:focus{
+  border-color:rgba(72,201,176,.35);
+  background:rgba(72,201,176,.03);
+  box-shadow:0 0 10px rgba(72,201,176,.08);
+}
+
+.foot-btn{
+  border:none;
+  font-family:var(--mono);font-size:9px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  padding:8px 13px;cursor:pointer;
+  transition:.18s;flex-shrink:0;
+}
+.foot-btn.alt{
+  background:rgba(255,255,255,.06);
+  color:var(--ink);
+  border:1px solid rgba(200,169,110,.14);
+}
+.foot-btn.alt:hover{background:rgba(255,255,255,.12);color:#fff}
+.foot-btn.primary{
+  background:var(--teal);color:#000;
+  font-weight:bold;
+}
+.foot-btn.primary:hover{background:var(--cyan);box-shadow:0 0 14px rgba(72,201,176,.45)}
+.foot-btn.primary:active{transform:scale(.97)}
+
+/* ─── FLOATING ELEMENTS ─── */
+.f-label{
+  position:fixed;
+  transform:translate(-50%,-50%);
+  z-index:50;pointer-events:none;
+  background:rgba(8,7,5,.82);
+  border:1px solid var(--border);
+  color:var(--ink);
+  font-size:8px;letter-spacing:.12em;
+  text-transform:uppercase;
+  padding:3px 6px;white-space:nowrap;
+  backdrop-filter:blur(6px);
+}
+
+.f-thought{
+  position:fixed;
+  transform:translate(-50%,-50%);
+  z-index:55;pointer-events:none;
+  background:var(--manila);
+  color:#1a1208;
+  border:2px solid #5a4010;
+  font-family:var(--typewriter);
+  font-size:13px;line-height:1.2;
+  padding:9px 12px;
+  max-width:200px;
+  box-shadow:6px 6px 0 rgba(0,0,0,.5);
+  clip-path:polygon(0 10px,10px 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%);
+}
+
+/* Thought card overlay */
+#thought-card{
+  position:fixed;
+  left:50%;top:40%;
+  transform:translate(-50%,-50%);
+  width:340px;max-width:calc(100vw - 40px);
+  background:var(--paper);color:#0d0a06;
+  padding:18px;
+  border:3px solid #1a1208;
+  box-shadow:10px 10px 0 rgba(0,0,0,.6);
+  pointer-events:auto;
+  display:none;z-index:200;
+  font-family:var(--typewriter);
+}
+#thought-card.open{display:block}
+.tc-hdr{
+  font-family:var(--mono);font-size:9px;
+  border-bottom:1px solid #999;
+  margin-bottom:8px;padding-bottom:4px;
+  text-transform:uppercase;letter-spacing:.1em;
+  color:#333;
+}
+.tc-sub{
+  font-family:var(--mono);font-size:9px;
+  color:#777;text-transform:uppercase;
+  letter-spacing:.08em;margin-bottom:10px;
+}
+.tc-txt{
+  font-family:var(--serif);
+  font-size:20px;line-height:1.25;
+  color:#111;
+}
+.tc-close{
+  margin-top:14px;width:100%;height:30px;
+  background:#1a1208;border:none;color:var(--paper);
+  font-family:var(--mono);font-size:9px;
+  letter-spacing:.14em;cursor:pointer;
+}
+.tc-close:hover{background:#333}
+
+/* Notification */
+.notif{
+  position:fixed;
+  top:52px;right:280px;
+  background:rgba(72,201,176,.1);
+  border:1px solid rgba(72,201,176,.3);
+  font-family:var(--mono);font-size:9px;
+  color:var(--cyan);padding:4px 10px;
+  letter-spacing:.1em;
+  animation:notif-life 2.6s ease forwards;
+  pointer-events:none;z-index:300;
+}
+@keyframes notif-life{
+  0%{opacity:0;transform:translateY(-4px)}
+  12%{opacity:1;transform:translateY(0)}
+  80%{opacity:1}
+  100%{opacity:0}
+}
+
+</style>
+</head>
+<body>
+
+<div id="canvas-bg"></div>
+<div class="scanlines"></div>
+<div class="grain"></div>
+
+<div id="ui">
+
+  <!-- ═══ TOP RAIL ═══ -->
+  <div id="top-rail">
+    <div id="sys-title">
+      <div class="dot"></div>
+      TCHAIKOVSKY_RIPPLE_SIMULATOR
+    </div>
+    <div id="rail-svg-wrap">
+      <svg id="rail-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div id="rail-meta">
+      NODE: <span id="node-lbl">CAR 2 — ARCHIVE</span>
+      &nbsp;|&nbsp;
+      BRANCH: <span id="branch-lbl">MAIN</span>
+      &nbsp;|&nbsp;
+      RIPPLES: <span id="ripple-count">0</span>
+    </div>
+  </div>
+
+  <!-- ═══ MID TIER ═══ -->
+  <div id="mid-tier">
+
+    <!-- Left Panel -->
+    <div id="left-panel">
+      <div class="p-title">Field Readings</div>
+      <div id="stats-grid">
+        <div class="stat-cell"><div class="sk">Active Node</div><div class="sv" id="s-node">ELIAS</div></div>
+        <div class="stat-cell"><div class="sk">Node State</div><div class="sv" id="s-state">attentive</div></div>
+        <div class="stat-cell"><div class="sk">Field Stress</div><div class="sv" id="s-stress">14%</div></div>
+        <div class="stat-cell"><div class="sk">Cat Location</div><div class="sv" id="s-cat">entry</div></div>
+        <div class="stat-cell"><div class="sk">Timeline Phase</div><div class="sv" id="s-phase">INITIATION</div></div>
+        <div class="stat-cell"><div class="sk">Last Rule</div><div class="sv" id="s-rule">—</div></div>
+      </div>
+      <div class="p-title" style="border-top:1px solid var(--border)">Semantic Stream</div>
+      <div id="log-wrap">
+        <div id="log-stream"></div>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div id="right-panel">
+      <div id="source-panel">
+        <div class="p-title">World Pipeline</div>
+        <div class="tabs">
+          <button class="tab active" data-tab="wt">WorldText</button>
+          <button class="tab" data-tab="wm">WorldModel</button>
+          <button class="tab" data-tab="rules">Rules</button>
+        </div>
+        <div id="source-view"></div>
+      </div>
+
+      <div id="entity-panel">
+        <div class="p-title" style="border-top:1px solid var(--border)">Ripple Generators</div>
+        <div id="entity-list"></div>
+      </div>
+
+      <div id="car-nav">
+        <div class="p-title" style="padding:5px 8px">Car Navigation</div>
+        <button class="car-btn" data-car="1" onclick="switchCar(1)"><div class="car-dot"></div>CAR 1 — RADIO ERA</button>
+        <button class="car-btn active" data-car="2" onclick="switchCar(2)"><div class="car-dot"></div>CAR 2 — THE ARCHIVE</button>
+        <button class="car-btn" data-car="3" onclick="switchCar(3)"><div class="car-dot"></div>CAR 3 — PRINT ERA</button>
+        <button class="car-btn" data-car="4" onclick="switchCar(4)"><div class="car-dot"></div>CAR 4 — PAPER MACHINES</button>
+        <button class="car-btn" data-car="5" onclick="switchCar(5)"><div class="car-dot"></div>CAR 5 — ECHO CHAMBER</button>
+        <button class="car-btn" data-car="6" onclick="switchCar(6)"><div class="car-dot"></div>CAR 6 — SHADOW INDEX</button>
+      </div>
+    </div>
+
+  </div><!-- /mid-tier -->
+
+  <!-- ═══ CHAT PANEL ═══ -->
+  <div id="chat">
+    <div id="chat-hdr">
+      <div id="chat-indicator"></div>
+      <div id="chat-title">CAR 2 — THE ARCHIVE (ELIAS)</div>
+      <div id="chat-sub">MEMORY NODE ACTIVE</div>
+      <div id="chat-conn">CONNECTED</div>
+    </div>
+    <div id="msg-hist"></div>
+    <div id="chat-foot">
+      <div id="input-mode" onclick="toggleMode()">◈ DROP A STONE</div>
+      <input type="text" id="chat-input" placeholder="Drop a stone into the field…" autocomplete="off"/>
+      <button class="foot-btn alt" id="pause-btn" onclick="togglePause()">Pause</button>
+      <button class="foot-btn alt" onclick="triggerAllPassengers()">Cascade</button>
+      <button class="foot-btn primary" onclick="sendMsg()">SEND THEREFORE</button>
+    </div>
+  </div>
+
+</div><!-- /ui -->
+
+<!-- Thought card overlay -->
+<div id="thought-card">
+  <div class="tc-hdr" id="tc-hdr">Ripple Generator: ELIAS</div>
+  <div class="tc-sub" id="tc-sub">relation: passes_by(cat → node)</div>
+  <div class="tc-txt" id="tc-txt">The archive remembers differently.</div>
+  <button class="tc-close" onclick="closeThought()">DISMISS ✕</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ════════════════════════════════════════
+// WORLD TEXT
+// ════════════════════════════════════════
+const WORLDTEXT = `world <TchaikovskyRippleCarriage> {
+  meta {
+    genre: "semantic transit interior"
+    description: "A commuter carriage where a
+    cautious cat moves through the cabin and
+    activates differentiated passenger ripples."
+    scene_role: "local world / semantic field"
+    parent_engine: "Ripples Engine"
+  }
+
+  entities {
+    <cat>       catalyst_animal / cautious
+    <elias>     archivist / permanence / order
+    <vera>      navigator / ambiguity / drift
+    <morse>     signal / pattern / procedural
+    <afterimage> low-energy / residue
+    <window>    ambient / atmospheric
+  }
+
+  rules {
+    CatPassesPassenger
+    PassengerGeneratesThought
+    ThoughtCreatesRipple
+    RippleUpdatesLog
+  }
+
+  timeline {
+    INITIATION → CatEntry → PassengerCascade
+    → Afterglow
+  }
+}`;
+
+const RULES_TEXT = `CatPassesPassenger
+  WHEN: cat enters trigger radius
+  EFFECT: passenger.triggered = true
+
+PassengerGeneratesThought
+  WHEN: passenger is triggered
+  EFFECT: trait-specific thought emitted
+
+ThoughtCreatesRipple
+  WHEN: thought exists
+  EFFECT: ring expands, pressure rises
+
+RippleUpdatesLog
+  WHEN: ripple emitted
+  EFFECT: semantic_record gains entry
+
+StoneCascade
+  WHEN: operator drops stone
+  EFFECT: all passengers triggered in sequence`;
+
+// ════════════════════════════════════════
+// PASSENGER DATA
+// ════════════════════════════════════════
+const PASSENGERS_DATA = [
+  {
+    id:'elias', name:'ELIAS (THE ARCHIVIST)',
+    pos:[-2.2, 1.65, 0.7],
+    color:0x7b6a5d,
+    thought:'The archive remembers differently.',
+    triggerRadius:2.5,
+    chatTitle:'CAR 2 — THE ARCHIVE (ELIAS)',
+    chatSub:'ARCHIVIST NODE ACTIVE',
+    intro:"You have arrived at the Archive car. Most passengers do not know what they are looking for. The ones who do are the most dangerous.",
+    responses:[
+      "Every document is a lie that survived.",
+      "The catalog numbers were changed twice. Once deliberately. Once by accident. The accident was more revealing.",
+      "I have been here since the second junction. I will be here at the last.",
+      "What you call memory, we call drift. The signal degrades. The noise accumulates.",
+      "The folder? Yes. You shouldn't ask about the folder.",
+      "This car was designated for archival purposes in 1961. The designation was never revoked.",
+      "Standardized wisdom cannot account for a small creature between eras.",
+    ],
+    thoughts:[
+      "The authority of the page resists interruption.",
+      "A moving animal disturbs the grammar of the carriage.",
+      "Standardized wisdom.",
+      "The archive remembers differently.",
+    ],
+    state:{triggered:false,intensity:0}
+  },
+  {
+    id:'vera', name:'VERA (THE NAVIGATOR)',
+    pos:[1.8, 1.65, -0.7],
+    color:0x4e7177,
+    thought:'A flicker of hope in the distance.',
+    triggerRadius:2.4,
+    chatTitle:'CAR 2 — THE ARCHIVE (VERA)',
+    chatSub:'ROUTE NAVIGATION ACTIVE',
+    intro:"I track the branching lines. Most passengers think the train moves forward. It moves in all directions simultaneously. You are choosing, even when you think you are not.",
+    responses:[
+      "The branch at Junction 34 splits into seventeen possible futures. Thirteen are closed.",
+      "Hope is a route condition, not a destination.",
+      "I have calculated this journey four hundred times. The answer changes each time.",
+      "You came from Car 1? Then you already made the first choice. You don't remember making it.",
+      "The line you are on was not the line you boarded.",
+      "There is another train, running parallel. We almost never see it.",
+    ],
+    thoughts:[
+      "A flicker of hope in the distance.",
+      "Two lines diverge and both are taken.",
+      "The route is the argument.",
+      "She is asking the right question at last.",
+    ],
+    state:{triggered:false,intensity:0}
+  },
+  {
+    id:'morse', name:'MORSE (THE SIGNAL)',
+    pos:[0, 1.65, 0.2],
+    color:0x6e5f84,
+    thought:'He is asking the wrong question.',
+    triggerRadius:2.7,
+    chatTitle:'CAR 2 — THE ARCHIVE (MORSE)',
+    chatSub:'SIGNAL MONITORING ACTIVE',
+    intro:"Wrong question. You keep asking where the train is going. The important question is what the train is carrying. I monitor the signal. It has been irregular for six hours.",
+    responses:[
+      "– – · – · ··· · (MORSE). The name is a joke no one explains.",
+      "The signal degraded at the fourth junction. Something was transmitted. Something was received. They were not the same thing.",
+      "Wrong question again.",
+      "I have been listening to Channel 7 for eleven years. Channel 7 has been silent for eleven years.",
+      "Every era of information transmission has its ghost channel.",
+      "Standardized wisdom. That is what Elias calls it. I call it the noise floor.",
+    ],
+    thoughts:[
+      "He is asking the wrong question.",
+      "The signal arrives before the source.",
+      "Pattern detected: recursion.",
+      "Channel 7 is silent again.",
+    ],
+    state:{triggered:false,intensity:0}
+  },
+  {
+    id:'afterimage', name:'RESEARCHER D (AFTERIMAGE)',
+    pos:[-4.8, 0.1, 1.6],
+    color:0x625347,
+    thought:'The carriage wakes only briefly this far back.',
+    triggerRadius:2.2,
+    chatTitle:'CAR 2 — THE ARCHIVE (AFTERIMAGE)',
+    chatSub:'LOW-ENERGY NODE',
+    intro:"Dim back here. I feel events more as residue than alarm. The cat passed several minutes ago, or perhaps it hasn't passed yet. Either seems possible from this seat.",
+    responses:[
+      "The carriage wakes only briefly this far back.",
+      "I feel the event more as residue than alarm.",
+      "The cat passes like a soft revision in stale air.",
+      "Memory at this distance is mostly guesswork.",
+      "Something changed near the front. I can tell by the pressure.",
+    ],
+    thoughts:[
+      "The carriage wakes only briefly this far back.",
+      "I feel it more as residue.",
+      "Almost awake.",
+      "The pressure shifts.",
+    ],
+    state:{triggered:false,intensity:0}
+  },
+  {
+    id:'window', name:'RESEARCHER E (WINDOW INDEX)',
+    pos:[4.6, 0.1, -1.6],
+    color:0x3d6660,
+    thought:'Even the window haze notices this crossing.',
+    triggerRadius:2.3,
+    chatTitle:'CAR 2 — THE ARCHIVE (WINDOW)',
+    chatSub:'AMBIENT PERCEPTION NODE',
+    intro:"Outside light bends around the animal's quiet route. The carriage briefly behaves like a moving observatory. I track the exterior. The interior is your concern.",
+    responses:[
+      "Outside light bends around the animal's quiet route.",
+      "The carriage briefly behaves like a moving observatory.",
+      "Even the window haze notices this cautious crossing.",
+      "I watch the treeline. Something is keeping pace with us.",
+      "The landscape changes more than it should for this route.",
+    ],
+    thoughts:[
+      "Even the window haze notices.",
+      "Something keeps pace with the train.",
+      "The light shifts here.",
+      "Exterior anomaly: treeline velocity mismatch.",
+    ],
+    state:{triggered:false,intensity:0}
+  }
+];
+
+// ════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════
+let scene, camera, renderer, clock;
+let carGroup, treeGroup, catMesh;
+let passengerMeshes = [];
+let rippleBursts = [];
+let floatLabels = new Map();
+let floatThoughts = [];
+let running = true;
+let focusMode = false;
+let currentPassengerId = 'elias';
+let currentCar = 2;
+let currentBranch = 'MAIN';
+let branchState = null;
+let catProgress = 0;
+let totalRipples = 0;
+let fieldStress = 0.14;
+let inputMode = 'stone';
+let currentTab = 'wt';
+
+const CAT_ROUTE = [
+  [8.5,1.45,-4.2],[6,1.48,-4.15],[3,1.52,-4.1],
+  [0.5,1.5,-4.05],[-2,1.54,-4.0],[-4.5,1.48,-4.0],[-8,1.42,-4.0]
+];
+
+const CAR_NAMES = {1:'RADIO ERA',2:'THE ARCHIVE',3:'PRINT ERA',4:'PAPER MACHINES',5:'ECHO CHAMBER',6:'SHADOW INDEX'};
+
+// ════════════════════════════════════════
+// THREE.JS SCENE
+// ════════════════════════════════════════
+function initThree(){
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x020201);
+  scene.fog = new THREE.FogExp2(0x020201, 0.018);
+  clock = new THREE.Clock();
+
+  camera = new THREE.PerspectiveCamera(38, window.innerWidth/window.innerHeight, 0.1, 600);
+  camera.position.set(20, 10, 20);
+  camera.lookAt(0, 2, 0);
+
+  renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  document.getElementById('canvas-bg').appendChild(renderer.domElement);
+
+  // Lights
+  const warm = new THREE.PointLight(0xff9d3d, 2.8, 28);
+  warm.position.set(0, 4, 0); warm.castShadow = true;
+  scene.add(warm);
+
+  const warm2 = new THREE.PointLight(0xd4830e, 1.2, 18);
+  warm2.position.set(-5, 3.5, 0); scene.add(warm2);
+
+  const warm3 = new THREE.PointLight(0xd4830e, 1.2, 18);
+  warm3.position.set(5, 3.5, 0); scene.add(warm3);
+
+  const blueVoid = new THREE.DirectionalLight(0x7dd8ff, 0.35);
+  blueVoid.position.set(10, 6, -12); scene.add(blueVoid);
+
+  scene.add(new THREE.AmbientLight(0xc8a96e, 0.14));
+
+  carGroup = new THREE.Group();
+  treeGroup = new THREE.Group();
+  scene.add(carGroup, treeGroup);
+
+  buildCar();
+  buildPassengers();
+  buildEnvironment();
+  buildCat();
+
+  window.addEventListener('resize', ()=>{
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  renderer.domElement.addEventListener('click', onSceneClick);
+  animate();
+}
+
+function mesh(w,h,d, col){
+  const geo = new THREE.BoxGeometry(w,h,d);
+  const mat = new THREE.MeshToonMaterial({color:col});
+  const m = new THREE.Mesh(geo, mat);
+  m.castShadow = true; m.receiveShadow = true;
+  // Outline
+  const om = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:0x000000, side:THREE.BackSide}));
+  om.scale.set(1.035,1.035,1.035); m.add(om);
+  return m;
+}
+
+function buildCar(){
+  // Floor
+  const fl = mesh(16, 0.5, 10, 0x2a1f14); fl.position.y = -0.25; carGroup.add(fl);
+
+  // Rails
+  const rl = mesh(80, 0.08, 0.1, 0x222222); rl.position.set(0,-0.6,-3.5); carGroup.add(rl);
+  const rr = rl.clone(); rr.position.z = 3.5; carGroup.add(rr);
+
+  // Back wall segments (with windows)
+  const wallMat = new THREE.MeshToonMaterial({color:0x1a1510});
+  [[- 6,3,-5],[0,3,-5],[6,3,-5]].forEach(([x,y,z])=>{
+    const p = mesh(0.5, 6, 0.4, 0x1a1510); p.position.set(x,y,z); carGroup.add(p);
+  });
+  const wTop = mesh(14, 1.5, 0.4, 0x1a1510); wTop.position.set(0,5.5,-5); carGroup.add(wTop);
+  const wBot = mesh(14, 1.5, 0.4, 0x1a1510); wBot.position.set(0,0.75,-5); carGroup.add(wBot);
+
+  // Window panes (glass-like)
+  const glassMat = new THREE.MeshToonMaterial({color:0x0d1e2a, transparent:true, opacity:0.75});
+  [-4.5, 1.5, 4.5].forEach(x=>{
+    const g = new THREE.Mesh(new THREE.BoxGeometry(2.8,3,0.1), glassMat);
+    g.position.set(x, 3.2, -4.95); carGroup.add(g);
+    // Window frame glow
+    const gl = new THREE.Mesh(new THREE.BoxGeometry(2.9,3.1,0.05),
+      new THREE.MeshBasicMaterial({color:0x244050, transparent:true, opacity:0.3}));
+    gl.position.set(x, 3.2, -4.88); carGroup.add(gl);
+  });
+
+  // Ceiling
+  const ceil = mesh(16, 0.4, 10, 0x151210); ceil.position.set(0, 6.4, 0); carGroup.add(ceil);
+
+  // Luggage racks
+  for(let z of [-2, 2]){
+    for(let x = -5; x <= 5; x += 2){
+      const bar = mesh(0.08, 0.08, 0.08, 0x3a2a1a);
+      bar.position.set(x, 5.5, z * 2.5); carGroup.add(bar);
+    }
+    const shelf = mesh(13, 0.06, 1.2, 0x3a2a1a);
+    shelf.position.set(0, 5.5, z * 2.5); carGroup.add(shelf);
+  }
+
+  // Ceiling lamps
+  for(let x = -5; x <= 5; x += 3.5){
+    const lamp = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.15, 0.22, 0.3, 8),
+      new THREE.MeshToonMaterial({color:0xddc060})
+    );
+    lamp.position.set(x, 6.1, 0); carGroup.add(lamp);
+    const glow = new THREE.PointLight(0xffcc44, 0.6, 6);
+    glow.position.set(x, 5.8, 0); carGroup.add(glow);
+  }
+
+  // Seats / benches
+  const seatMat = new THREE.MeshToonMaterial({color:0xe7ddc8});
+  const backMat = new THREE.MeshToonMaterial({color:0xd8ccb8});
+
+  // Side benches
+  const benchL = mesh(3.5, 1.0, 1.8, 0xd8ccb8); benchL.position.set(-5.2, 0.5, 2.2); carGroup.add(benchL);
+  const benchR = benchL.clone(); benchR.position.set(5.2, 0.5, -2.2); carGroup.add(benchR);
+
+  // Back of bench
+  const backL = mesh(3.5, 1.5, 0.2, 0xc8b8a0); backL.position.set(-5.2, 1.2, 3.1); carGroup.add(backL);
+  const backR = backL.clone(); backR.position.set(5.2, 1.2, -3.1); carGroup.add(backR);
+
+  // Center table cluster
+  const table = mesh(4.5, 0.1, 2.8, 0x3a2a1a); table.position.set(0, 1.58, 0); carGroup.add(table);
+  const tl1 = mesh(0.16, 1.5, 0.16, 0x2a1f14); tl1.position.set(-1.8, 0.75, 0); carGroup.add(tl1);
+  const tl2 = tl1.clone(); tl2.position.x = 1.8; carGroup.add(tl2);
+
+  // Individual seats at table
+  for(let z of [-0.9, 0.9]){
+    const s = mesh(1.0, 0.08, 0.9, 0xd0c4ae); s.position.set(0, 1.62, z); carGroup.add(s);
+  }
+}
+
+function buildPassengers(){
+  PASSENGERS_DATA.forEach(data => {
+    const g = new THREE.Group();
+
+    const bodyCol = data.color;
+    const body = mesh(0.75, 1.35, 0.62, bodyCol); body.position.y = 0.68; g.add(body);
+    const head = mesh(0.52, 0.58, 0.52, 0xceb89e); head.position.y = 1.63; g.add(head);
+
+    // Accessories
+    if(data.id==='elias'){
+      const book = mesh(0.48, 0.07, 0.64, 0xe8ddc8); book.position.set(0.25,1.05,0.25); g.add(book);
+      // Glasses
+      const gl = mesh(0.42, 0.02, 0.02, 0x333333); gl.position.set(0,1.65,0.27); g.add(gl);
+    }
+    if(data.id==='vera'){
+      const tab = mesh(0.55, 0.04, 0.38, 0x102030); tab.position.set(-0.18,1.0,0.2); g.add(tab);
+      // Screen glow
+      const sg = new THREE.PointLight(0x48c9b0, 0.4, 1.2); sg.position.set(-0.18,1.1,0.35); g.add(sg);
+    }
+    if(data.id==='morse'){
+      // Cap
+      const cap = mesh(0.6, 0.12, 0.62, 0x1a1510); cap.position.set(0, 1.97, 0.04); g.add(cap);
+      const brim = mesh(0.78, 0.06, 0.3, 0x141210); brim.position.set(0, 1.9, 0.3); g.add(brim);
+    }
+
+    g.position.set(...data.pos);
+    g.userData = {isPassenger:true, data};
+    carGroup.add(g);
+    passengerMeshes.push(g);
+
+    // Floating label
+    const lbl = document.createElement('div');
+    lbl.className = 'f-label';
+    lbl.textContent = data.id.toUpperCase();
+    document.body.appendChild(lbl);
+    floatLabels.set(data.id, lbl);
+  });
+}
+
+function buildEnvironment(){
+  for(let i=0; i<38; i++){
+    const t = new THREE.Group();
+    const trunk = mesh(0.28, 5, 0.28, 0x1a1510); trunk.position.y = 2.5; t.add(trunk);
+    const leaves = new THREE.Mesh(
+      new THREE.ConeGeometry(1.4+Math.random(), 5+Math.random()*3, 5),
+      new THREE.MeshToonMaterial({color:0x111811})
+    );
+    leaves.position.y = 6.5; t.add(leaves);
+    resetTree(t);
+    t.position.x = (Math.random()*140)-70;
+    t.scale.setScalar(0.4 + Math.random()*2.2);
+    treeGroup.add(t);
+  }
+}
+
+function resetTree(t){
+  t.position.x = 70;
+  t.position.z = -12 - Math.random()*22;
+}
+
+function buildCat(){
+  catMesh = new THREE.Group();
+  const body = mesh(0.65, 0.28, 0.22, 0x080808); body.position.y = 0;
+  const head = mesh(0.2, 0.2, 0.2, 0x0a0a0a); head.position.set(0.38, 0.1, 0);
+  // Ears
+  const earL = mesh(0.07,0.12,0.04,0x0a0a0a); earL.position.set(0.36,0.22, 0.08); catMesh.add(earL);
+  const earR = earL.clone(); earR.position.z = -0.08; catMesh.add(earR);
+  // Tail
+  const tail = mesh(0.08,0.38,0.08,0x080808);
+  tail.position.set(-0.44,0.2,0); tail.rotation.z = 0.5; catMesh.add(tail);
+  // Eyes glow
+  const eyeL = new THREE.PointLight(0xffd080, 0.3, 0.8); eyeL.position.set(0.42,0.1,0.06); catMesh.add(eyeL);
+  const eyeR = eyeL.clone(); eyeR.position.z = -0.06; catMesh.add(eyeR);
+
+  catMesh.add(body, head);
+  const [x,y,z] = CAT_ROUTE[0];
+  catMesh.position.set(x,y,z);
+  scene.add(catMesh);
+}
+
+// ════════════════════════════════════════
+// ANIMATION LOOP
+// ════════════════════════════════════════
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  const t = clock.getElapsedTime();
+
+  // Trees
+  treeGroup.children.forEach(tree=>{
+    tree.position.x -= 16 * dt;
+    if(tree.position.x < -70) resetTree(tree);
+  });
+
+  // Car sway
+  carGroup.position.y = Math.sin(t*11) * 0.013;
+  carGroup.rotation.z = Math.sin(t*1.8) * 0.004;
+
+  // Cat movement
+  if(running){
+    catProgress += 0.055 * dt * 6;
+    if(catProgress >= CAT_ROUTE.length-1){
+      catProgress = 0;
+      addLog('CAT PASSAGE COMPLETED. RESETTING ROUTE.','cat');
+      PASSENGERS_DATA.forEach(p=>{ p.state.triggered=false; p.state.intensity=0; });
+    }
+    const i = Math.floor(catProgress);
+    const f = catProgress - i;
+    const a = CAT_ROUTE[i], b = CAT_ROUTE[Math.min(i+1, CAT_ROUTE.length-1)];
+    const cx = a[0]+(b[0]-a[0])*f;
+    const cy = a[1]+Math.sin(t*18)*0.025;
+    const cz = a[2];
+    catMesh.position.set(cx,cy,cz);
+    catMesh.rotation.y = Math.atan2(b[2]-a[2],b[0]-a[0]) + Math.PI*0.5;
+
+    // Update cat location label
+    const phase = getCatPhase();
+    document.getElementById('s-cat').textContent = phase;
+    document.getElementById('s-phase').textContent = getTimelinePhase();
+
+    // Check proximity
+    PASSENGERS_DATA.forEach(pdata=>{
+      const pm = passengerMeshes.find(m=>m.userData.data.id===pdata.id);
+      if(!pm) return;
+      const pp = pdata.pos;
+      const dx=cx-pp[0], dy=cy-pp[1], dz=cz-pp[2];
+      const d = Math.sqrt(dx*dx+dy*dy+dz*dz);
+      if(d < pdata.triggerRadius){
+        triggerPassenger(pm, false);
+      }
+    });
+  }
+
+  // Decay intensities
+  PASSENGERS_DATA.forEach(p=>{
+    p.state.intensity = Math.max(0, p.state.intensity - dt*0.22);
+    if(p.state.intensity < 0.03) p.state.triggered = false;
+  });
+
+  // Ripple rings
+  for(let i=rippleBursts.length-1;i>=0;i--){
+    const r = rippleBursts[i];
+    const el = t - r.start;
+    if(el > r.life){ scene.remove(r.mesh); rippleBursts.splice(i,1); continue; }
+    r.mesh.scale.setScalar(1 + el*6);
+    r.mesh.material.opacity = 1 - el/r.life;
+  }
+
+  // Stress decay
+  fieldStress = Math.max(0.14, fieldStress - dt*0.012);
+  document.getElementById('s-stress').textContent = Math.round(fieldStress*100)+'%';
+
+  // Camera
+  if(focusMode){
+    const pm = passengerMeshes.find(m=>m.userData.data.id===currentPassengerId);
+    if(pm){
+      const tp = new THREE.Vector3(pm.position.x+4.5, pm.position.y+2.8, pm.position.z+4.5);
+      camera.position.lerp(tp, 0.045);
+      camera.lookAt(pm.position.x, pm.position.y+1.2, pm.position.z);
+    }
+  }
+
+  updateFloatingLabels();
+  renderer.render(scene, camera);
+}
+
+function getCatPhase(){
+  const t = catProgress/(CAT_ROUTE.length-1);
+  if(t < 0.15) return 'entry';
+  if(t < 0.4) return 'mid-aisle';
+  if(t < 0.7) return 'rear-approach';
+  return 'far-rear';
+}
+
+function getTimelinePhase(){
+  const t = catProgress/(CAT_ROUTE.length-1);
+  if(t < 0.1) return 'INITIATION';
+  if(t < 0.35) return 'CAT_ENTRY';
+  if(t < 0.82) return 'PASSENGER_CASCADE';
+  return 'AFTERGLOW';
+}
+
+// ════════════════════════════════════════
+// FLOATING LABELS
+// ════════════════════════════════════════
+function wts(obj, yOff=0.8){
+  const v = obj.getWorldPosition(new THREE.Vector3());
+  v.y += yOff;
+  v.project(camera);
+  return {
+    x: (v.x*0.5+0.5)*window.innerWidth,
+    y: (-v.y*0.5+0.5)*window.innerHeight,
+    vis: v.z < 1
+  };
+}
+
+function updateFloatingLabels(){
+  passengerMeshes.forEach(pm=>{
+    const id = pm.userData.data.id;
+    const lbl = floatLabels.get(id);
+    if(!lbl) return;
+    const sp = wts(pm, 1.9);
+    lbl.style.display = sp.vis ? 'block' : 'none';
+    lbl.style.left = sp.x+'px';
+    lbl.style.top = sp.y+'px';
+  });
+
+  const now = clock.getElapsedTime();
+  for(let i=floatThoughts.length-1;i>=0;i--){
+    const ft = floatThoughts[i];
+    const el = now - ft.start;
+    if(el > ft.life){ ft.el.remove(); floatThoughts.splice(i,1); continue; }
+    const sp = wts(ft.obj, 2.4);
+    ft.el.style.display = sp.vis ? 'block' : 'none';
+    ft.el.style.left = sp.x+'px';
+    ft.el.style.top = (sp.y - el*12)+'px';
+    ft.el.style.opacity = String(Math.max(0, 1 - el/ft.life));
+  }
+}
+
+function emitThoughtBubble(pm, text){
+  const div = document.createElement('div');
+  div.className = 'f-thought';
+  div.textContent = text;
+  document.body.appendChild(div);
+  floatThoughts.push({el:div, obj:pm, start:clock.getElapsedTime(), life:4.0});
+}
+
+// ════════════════════════════════════════
+// RIPPLE TRIGGER
+// ════════════════════════════════════════
+function triggerPassenger(pm, force=false){
+  const data = pm.userData.data;
+  if(!force && data.state.intensity > 0.55) return;
+
+  const thought = data.thoughts[Math.floor(Math.random()*data.thoughts.length)];
+  data.state.triggered = true;
+  data.state.intensity = 1;
+  fieldStress = Math.min(0.99, fieldStress + 0.09);
+  totalRipples++;
+  document.getElementById('ripple-count').textContent = String(totalRipples);
+
+  // Open thought card
+  document.getElementById('tc-hdr').textContent = `Ripple Generator: ${data.name}`;
+  document.getElementById('tc-sub').textContent = `relation: passes_by(cat → ${data.id})`;
+  document.getElementById('tc-txt').textContent = thought;
+  document.getElementById('thought-card').classList.add('open');
+
+  // Log
+  addLog(`<Cat> enters trigger radius of <${data.id}>.`,'cat');
+  addLog(`<${data.id}.triggered> = true`,'state');
+  addLog(`${data.name}: "${thought}"`,'ripple');
+  addLog(`<semantic_record> inscribed ripple #${totalRipples}.`,'record');
+
+  // Update stats
+  document.getElementById('s-node').textContent = data.id.toUpperCase();
+  document.getElementById('s-state').textContent = 'triggered';
+  document.getElementById('s-rule').textContent = 'PassengerGeneratesThought';
+
+  emitThoughtBubble(pm, thought);
+  makeRippleRing(pm.position.clone().add(new THREE.Vector3(0,1.5,0)));
+  renderEntityList();
+}
+
+function makeRippleRing(pos){
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.1, 0.22, 32),
+    new THREE.MeshBasicMaterial({color:0x48c9b0, transparent:true, opacity:1, side:THREE.DoubleSide})
+  );
+  ring.position.copy(pos);
+  ring.rotation.x = -Math.PI/2;
+  scene.add(ring);
+  rippleBursts.push({mesh:ring, start:clock.getElapsedTime(), life:1.6});
+
+  // Second ring (magenta)
+  const ring2 = ring.clone();
+  ring2.material = ring2.material.clone();
+  ring2.material.color.set(0xc43fa0);
+  ring2.material.opacity = 0.5;
+  scene.add(ring2);
+  rippleBursts.push({mesh:ring2, start:clock.getElapsedTime()+0.2, life:1.3});
+}
+
+function onSceneClick(evt){
+  const mouse = new THREE.Vector2(
+    (evt.clientX/window.innerWidth)*2-1,
+    -(evt.clientY/window.innerHeight)*2+1
+  );
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(mouse, camera);
+  const hits = ray.intersectObjects(carGroup.children, true);
+  if(hits.length){
+    let obj = hits[0].object;
+    while(obj.parent && !obj.userData.isPassenger) obj = obj.parent;
+    if(obj.userData.isPassenger){
+      selectPassenger(obj.userData.data.id);
+      triggerPassenger(obj, true);
+    }
+  }
+}
+
+function closeThought(){
+  document.getElementById('thought-card').classList.remove('open');
+}
+window.closeThought = closeThought;
+
+// ════════════════════════════════════════
+// PASSENGER SELECTION
+// ════════════════════════════════════════
+function selectPassenger(id){
+  currentPassengerId = id;
+  const data = PASSENGERS_DATA.find(p=>p.id===id);
+  if(!data) return;
+
+  document.getElementById('chat-title').textContent = data.chatTitle;
+  document.getElementById('chat-sub').textContent = data.chatSub;
+
+  // Reset chat
+  const hist = document.getElementById('msg-hist');
+  hist.innerHTML = '';
+  branchState = null;
+
+  addMsg('narr','// NARRATION',`You turn to face ${data.name}.`);
+  sep();
+  addMsg('char',`${data.name.split('(')[1]?.replace(')','') || data.name} ◈`,data.intro);
+  sep();
+  addMsg('narr','// BRANCH AVAILABLE','The conversation forks here. Two tracks diverge from this station.');
+  addBranchChoices();
+
+  document.getElementById('node-lbl').textContent = `CAR ${currentCar} — ${data.name}`;
+  renderEntityList();
+  drawRailSVG();
+  showNotif(`NODE SWITCHED → ${data.name}`);
+
+  // Focus camera
+  focusMode = true;
+  document.getElementById('s-node').textContent = id.toUpperCase();
+  document.getElementById('s-state').textContent = 'selected';
+}
+
+function addBranchChoices(){
+  const hist = document.getElementById('msg-hist');
+  const wrap = document.createElement('div');
+  wrap.className = 'branches'; wrap.id = 'br-choices';
+
+  const btnA = document.createElement('button');
+  btnA.className = 'br-btn';
+  btnA.innerHTML = `<span class="br-icon">⋈</span><span>Ask about the folder — TRACK A: MATERIAL MEMORY</span>`;
+  btnA.onclick = ()=>chooseBranch('A');
+
+  const btnB = document.createElement('button');
+  btnB.className = 'br-btn';
+  btnB.innerHTML = `<span class="br-icon">⋈</span><span>Ask about the junction — TRACK B: ROUTE LOGIC</span>`;
+  btnB.onclick = ()=>chooseBranch('B');
+
+  wrap.appendChild(btnA); wrap.appendChild(btnB);
+  hist.appendChild(wrap);
+  scrollChat();
+}
+
+// ════════════════════════════════════════
+// BRANCH LOGIC
+// ════════════════════════════════════════
+const BRANCH_RESP = {
+  A:{
+    user:"What's in the folder?",
+    char:"The folder contains documentation of everything that was almost remembered. The near-misses. The half-preserved. The water-damaged. The misfiled. Most of cultural memory is made of these.",
+    narr:"Elias opens the folder slightly. Manila pages, densely covered. The script is too small to read from here.",
+    sys:"BRANCH LOCKED — TRACK A: MATERIAL MEMORY ENGAGED. New route visible in timeline."
+  },
+  B:{
+    user:"Tell me about the junction.",
+    char:"At the junction, the train does not choose. You choose, and the train accommodates. The route diagram updates afterward, not before. Every junction looks like the same junction. That is intentional.",
+    narr:"The windows momentarily show two overlapping landscapes. A branch line runs parallel for exactly three seconds before diverging.",
+    sys:"BRANCH LOCKED — TRACK B: ROUTE LOGIC ENGAGED. Alternate line now visible in rail diagram."
+  }
+};
+
+function chooseBranch(track){
+  branchState = track;
+  const r = BRANCH_RESP[track];
+  const bc = document.getElementById('br-choices');
+  if(bc) bc.remove();
+
+  addMsg('usr','// YOU',r.user); sep();
+  setTimeout(()=>{
+    addMsg('char','◈',r.char); sep();
+    addMsg('narr','// NARRATION',r.narr); sep();
+    addMsg('sys','// SYSTEM',r.sys);
+    document.getElementById('branch-lbl').textContent = `TRACK ${track}`;
+    document.getElementById('node-lbl').textContent = `CAR ${currentCar} — ${track==='A'?'MATERIAL':'ROUTE'}`;
+    drawRailSVG();
+    showNotif(`BRANCH ENGAGED — TRACK ${track}`);
+    addLog(`Branch chosen: TRACK ${track}`,'record');
+  },380);
+}
+
+// ════════════════════════════════════════
+// CHAT
+// ════════════════════════════════════════
+function addMsg(type, lbl, txt){
+  const hist = document.getElementById('msg-hist');
+  const row = document.createElement('div');
+  row.className = `msg ${type}`;
+  row.innerHTML = `<div class="mlbl">${lbl}</div><div class="mtxt">${txt}</div>`;
+  hist.appendChild(row);
+  scrollChat();
+}
+
+function sep(){
+  const hist = document.getElementById('msg-hist');
+  const s = document.createElement('div'); s.className='msg-sep';
+  hist.appendChild(s);
+}
+
+function scrollChat(){
+  const h = document.getElementById('msg-hist');
+  setTimeout(()=>h.scrollTop=h.scrollHeight, 50);
+}
+
+function sendMsg(){
+  const inp = document.getElementById('chat-input');
+  const txt = inp.value.trim();
+  if(!txt) return;
+  inp.value='';
+
+  addMsg('usr','// YOU',txt); sep();
+  addLog(`OPERATOR STONE: ${txt.substring(0,40)}…`,'stone');
+  fieldStress = Math.min(0.99, fieldStress+0.12);
+  document.getElementById('s-rule').textContent='StoneCascade';
+
+  setTimeout(()=>{
+    const data = PASSENGERS_DATA.find(p=>p.id===currentPassengerId);
+    if(data){
+      const resp = data.responses[Math.floor(Math.random()*data.responses.length)];
+      const lbl = data.name.replace(/.*\(/, '').replace(')','') || '◈';
+      addMsg('char',lbl+' ◈', resp); sep();
+      if(Math.random() > 0.5){
+        const narrs = [
+          "The train shifts on its rails. The window shows a different landscape.",
+          "A long silence. The overhead lamp flickers once.",
+          "Something in the folder moves, though no one touched it.",
+          "The signal monitoring device emits a brief tone.",
+          "Outside, the parallel line is briefly visible.",
+          "Distant junction lights: green, then amber, then dark."
+        ];
+        addMsg('narr','// NARRATION',narrs[Math.floor(Math.random()*narrs.length)]); sep();
+      }
+    }
+  }, 420+Math.random()*280);
+}
+
+function toggleMode(){
+  inputMode = inputMode==='stone'?'ask':'stone';
+  const lbl = document.getElementById('input-mode');
+  const inp = document.getElementById('chat-input');
+  if(inputMode==='stone'){
+    lbl.textContent='◈ DROP A STONE';
+    inp.placeholder='Drop a stone into the field…';
+  } else {
+    lbl.textContent='◈ ASK';
+    inp.placeholder='Ask directly of the node…';
+  }
+}
+
+document.getElementById('chat-input').addEventListener('keydown', e=>{
+  if(e.key==='Enter') sendMsg();
+});
+
+// ════════════════════════════════════════
+// CAR NAV / ENTITY LIST / LOG
+// ════════════════════════════════════════
+function switchCar(n){
+  currentCar = n;
+  document.querySelectorAll('.car-btn').forEach(b=>{
+    b.classList.toggle('active', parseInt(b.dataset.car)===n);
+  });
+  const name = CAR_NAMES[n];
+  document.getElementById('node-lbl').textContent = `CAR ${n} — ${name}`;
+  drawRailSVG();
+  showNotif(`MOVING TO CAR ${n} — ${name}`);
+  addMsg('sys','// TRANSIT',`Departing → CAR ${n}: ${name}. Memory domain shift.`); sep();
+  if(n!==2) addMsg('narr','// SYSTEM','This car has not been fully indexed. Some nodes are dark.');
+  addLog(`Transit to CAR ${n}: ${name}`,'sys');
+}
+
+function triggerAllPassengers(){
+  addLog('OPERATOR CASCADE INITIATED','stone');
+  fieldStress = Math.min(0.99, fieldStress+0.3);
+  passengerMeshes.forEach((pm,i)=>{
+    setTimeout(()=>triggerPassenger(pm,true), i*280);
+  });
+  addMsg('sys','// CASCADE','All ripple generators triggered in sequence.');
+}
+
+function togglePause(){
+  running = !running;
+  document.getElementById('pause-btn').textContent = running ? 'Pause' : 'Resume';
+  addLog(running?'SIMULATION RESUMED':'SIMULATION PAUSED','sys');
+}
+window.togglePause = togglePause;
+window.triggerAllPassengers = triggerAllPassengers;
+window.switchCar = switchCar;
+
+function addLog(msg, type='sys'){
+  const stream = document.getElementById('log-stream');
+  const t = clock ? clock.getElapsedTime().toFixed(2) : '0.00';
+  const div = document.createElement('div');
+  div.className = `le ${type}`;
+  div.textContent = `[${t}] ${msg}`;
+  stream.appendChild(div);
+  stream.scrollTop = stream.scrollHeight;
+}
+
+function renderEntityList(){
+  const list = document.getElementById('entity-list');
+  list.innerHTML='';
+  PASSENGERS_DATA.forEach(p=>{
+    const card = document.createElement('div');
+    card.className='e-card'+(currentPassengerId===p.id?' active':'');
+    card.innerHTML=`
+      <div class="e-name">${p.name}</div>
+      <div class="e-meta">state: ${p.state.triggered?'triggered':'attentive'} · intensity: ${p.state.intensity.toFixed(2)}</div>
+    `;
+    card.onclick=()=>selectPassenger(p.id);
+    list.appendChild(card);
+  });
+}
+
+// ════════════════════════════════════════
+// RAIL SVG DIAGRAM
+// ════════════════════════════════════════
+function drawRailSVG(){
+  const svg = document.getElementById('rail-svg');
+  const W = svg.clientWidth || 700;
+  const H = 44;
+  const stops = [
+    {id:1,x:.07},{id:2,x:.22},{id:3,x:.37},
+    {id:4,x:.52},{id:5,x:.67},{id:6,x:.82}
+  ];
+  const MY = 28, BY = 12, ALY = 38;
+  let h = `<defs>
+    <filter id="glow"><feGaussianBlur stdDeviation="2" result="cb"/><feMerge><feMergeNode in="cb"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>`;
+
+  // Main track
+  const x0=stops[0].x*W, xN=stops[stops.length-1].x*W;
+  h+=`<line x1="${x0}" y1="${MY}" x2="${xN}" y2="${MY}" stroke="rgba(200,169,110,.2)" stroke-width="1"/>`;
+
+  // Branch
+  if(branchState){
+    const bx=stops[1].x*W, ex=stops[3].x*W;
+    const col = branchState==='A'?'rgba(196,63,160,.7)':'rgba(72,201,176,.5)';
+    h+=`<path d="M${bx},${MY} Q${(bx+ex)/2},${BY} ${ex},${BY}" stroke="${col}" stroke-width="1.5" fill="none" filter="url(#glow)"/>`;
+    h+=`<text x="${(bx+ex)/2}" y="${BY-3}" fill="${col}" font-family="'Share Tech Mono',monospace" font-size="7" text-anchor="middle" letter-spacing="2">TRACK ${branchState}</text>`;
+  }
+
+  // Alt siding
+  const s1x=stops[1].x*W, s4x=stops[4].x*W;
+  h+=`<path d="M${s1x},${MY} Q${(s1x+s4x)/2},${ALY} ${s4x},${ALY}" stroke="rgba(72,201,176,.15)" stroke-width="1" fill="none" stroke-dasharray="4,5"/>`;
+
+  // Stops
+  stops.forEach(s=>{
+    const sx=s.x*W;
+    const act=s.id===currentCar, past=s.id<currentCar;
+    h+=`<line x1="${sx}" y1="${MY-6}" x2="${sx}" y2="${MY+6}" stroke="rgba(200,169,110,.35)" stroke-width="1"/>`;
+    if(act){
+      h+=`<circle cx="${sx}" cy="${MY}" r="5" fill="${branchState?'#c43fa0':'#48c9b0'}" filter="url(#glow)"/>`;
+      h+=`<circle cx="${sx}" cy="${MY}" r="10" fill="none" stroke="${branchState?'rgba(196,63,160,.25)':'rgba(72,201,176,.2)'}" stroke-width="1"><animate attributeName="r" values="7;14;7" dur="2.2s" repeatCount="indefinite"/><animate attributeName="opacity" values=".5;0;.5" dur="2.2s" repeatCount="indefinite"/></circle>`;
+      h+=`<text x="${sx}" y="${MY-10}" fill="${branchState?'#c43fa0':'#48c9b0'}" font-family="'Share Tech Mono',monospace" font-size="7" text-anchor="middle" filter="url(#glow)">${CAR_NAMES[s.id]}</text>`;
+    } else if(past){
+      h+=`<circle cx="${sx}" cy="${MY}" r="3" fill="rgba(200,169,110,.3)" stroke="rgba(200,169,110,.4)" stroke-width="1"/>`;
+      h+=`<text x="${sx}" y="${MY-8}" fill="rgba(200,169,110,.35)" font-family="'Share Tech Mono',monospace" font-size="6" text-anchor="middle">${CAR_NAMES[s.id]}</text>`;
+    } else {
+      h+=`<circle cx="${sx}" cy="${MY}" r="3" fill="rgba(200,169,110,.05)" stroke="rgba(200,169,110,.18)" stroke-width="1"/>`;
+      h+=`<text x="${sx}" y="${MY-8}" fill="rgba(200,169,110,.2)" font-family="'Share Tech Mono',monospace" font-size="6" text-anchor="middle">${CAR_NAMES[s.id]}</text>`;
+    }
+  });
+
+  svg.innerHTML = h;
+}
+
+// ════════════════════════════════════════
+// SOURCE VIEW
+// ════════════════════════════════════════
+function renderSource(){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===currentTab));
+  const sv = document.getElementById('source-view');
+  if(currentTab==='wt') sv.textContent = WORLDTEXT;
+  else if(currentTab==='wm') sv.textContent = JSON.stringify({
+    meta:{id:'ARCHIVE_NODE_02',car:currentCar,branch:branchState||'MAIN'},
+    field:{stress:Math.round(fieldStress*100)+'%',ripples:totalRipples},
+    passengers:PASSENGERS_DATA.map(p=>({id:p.id,triggered:p.state.triggered,intensity:+p.state.intensity.toFixed(2)}))
+  }, null, 2);
+  else sv.textContent = RULES_TEXT;
+}
+
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{ currentTab=t.dataset.tab; renderSource(); };
+});
+
+// ════════════════════════════════════════
+// NOTIFICATION
+// ════════════════════════════════════════
+function showNotif(msg){
+  const prev = document.querySelector('.notif'); if(prev) prev.remove();
+  const el = document.createElement('div');
+  el.className='notif'; el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 2700);
+}
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+window.addEventListener('load',()=>{
+  initThree();
+  setTimeout(drawRailSVG, 120);
+  window.addEventListener('resize', drawRailSVG);
+  renderSource();
+  renderEntityList();
+
+  // Boot chat
+  addMsg('narr','// NARRATION','The train moves through a region of accumulated knowledge. The year is uncertain.');
+  sep();
+  addMsg('narr','// SYSTEM','Elias has been sitting in this car since the second junction. He carries a folder. The folder is heavy.');
+  sep();
+  addMsg('char','ARCHIVIST ◈','You have arrived at the Archive car. Most passengers do not know what they are looking for. The ones who do are the most dangerous.');
+  sep();
+  addMsg('narr','// BRANCH AVAILABLE','The conversation forks here. Two tracks diverge from this station.');
+  addBranchChoices();
+
+  addLog('SIMULATOR ENGAGED.','sys');
+  addLog('WORLDTEXT SOURCE MOUNTED.','record');
+  addLog('CAT ENTITY REGISTERED AS CATALYST.','cat');
+  addLog('5 RIPPLE GENERATORS ACTIVE.','sys');
+
+  setTimeout(()=>showNotif('MEMORY NETWORK ONLINE — CAR 2 ACTIVE'), 600);
+
+  // Source panel live refresh
+  setInterval(()=>{ if(currentTab==='wm') renderSource(); }, 2000);
+});
+
+</script>
+</body>
+</html>

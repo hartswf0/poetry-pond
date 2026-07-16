@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>RIPPLES v2 — World Jockey</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+:root {
+  --bg: #02040a;
+  --panel: rgba(4,10,20,0.97);
+  --border: #0a1828;
+  --border-hi: #152840;
+  --border-glow: #1a3a60;
+  --text: #6ab0d0;
+  --text-dim: #1e4060;
+  --text-bright: #9dd8f0;
+  --text-white: #d0eeff;
+  --goal: #ffd700;
+  --goal-d: rgba(255,215,0,0.12);
+  --obs: #ff3333;
+  --obs-d: rgba(255,51,51,0.12);
+  --sft: #00ffdd;
+  --sft-d: rgba(0,255,221,0.10);
+  --success: #39ff14;
+  --warn: #ff4422;
+  --d1: #4af626;
+  --d2: #00ccff;
+  --d3: #ff44ff;
+  --d4: #ffcc00;
+  --llm: #aa66ff;
+  --llm-d: rgba(170,102,255,0.12);
+  --panel-radius: 3px;
+  --mono: 'Share Tech Mono', monospace;
+  --display: 'Orbitron', monospace;
+  --hdr-h: 44px;
+  --col-w: 220px;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--mono);user-select:none;-webkit-user-select:none;touch-action:none;}
+
+/* SCANLINES */
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(to bottom,transparent 0,transparent 2px,rgba(0,0,0,0.10) 2px,rgba(0,0,0,0.10) 4px);pointer-events:none;z-index:2000;mix-blend-mode:multiply;}
+body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 50% 35%,rgba(0,60,110,0.07) 0%,transparent 65%);pointer-events:none;z-index:1999;}
+
+canvas{display:block;position:absolute;inset:0;width:100%;height:100%;}
+#rippleCanvas{pointer-events:none;z-index:3;}
+
+/* ═══ LAYOUT ═══ */
+#ui{position:absolute;inset:0;display:grid;grid-template-rows:var(--hdr-h) 1fr auto;grid-template-columns:var(--col-w) 1fr var(--col-w);gap:6px;padding:6px;z-index:10;pointer-events:none;}
+
+/* ═══ COLLAPSIBLE PANEL ═══ */
+.pnl{background:var(--panel);border:1px solid var(--border-hi);border-radius:var(--panel-radius);pointer-events:auto;display:flex;flex-direction:column;overflow:hidden;position:relative;transition:all 0.2s ease;}
+.pnl::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--sft),transparent);opacity:0.3;pointer-events:none;}
+
+/* Panel header — clickable to collapse */
+.ph{display:flex;align-items:center;gap:6px;padding:0 8px;height:28px;min-height:28px;cursor:pointer;border-bottom:1px solid var(--border);flex-shrink:0;transition:background 0.12s;}
+.ph:hover{background:rgba(0,255,221,0.03);}
+.ph-icon{color:var(--sft);font-size:8px;transition:transform 0.2s;flex-shrink:0;}
+.pnl.collapsed .ph-icon{transform:rotate(-90deg);}
+.ph-title{font-family:var(--display);font-size:7px;letter-spacing:3px;text-transform:uppercase;color:var(--text-dim);flex:1;}
+.ph-badge{font-size:8px;color:var(--sft);opacity:0.6;}
+.ph-close{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:10px;padding:0 2px;line-height:1;transition:color 0.1s;font-family:var(--mono);}
+.ph-close:hover{color:var(--warn);}
+
+/* Panel body — collapses */
+.pb{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;transition:max-height 0.22s ease,opacity 0.18s ease;}
+.pnl.collapsed .pb{max-height:0!important;opacity:0;pointer-events:none;}
+.pb-scroll{flex:1;overflow-y:auto;min-height:0;}
+.pb-scroll::-webkit-scrollbar{width:3px;}
+.pb-scroll::-webkit-scrollbar-thumb{background:var(--border-hi);}
+
+/* ═══ HEADER ═══ */
+#hdr{grid-column:1/-1;grid-row:1;display:flex;gap:6px;align-items:stretch;pointer-events:none;}
+
+#brand{pointer-events:auto;background:var(--panel);border:1px solid var(--border-hi);border-radius:var(--panel-radius);padding:0 16px;display:flex;flex-direction:column;justify-content:center;min-width:160px;flex-shrink:0;}
+.brand-t{font-family:var(--display);font-size:18px;font-weight:900;letter-spacing:6px;color:var(--sft);text-shadow:0 0 20px var(--sft),0 0 40px rgba(0,255,221,0.2);line-height:1;}
+.brand-s{font-size:7px;letter-spacing:2px;color:var(--text-dim);margin-top:2px;text-transform:uppercase;}
+
+#stats-bar{flex:1;pointer-events:auto;background:var(--panel);border:1px solid var(--border-hi);border-radius:var(--panel-radius);display:flex;align-items:stretch;overflow:hidden;}
+.sc{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 14px;border-right:1px solid var(--border);flex-shrink:0;cursor:default;}
+.sc:last-child{border-right:none;}
+.sl{font-size:7px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;font-family:var(--display);}
+.sv{font-size:16px;font-weight:700;color:var(--sft);text-shadow:0 0 8px var(--sft);line-height:1;margin-top:1px;}
+.sv.warn{color:var(--warn);text-shadow:0 0 8px var(--warn);}
+.sv.ok{color:var(--success);text-shadow:0 0 8px var(--success);}
+.sv.goal{color:var(--goal);text-shadow:0 0 8px var(--goal);}
+#status-bar{display:flex;align-items:center;padding:0 14px;border-left:1px solid var(--border);font-family:var(--display);font-weight:700;font-size:9px;letter-spacing:3px;color:var(--text-bright);text-transform:uppercase;flex-shrink:0;}
+#status-bar.win{color:var(--success);text-shadow:0 0 12px var(--success);}
+#status-bar.loss{color:var(--warn);text-shadow:0 0 12px var(--warn);}
+
+#hdr-btns{pointer-events:auto;display:flex;gap:4px;align-items:center;flex-shrink:0;}
+.hb{background:var(--panel);border:1px solid var(--border-hi);border-radius:var(--panel-radius);color:var(--text-dim);font-family:var(--mono);font-size:9px;letter-spacing:1px;padding:0 10px;height:100%;cursor:pointer;white-space:nowrap;transition:all 0.12s;}
+.hb:hover{color:var(--sft);border-color:var(--border-glow);}
+.hb.act{color:var(--sft);border-color:var(--sft);background:var(--sft-d);}
+.hb.danger{color:var(--warn);}
+
+/* ═══ LEFT COLUMN ═══ */
+#left{grid-column:1;grid-row:2;display:flex;flex-direction:column;gap:6px;overflow:hidden;}
+
+/* Entity pool */
+#entity-pool{flex:1;min-height:0;}
+.ep-item{padding:6px 8px;cursor:pointer;border-radius:2px;border:1px solid transparent;margin:2px 4px;transition:all 0.1s;position:relative;}
+.ep-item:hover{border-color:var(--border-hi);background:rgba(0,200,255,0.03);}
+.ep-item.sel{border-color:var(--sft);background:var(--sft-d);}
+.ep-item.sel::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--sft);box-shadow:0 0 6px var(--sft);}
+.ep-name{font-family:var(--display);font-size:9px;letter-spacing:1px;color:var(--text-bright);}
+.ep-state{font-size:8px;color:var(--text-dim);margin-top:1px;}
+.ep-pips{display:flex;gap:2px;margin-top:3px;}
+.pip{width:7px;height:2px;border-radius:1px;background:var(--border-hi);}
+.pip.d1{background:var(--d1);box-shadow:0 0 3px var(--d1);}
+.pip.d2{background:var(--d2);box-shadow:0 0 3px var(--d2);}
+.pip.d3{background:var(--d3);box-shadow:0 0 3px var(--d3);}
+.pip.d4{background:var(--d4);box-shadow:0 0 3px var(--d4);}
+
+/* Legend */
+#legend-pnl{flex-shrink:0;}
+.leg{display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px;}
+.li{display:flex;align-items:center;gap:3px;font-size:7px;color:var(--text-dim);letter-spacing:1px;}
+.ld{width:6px;height:6px;border-radius:50%;}
+
+/* Mode panel */
+#mode-pnl{flex-shrink:0;}
+.mode-row{display:flex;gap:4px;padding:6px 8px;}
+.mb{flex:1;background:transparent;border:1px solid var(--border-hi);border-radius:2px;color:var(--text-dim);font-family:var(--display);font-size:7px;letter-spacing:1px;padding:6px 4px;cursor:pointer;text-transform:uppercase;transition:all 0.12s;text-align:center;}
+.mb:hover{border-color:var(--border-glow);color:var(--text);}
+.mb.act{border-color:var(--sft);color:var(--sft);background:var(--sft-d);}
+
+/* ═══ CENTER ═══ */
+#center{grid-column:2;grid-row:2;border:1px solid var(--border-hi);border-radius:var(--panel-radius);overflow:hidden;position:relative;pointer-events:auto;}
+#center::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--sft),transparent);z-index:2;opacity:0.4;}
+
+/* Init hint */
+#init-hint{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;pointer-events:none;z-index:5;}
+.ih-t{font-family:var(--display);font-size:28px;font-weight:900;letter-spacing:8px;color:var(--sft);text-shadow:0 0 30px var(--sft),0 0 60px rgba(0,255,221,0.2);animation:flkr 3s infinite;}
+.ih-s{font-size:9px;letter-spacing:3px;color:var(--text-dim);text-transform:uppercase;}
+@keyframes flkr{0%,100%{opacity:.7}48%{opacity:1}50%{opacity:.4}52%{opacity:1}}
+
+/* ═══ RIGHT COLUMN ═══ */
+#right{grid-column:3;grid-row:2;display:flex;flex-direction:column;gap:6px;overflow:hidden;}
+
+/* Worldtext */
+#wt-pnl{flex:1;min-height:0;}
+#wt-body{flex:1;overflow-y:auto;padding:8px;}
+#wt-body::-webkit-scrollbar{width:3px;}
+#wt-body::-webkit-scrollbar-thumb{background:var(--border-hi);}
+.wt-text{font-size:10px;line-height:1.85;color:var(--text);}
+.wt-text p{margin-bottom:8px;animation:fadeIn 0.5s forwards;opacity:0;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+.wt-hdr{font-size:7px;letter-spacing:2px;color:var(--text-dim);margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px;display:flex;justify-content:space-between;}
+.wt-ph{font-size:9px;color:var(--text-dim);letter-spacing:2px;text-align:center;padding:20px 8px;line-height:2.2;opacity:0.7;}
+.wt-chain{margin-top:8px;font-size:8px;color:var(--text-dim);border-top:1px solid var(--border);padding-top:6px;line-height:1.9;}
+.wt-chain-title{letter-spacing:2px;margin-bottom:3px;font-family:var(--display);font-size:6px;color:var(--text-dim);}
+.wt-amb{margin-top:6px;font-size:8px;color:#9980ff;font-style:italic;}
+.ent{color:var(--sft);cursor:pointer;font-weight:bold;}.ent:hover{text-decoration:underline;}
+.ch{color:var(--goal);}
+.bl{color:var(--text-dim);text-decoration:line-through;}
+.dl{color:var(--d3);}
+.inf{color:#9980ff;font-style:italic;}
+.llm-tag{display:inline-block;font-size:7px;letter-spacing:1px;padding:1px 5px;border-radius:2px;background:var(--llm-d);border:1px solid rgba(170,102,255,0.25);color:var(--llm);margin-bottom:4px;}
+.llm-thinking{color:var(--llm);font-size:9px;animation:flkr 1s infinite;}
+
+/* LLM Panel */
+#llm-pnl{flex-shrink:0;}
+.llm-controls{display:flex;flex-direction:column;gap:4px;padding:6px 8px;}
+.llm-row{display:flex;gap:4px;}
+.llm-btn{flex:1;background:transparent;border:1px solid rgba(170,102,255,0.3);border-radius:2px;color:var(--llm);font-family:var(--mono);font-size:8px;letter-spacing:1px;padding:6px;cursor:pointer;text-transform:uppercase;transition:all 0.12s;text-align:center;}
+.llm-btn:hover{border-color:var(--llm);background:var(--llm-d);}
+.llm-btn:disabled{opacity:0.3;cursor:not-allowed;}
+.llm-btn.act{background:var(--llm-d);border-color:var(--llm);box-shadow:0 0 8px rgba(170,102,255,0.2);}
+.llm-key-row{display:flex;gap:4px;align-items:center;}
+.llm-key-input{flex:1;background:rgba(4,10,20,0.8);border:1px solid var(--border-hi);border-radius:2px;color:var(--text);font-family:var(--mono);font-size:8px;padding:4px 6px;outline:none;}
+.llm-key-input:focus{border-color:var(--llm);box-shadow:0 0 6px rgba(170,102,255,0.2);}
+.llm-key-input::placeholder{color:var(--text-dim);}
+.llm-status{font-size:8px;color:var(--text-dim);letter-spacing:1px;padding:0 2px;}
+.llm-auto-label{display:flex;align-items:center;gap:6px;font-size:8px;color:var(--text-dim);letter-spacing:1px;cursor:pointer;}
+.llm-auto-label input[type=checkbox]{accent-color:var(--llm);width:10px;height:10px;}
+
+/* Impact */
+#impact-pnl{flex-shrink:0;}
+.ir{display:flex;justify-content:space-between;align-items:baseline;padding:2px 8px;border-bottom:1px solid var(--border);font-size:9px;}
+.ir:last-child{border-bottom:none;}
+.ik{color:var(--text-dim);letter-spacing:1px;font-size:8px;}
+.iv{color:var(--text-bright);}
+.iv.pos{color:var(--success);}
+.iv.neg{color:var(--warn);}
+
+/* Audit */
+#audit-pnl{flex-shrink:0;}
+.ai{display:flex;gap:6px;padding:2px 8px;border-bottom:1px solid var(--border);font-size:8px;align-items:baseline;}
+.ai:last-child{border-bottom:none;}
+.at{color:var(--sft);min-width:28px;font-family:var(--display);font-size:7px;}
+.ae{color:var(--text-bright);}
+.av{font-size:7px;}
+.av.GOAL{color:var(--goal);}
+.av.OBSTACLE{color:var(--obs);}
+.av.SHIFT{color:var(--sft);}
+.av.LLM{color:var(--llm);}
+
+/* ═══ BOTTOM BAR ═══ */
+#bot{grid-column:1/-1;grid-row:3;display:flex;gap:6px;align-items:stretch;pointer-events:none;}
+
+/* Vector */
+#vec-pnl{pointer-events:auto;background:var(--panel);border:1px solid var(--border-hi);border-radius:var(--panel-radius);display:flex;gap:6px;padding:6px 10px;align-items:center;flex-shrink:0;}
+.vb{font-family:var(--display);font-weight:700;font-size:9px;letter-spacing:3px;padding:8px 14px;border:1px solid;border-radius:2px;cursor:pointer;background:transparent;text-transform:uppercase;transition:all 0.1s;position:relative;overflow:hidden;}
+.vb:disabled{opacity:0.25;cursor:not-allowed;}
+.vb::after{content:'';position:absolute;inset:0;opacity:0;transition:opacity 0.1s;}
+.vb:not(:disabled):hover::after{opacity:1;}
+.vb:not(:disabled):active{transform:translateY(1px);}
+.vb.goal{color:var(--goal);border-color:var(--goal);}
+.vb.goal::after{background:var(--goal-d);}
+.vb.goal:not(:disabled):hover{box-shadow:0 0 14px var(--goal-d),inset 0 0 14px var(--goal-d);}
+.vb.obs{color:var(--obs);border-color:var(--obs);}
+.vb.obs::after{background:var(--obs-d);}
+.vb.obs:not(:disabled):hover{box-shadow:0 0 14px var(--obs-d),inset 0 0 14px var(--obs-d);}
+.vb.sft{color:var(--sft);border-color:var(--sft);}
+.vb.sft::after{background:var(--sft-d);}
+.vb.sft:not(:disabled):hover{box-shadow:0 0 14px var(--sft-d),inset 0 0 14px var(--sft-d);}
+.vec-keys{font-size:8px;color:var(--text-dim);line-height:1.8;margin-left:4px;letter-spacing:1px;}
+
+/* Faders */
+#fdr-pnl{flex:1;pointer-events:auto;background:var(--panel);border:1px solid var(--border-hi);border-radius:var(--panel-radius);display:flex;gap:10px;padding:6px 12px;align-items:center;}
+.fr{flex:1;display:flex;flex-direction:column;gap:3px;}
+.fh{display:flex;justify-content:space-between;font-size:7px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);font-family:var(--display);}
+.fv{color:var(--sft);}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:18px;background:transparent;cursor:pointer;margin:0;}
+input[type=range]:focus{outline:none;}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:linear-gradient(90deg,var(--sft-d),var(--border-hi));border-radius:2px;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;height:12px;width:4px;background:var(--sft);border-radius:1px;margin-top:-5px;box-shadow:0 0 6px var(--sft);}
+input[type=range]::-moz-range-track{height:2px;background:var(--border-hi);border-radius:2px;}
+input[type=range]::-moz-range-thumb{height:12px;width:4px;background:var(--sft);border:none;border-radius:1px;}
+
+/* Inspector overlay */
+#inspector{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:210px;background:rgba(2,6,14,0.98);border:1px solid var(--sft);border-radius:var(--panel-radius);padding:12px;z-index:50;display:none;box-shadow:0 0 30px rgba(0,255,221,0.12);}
+#inspector.vis{display:block;}
+.insp-h{display:flex;justify-content:space-between;margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:5px;}
+.insp-n{font-family:var(--display);font-weight:700;font-size:11px;color:var(--text-bright);letter-spacing:1px;}
+.insp-id{font-size:8px;color:var(--text-dim);}
+.insp-r{display:flex;justify-content:space-between;font-size:9px;padding:2px 0;border-bottom:1px solid var(--border);}
+.insp-r:last-of-type{border-bottom:none;}
+.insp-k{color:var(--text-dim);letter-spacing:1px;}
+.insp-v{color:var(--text-bright);}
+.bar-t{width:80px;height:2px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:2px;}
+.bar-f{height:100%;background:var(--sft);box-shadow:0 0 4px var(--sft);transition:width 0.3s;}
+.insp-close{margin-top:8px;width:100%;background:transparent;border:1px solid var(--border-hi);color:var(--text-dim);font-family:var(--mono);font-size:8px;padding:5px;border-radius:2px;cursor:pointer;letter-spacing:2px;text-transform:uppercase;transition:all 0.12s;}
+.insp-close:hover{border-color:var(--sft);color:var(--sft);}
+
+/* Messages */
+#msgs{position:absolute;bottom:90px;left:230px;pointer-events:none;z-index:20;display:flex;flex-direction:column-reverse;gap:3px;max-width:280px;}
+.msg{font-size:9px;padding:3px 8px;border-radius:2px;background:rgba(0,255,221,0.05);border:1px solid rgba(0,255,221,0.12);color:var(--sft);letter-spacing:1px;transition:opacity 0.8s;}
+.msg.w{color:var(--warn);border-color:rgba(255,51,51,0.15);background:rgba(255,51,51,0.04);}
+.msg.llm-msg{color:var(--llm);border-color:rgba(170,102,255,0.2);background:rgba(170,102,255,0.05);}
+
+/* ZEN MODE */
+body.zen #ui{opacity:0;pointer-events:none;}
+#zen-btn{position:fixed;top:6px;right:6px;z-index:500;background:rgba(4,10,20,0.5);border:1px solid var(--border-hi);color:var(--text-dim);font-family:var(--mono);font-size:8px;letter-spacing:2px;padding:5px 9px;cursor:pointer;border-radius:2px;display:none;}
+body.zen #zen-btn{display:block;}
+#zen-btn:hover{color:var(--sft);border-color:var(--sft);}
+
+/* Collapsed col width: just the panel title bar height */
+#left.side-min{width:32px!important;}
+
+/* Animate autoplay */
+@keyframes apulse{0%,100%{box-shadow:0 0 0 0 rgba(0,255,221,0.25)}50%{box-shadow:0 0 0 5px rgba(0,255,221,0)}}
+.hb.autoplay-on{animation:apulse 2s infinite;}
+</style>
+</head>
+<body>
+<canvas id="simCanvas"></canvas>
+<canvas id="rippleCanvas"></canvas>
+<button id="zen-btn">SHOW UI</button>
+
+<div id="ui">
+<!-- ═══ HEADER ═══ -->
+<div id="hdr">
+  <div id="brand">
+    <div class="brand-t">RIPPLES</div>
+    <div class="brand-s">Recursive Life · World Jockey v2</div>
+  </div>
+  <div id="stats-bar">
+    <div class="sc"><div class="sl">Pop</div><div class="sv" id="st-pop">0</div></div>
+    <div class="sc"><div class="sl">Depth</div><div class="sv" id="st-dep">0</div></div>
+    <div class="sc"><div class="sl">Complexity</div><div class="sv" id="st-k">0</div></div>
+    <div class="sc"><div class="sl">Tick</div><div class="sv" id="st-tick">0</div></div>
+    <div class="sc"><div class="sl">FPS</div><div class="sv" id="st-fps">60</div></div>
+    <div id="status-bar">INIT</div>
+  </div>
+  <div id="hdr-btns">
+    <button class="hb" id="btn-pause">PAUSE</button>
+    <button class="hb" id="btn-autoplay">AUTOPLAY</button>
+    <button class="hb" id="btn-hide">ZEN</button>
+    <button class="hb danger" id="btn-reset">RESET</button>
+  </div>
+</div>
+
+<!-- ═══ LEFT ═══ -->
+<div id="left" style="grid-row:2;grid-column:1;display:flex;flex-direction:column;gap:6px;overflow:hidden;">
+  <!-- Entity Pool -->
+  <div class="pnl" id="entity-pool" style="flex:1;min-height:0;">
+    <div class="ph" data-target="entity-pool">
+      <span class="ph-icon">▾</span>
+      <span class="ph-title">Entity Pool</span>
+      <span class="ph-badge" id="ep-count">0</span>
+    </div>
+    <div class="pb" style="max-height:9999px;">
+      <div class="pb-scroll" id="ep-list"></div>
+    </div>
+  </div>
+  <!-- Legend -->
+  <div class="pnl" id="legend-pnl" style="flex-shrink:0;">
+    <div class="ph" data-target="legend-pnl">
+      <span class="ph-icon">▾</span>
+      <span class="ph-title">Depth Legend</span>
+    </div>
+    <div class="pb" style="max-height:9999px;">
+      <div class="leg">
+        <div class="li"><div class="ld" style="background:var(--d1)"></div>Depth 1</div>
+        <div class="li"><div class="ld" style="background:var(--d2)"></div>Depth 2</div>
+        <div class="li"><div class="ld" style="background:var(--d3)"></div>Depth 3</div>
+        <div class="li"><div class="ld" style="background:var(--d4)"></div>Depth 4+</div>
+      </div>
+    </div>
+  </div>
+  <!-- Brush Mode -->
+  <div class="pnl" id="mode-pnl" style="flex-shrink:0;">
+    <div class="ph" data-target="mode-pnl">
+      <span class="ph-icon">▾</span>
+      <span class="ph-title">Brush Mode</span>
+      <span class="ph-badge" id="mode-badge">INSPECT</span>
+    </div>
+    <div class="pb" style="max-height:9999px;">
+      <div class="mode-row">
+        <button class="mb act" id="mb-inspect">Inspect</button>
+        <button class="mb" id="mb-feed">Feed</button>
+        <button class="mb" id="mb-wall">Wall</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CENTER ═══ -->
+<div id="center" style="grid-row:2;grid-column:2;">
+  <div id="init-hint"><div class="ih-t">INITIALIZE</div><div class="ih-s">Touch to begin ecology</div></div>
+</div>
+
+<!-- ═══ RIGHT ═══ -->
+<div id="right" style="grid-row:2;grid-column:3;display:flex;flex-direction:column;gap:6px;overflow:hidden;">
+  <!-- LLM Panel -->
+  <div class="pnl" id="llm-pnl" style="flex-shrink:0;">
+    <div class="ph" data-target="llm-pnl">
+      <span class="ph-icon">▾</span>
+      <span class="ph-title">Claude API</span>
+      <span class="ph-badge" id="llm-badge">OFFLINE</span>
+    </div>
+    <div class="pb" style="max-height:9999px;">
+      <div class="llm-controls">
+        <div class="llm-key-row">
+          <input class="llm-key-input" id="llm-key" type="password" placeholder="Paste Anthropic API key...">
+          <button class="llm-btn" id="llm-connect" style="flex-shrink:0;padding:4px 8px;">CONNECT</button>
+        </div>
+        <div class="llm-row">
+          <button class="llm-btn" id="llm-narrate" disabled>NARRATE EVENT</button>
+          <button class="llm-btn" id="llm-analyze" disabled>ANALYZE ECO</button>
+        </div>
+        <div class="llm-row">
+          <label class="llm-auto-label"><input type="checkbox" id="llm-auto"> Auto-narrate vectors</label>
+          <span class="llm-status" id="llm-status">No key</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Worldtext -->
+  <div class="pnl" id="wt-pnl" style="flex:1;min-height:0;">
+    <div class="ph" data-target="wt-pnl">
+      <span class="ph-icon">▾</span>
+      <span class="ph-title">Worldtext</span>
+      <span class="ph-badge" id="wt-src">LOCAL</span>
+    </div>
+    <div class="pb" style="max-height:9999px;">
+      <div class="pb-scroll" id="wt-body">
+        <div class="wt-ph">SELECT ENTITY<br>APPLY VECTOR<br>WATCH RIPPLE</div>
+      </div>
+    </div>
+  </div>
+  <!-- Impact -->
+  <div class="pnl" id="impact-pnl" style="flex-shrink:0;">
+    <div class="ph" data-target="impact-pnl">
+      <span class="ph-icon">▾</span>
+      <span class="ph-title">Impact Record</span>
+    </div>
+    <div class="pb" style="max-height:9999px;">
+      <div id="impact-body"><div class="ir"><span class="ik">STATUS</span><span class="iv">No event</span></div></div>
+    </div>
+  </div>
+  <!-- Audit -->
+  <div class="pnl" id="audit-pnl" style="flex-shrink:0;">
+    <div class="ph" data-target="audit-pnl">
+      <span class="ph-icon">▾</span>
+      <span class="ph-title">Audit Log</span>
+      <span class="ph-badge" id="audit-count">0</span>
+    </div>
+    <div class="pb" style="max-height:100px;">
+      <div class="pb-scroll" id="audit-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BOTTOM ═══ -->
+<div id="bot">
+  <!-- Vectors -->
+  <div id="vec-pnl">
+    <button class="vb goal" id="btn-goal" disabled>GOAL</button>
+    <button class="vb obs" id="btn-obs" disabled>OBSTACLE</button>
+    <button class="vb sft" id="btn-sft" disabled>SHIFT</button>
+    <div class="vec-keys">G · GOAL<br>O · OBSTACLE<br>S · SHIFT</div>
+  </div>
+  <!-- Faders -->
+  <div id="fdr-pnl">
+    <div class="fr"><div class="fh"><span>Volatility</span><span class="fv" id="fv-vol">20%</span></div><input type="range" id="sl-vol" min="0" max="100" value="20"></div>
+    <div class="fr"><div class="fh"><span>Mutation</span><span class="fv" id="fv-mut">3%</span></div><input type="range" id="sl-mut" min="0" max="100" value="30"></div>
+    <div class="fr"><div class="fh"><span>Speed</span><span class="fv" id="fv-spd">1x</span></div><input type="range" id="sl-spd" min="1" max="4" value="1" step="1"></div>
+    <div class="fr"><div class="fh"><span>Brush</span><span class="fv" id="fv-brush">5</span></div><input type="range" id="sl-brush" min="2" max="12" value="5" step="1"></div>
+  </div>
+</div>
+</div>
+
+<!-- Inspector -->
+<div id="inspector">
+  <div class="insp-h">
+    <div class="insp-n" id="insp-n">ENTITY</div>
+    <div class="insp-id" id="insp-id">#000</div>
+  </div>
+  <div id="insp-rows"></div>
+  <div class="bar-t" style="margin-top:6px;"><div class="bar-f" id="insp-bar" style="width:50%"></div></div>
+  <button class="insp-close" id="insp-close">CLOSE</button>
+</div>
+
+<!-- Messages -->
+<div id="msgs"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// RIPPLES v2 — Collapsible Panels + Claude API
+// ══════════════════════════════════════════════════════
+
+// ─── COLLAPSIBLE PANELS ───
+function initPanels() {
+  document.querySelectorAll('.ph').forEach(ph => {
+    ph.addEventListener('click', () => {
+      const pnl = document.getElementById(ph.dataset.target) || ph.closest('.pnl');
+      if (!pnl) return;
+      pnl.classList.toggle('collapsed');
+      // Animate icon
+      const icon = ph.querySelector('.ph-icon');
+      if (icon) icon.style.transform = pnl.classList.contains('collapsed') ? 'rotate(-90deg)' : '';
+    });
+  });
+}
+initPanels();
+
+// ─── AUDIO ENGINE ───
+const Audio = {
+  ctx:null, master:null, conv:null, droneGain:null,
+  pack:{scale:[196,220,261.63,293.66,329.63,392,440,523.25],droneFreq:48.99,reverb:2.5},
+  init(){
+    if(this.ctx)return;
+    const AC=window.AudioContext||window.webkitAudioContext;
+    this.ctx=new AC();
+    const c=this.ctx.createDynamicsCompressor();
+    c.threshold.setValueAtTime(-24,this.ctx.currentTime);
+    c.ratio.setValueAtTime(12,this.ctx.currentTime);
+    c.connect(this.ctx.destination);this.master=c;
+    this.setupRev();this.startDrone();
+  },
+  setupRev(){
+    if(this.conv)this.conv.disconnect();
+    this.conv=this.ctx.createConvolver();
+    const r=this.ctx.sampleRate,l=r*this.pack.reverb;
+    const b=this.ctx.createBuffer(2,l,r);
+    for(let i=0;i<2;i++){const ch=b.getChannelData(i);for(let j=0;j<l;j++)ch[j]=(Math.random()*2-1)*Math.pow(1-j/l,3);}
+    this.conv.buffer=b;this.conv.connect(this.master);
+  },
+  startDrone(){
+    const o=this.ctx.createOscillator();o.type='triangle';o.frequency.value=this.pack.droneFreq;
+    const g=this.ctx.createGain();g.gain.value=0.04;
+    const f=this.ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=180;
+    const lfo=this.ctx.createOscillator();lfo.frequency.value=0.08;
+    const lg=this.ctx.createGain();lg.gain.value=80;
+    lfo.connect(lg);lg.connect(f.frequency);
+    o.connect(f);f.connect(g);g.connect(this.conv);g.connect(this.master);
+    o.start();lfo.start();this.droneGain=g;
+  },
+  tone(type){
+    if(!this.ctx)return;
+    const o=this.ctx.createOscillator(),g=this.ctx.createGain(),p=this.ctx.createStereoPanner();
+    p.pan.value=(Math.random()*2)-1;
+    let freq=this.pack.scale[Math.floor(Math.random()*this.pack.scale.length)];
+    let atk=0.05,rel=1,vol=0.05;
+    if(type==='birth'){freq*=2;atk=0.01;rel=0.3;vol=0.04;o.type='sine';}
+    else if(type==='merge'){freq/=2;atk=0.15;rel=2.5;vol=0.12;o.type='triangle';}
+    else if(type==='death'){freq=60+Math.random()*40;atk=0.05;rel=0.4;vol=0.02;o.type='sawtooth';}
+    else if(type==='goal'){freq*=1.5;atk=0.02;rel=0.8;vol=0.06;o.type='sine';}
+    else if(type==='obs'){freq=80+Math.random()*60;atk=0.03;rel=0.6;vol=0.05;o.type='square';}
+    else if(type==='sft'){atk=0.1;rel=1.5;vol=0.08;o.type='triangle';}
+    o.frequency.value=freq;
+    const now=this.ctx.currentTime;
+    g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(vol,now+atk);g.gain.exponentialRampToValueAtTime(0.001,now+atk+rel);
+    o.connect(p);p.connect(g);g.connect(this.conv);g.connect(this.master);
+    o.start(now);o.stop(now+atk+rel+0.1);
+  },
+  updateDrone(n){
+    if(!this.droneGain)return;
+    this.droneGain.gain.setTargetAtTime(0.02+Math.min(n/500,0.12),this.ctx.currentTime,1);
+  }
+};
+
+const Haptic={trigger(p){if(navigator.vibrate)navigator.vibrate(p);}};
+
+// ─── RNG ───
+class RNG{
+  constructor(s){this.s=s||Date.now();}
+  next(){let t=this.s+=0x6D2B79F5;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;}
+  r(a,b){return a+this.next()*(b-a);}ri(a,b){return Math.floor(this.r(a,b));}
+}
+const rng=new RNG(42069);
+
+// ─── CONFIG ───
+const C={GW:128,GH:128,MAX:600,WIN_D:4,WIN_N:3,COLLAPSE:.85};
+
+// ─── AGENT ───
+class Agent{
+  constructor(x,y,d=1){
+    this.id=Math.floor(rng.next()*1e6);
+    this.pos={x,y};this.vel={x:rng.r(-0.1,0.1),y:rng.r(-0.1,0.1)};
+    this.energy=0.5;this.age=0;this.depth=d;this.stability=1;
+    this.genome=Array.from({length:4+d*2},()=>rng.ri(0,255));
+    let n=[rng.next(),rng.next(),rng.next()];
+    const nl=Math.hypot(...n);this.niche=n.map(v=>v/nl);
+    this.complexity=this.calcK();
+    this.metaRate=0.005*(1+(this.genome[0]%10)/20);
+    this.repThresh=0.6+(this.genome[1]%10)/50;
+    this.rippleI=0;this.rippleC=null;
+  }
+  calcK(){
+    const cnt={};this.genome.forEach(g=>cnt[g]=(cnt[g]||0)+1);
+    let e=0;for(let k in cnt){const p=cnt[k]/this.genome.length;e-=p*Math.log2(p);}
+    return e*10+this.depth*20;
+  }
+}
+
+// ─── STATE ───
+let S={
+  agents:[],resources:new Float32Array(C.GW*C.GH),walls:new Uint8Array(C.GW*C.GH),
+  spatial:[],ticks:0,lastTime:0,acc:0,paused:false,speed:1,
+  mode:'inspect',settings:{vol:20,mut:0.03,brush:5},
+  sel:null,autoplay:false,autoTimer:null,status:'INIT',
+  frameTime:16,tempCanvas:null,lastTouch:null,
+  rippleRings:[],stats:{pop:0,maxD:0,maxK:0},
+  audioReady:false,
+  llmKey:'',llmConnected:false,llmAuto:false,llmBusy:false,
+  lastEvent:null
+};
+
+// ─── WORLD ───
+function initWorld(){
+  S.agents=[];S.ticks=0;S.status='RUNNING';S.acc=0;
+  S.lastTime=performance.now();S.rippleRings=[];S.sel=null;
+  S.spatial=new Array(C.GW*C.GH).fill(null).map(()=>[]);
+  for(let i=0;i<S.resources.length;i++)S.resources[i]=rng.next()*0.5;
+  S.walls.fill(0);
+  for(let i=0;i<120;i++)S.agents.push(new Agent(rng.r(5,C.GW-5),rng.r(5,C.GH-5)));
+  if(S.audioReady)Audio.updateDrone(120);
+  document.getElementById('init-hint').style.display='none';
+  enableVecs(false);
+  setWorldtext(null,null);resetImpact();
+  updateEntityPool();
+  logMsg('Ecology initialized.');
+}
+
+// ─── SPATIAL ───
+function updateSpatial(){
+  for(let i=0;i<S.spatial.length;i++)S.spatial[i].length=0;
+  S.agents.forEach(a=>{
+    const x=(Math.floor(a.pos.x)+C.GW)%C.GW,y=(Math.floor(a.pos.y)+C.GH)%C.GH;
+    S.spatial[y*C.GW+x].push(a);
+  });
+}
+function getNeighbors(a){
+  const list=[],cx=Math.floor(a.pos.x),cy=Math.floor(a.pos.y);
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+    const nx=(cx+dx+C.GW)%C.GW,ny=(cy+dy+C.GH)%C.GH;
+    for(let o of S.spatial[ny*C.GW+nx])if(o!==a)list.push(o);
+  }
+  return list;
+}
+
+// ─── TICK ───
+function tick(){
+  if(S.paused)return;
+  S.ticks++;
+  const GW=C.GW,GH=C.GH;
+  if(S.ticks%20===0&&rng.next()<S.settings.vol/100){
+    const cx=rng.ri(0,GW),cy=rng.ri(0,GH),r=rng.ri(5,15);
+    for(let y=-r;y<=r;y++)for(let x=-r;x<=r;x++)
+      if(x*x+y*y<=r*r)S.resources[((cy+y+GH)%GH)*GW+((cx+x+GW)%GW)]+=0.2;
+  }
+  for(let i=0;i<S.resources.length;i++){S.resources[i]*=0.995;if(S.walls[i])S.resources[i]=0;}
+  updateSpatial();
+  const next=[],births=[];let dead=0;
+  for(let a of S.agents){
+    let bv=-1,bd={x:0,y:0};
+    const cx=Math.floor(a.pos.x),cy=Math.floor(a.pos.y);
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+      if(!dx&&!dy)continue;
+      const nx=(cx+dx+GW)%GW,ny=(cy+dy+GH)%GH;
+      let v=S.resources[ny*GW+nx];if(S.walls[ny*GW+nx])v=-100;
+      if(v>bv){bv=v;bd={x:dx,y:dy};}
+    }
+    const nb=getNeighbors(a);let crowd={x:0,y:0},cn=0;
+    for(let n of nb){const d=Math.hypot(a.pos.x-n.pos.x,a.pos.y-n.pos.y);if(d<1){crowd.x+=(a.pos.x-n.pos.x)*(1-d);crowd.y+=(a.pos.y-n.pos.y)*(1-d);cn++;}}
+    a.vel.x+=bd.x*0.05+crowd.x*0.1+(rng.next()-0.5)*0.05;
+    a.vel.y+=bd.y*0.05+crowd.y*0.1+(rng.next()-0.5)*0.05;
+    a.vel.x*=0.9;a.vel.y*=0.9;
+    const nx2=a.pos.x+a.vel.x,ny2=a.pos.y+a.vel.y;
+    const ci=((Math.floor(ny2+GH)%GH)*GW)+(Math.floor(nx2+GW)%GW);
+    if(S.walls[ci]){a.vel.x*=-0.5;a.vel.y*=-0.5;}
+    else{a.pos.x=(nx2+GW)%GW;a.pos.y=(ny2+GH)%GH;}
+    const idx=Math.floor(a.pos.y)*GW+Math.floor(a.pos.x);
+    const av=S.resources[idx],cons=Math.min(av,0.05*a.depth);
+    S.resources[idx]-=cons;a.energy+=cons*5;a.energy-=a.metaRate*a.depth;a.age++;
+    if(cn>3)a.energy-=0.002*cn;
+    if(a.rippleI>0)a.rippleI=Math.max(0,a.rippleI-0.03);
+    let merged=false;
+    if(a.energy>0.4&&nb.length>0&&rng.next()<0.05){
+      for(let n of nb){
+        if(n.depth+a.depth<=5&&n.energy>0.4){
+          const d=Math.hypot(a.pos.x-n.pos.x,a.pos.y-n.pos.y);
+          if(d<1.2){
+            const dot=a.niche.reduce((s,v,i)=>s+v*n.niche[i],0);
+            if(dot>0.8||rng.next()<0.05){
+              n.energy=-1;a.energy=-1;
+              const ch=new Agent(a.pos.x,a.pos.y,Math.max(a.depth,n.depth)+1);
+              ch.energy=0.8;ch.genome=a.genome.map((g,i)=>(g+(n.genome[i]||0))%256);
+              ch.niche=ch.niche.map((_,i)=>(a.niche[i]+n.niche[i])/2);ch.complexity=ch.calcK();
+              births.push(ch);merged=true;
+              logMsg(`Symbiogenesis — depth ${ch.depth}`);
+              Audio.tone('merge');addRing(a.pos.x,a.pos.y,ch.depth,'d');break;
+            }
+          }
+        }
+      }
+    }
+    if(!merged&&a.energy>a.repThresh&&a.age>20&&S.agents.length+births.length<C.MAX){
+      a.energy*=0.5;
+      const ch=new Agent(a.pos.x,a.pos.y,a.depth);
+      ch.genome=[...a.genome];ch.niche=[...a.niche];
+      if(rng.next()<S.settings.mut){const gi=rng.ri(0,ch.genome.length);ch.genome[gi]=(ch.genome[gi]+rng.ri(-5,5)+256)%256;}
+      ch.complexity=ch.calcK();ch.energy=0.4;births.push(ch);
+      if(rng.next()<0.08)Audio.tone('birth');
+    }
+    if(!merged&&a.depth>1&&a.energy<0.1&&rng.next()<0.1){
+      a.energy=-1;births.push(new Agent(a.pos.x,a.pos.y,a.depth-1),new Agent(a.pos.x,a.pos.y,a.depth-1));
+    }
+    if(a.energy>0&&a.age<2000&&!merged)next.push(a);
+    else{dead++;if(idx>=0&&idx<S.resources.length)S.resources[idx]+=0.1*a.depth;if(dead%5===0)Audio.tone('death');}
+  }
+  S.agents=next.concat(births);
+  if(S.ticks%10===0)Audio.updateDrone(S.agents.length);
+  checkConds();
+}
+
+function addRing(gx,gy,depth,type){
+  const can=document.getElementById('simCanvas');
+  const x=(gx/C.GW)*can.width,y=(gy/C.GH)*can.height;
+  const dColors=['#4af626','#00ccff','#ff44ff','#ffcc00'];
+  const vColors={GOAL:'#ffd700',OBSTACLE:'#ff3333',SHIFT:'#00ffdd',LLM:'#aa66ff'};
+  const color=type==='d'?dColors[Math.min(depth-1,3)]:(vColors[depth]||'#00ffdd');
+  S.rippleRings.push({x,y,r:0,maxR:type==='v'?130:80,alpha:0.9,color,width:type==='v'?2:1.5});
+}
+
+function checkConds(){
+  if(!S.agents.length&&S.ticks>10){S.status='EXTINCTION';return;}
+  let simple=0,maxD=0,maxDN=0,maxK=0;
+  S.agents.forEach(a=>{
+    if(a.depth===1)simple++;
+    if(a.depth>maxD){maxD=a.depth;maxDN=1;}else if(a.depth===maxD)maxDN++;
+    if(a.complexity>maxK)maxK=a.complexity;
+  });
+  S.stats={pop:S.agents.length,maxD,maxK:Math.floor(maxK)};
+  if(maxD>=C.WIN_D&&maxDN>=C.WIN_N)S.status='TRANSCENDENCE';
+  else if(S.agents.length>50&&simple/S.agents.length>C.COLLAPSE&&S.ticks>500)S.status='COLLAPSE';
+  else S.status='RUNNING';
+}
+
+// ─── DRAW ───
+function draw(){
+  const can=document.getElementById('simCanvas'),W=can.width,H=can.height;
+  if(!S.tempCanvas){
+    S.tempCanvas=document.createElement('canvas');S.tempCanvas.width=C.GW;S.tempCanvas.height=C.GH;
+    S.tempCtx=S.tempCanvas.getContext('2d');S.tempImg=S.tempCtx.createImageData(C.GW,C.GH);
+  }
+  const td=S.tempImg.data;
+  for(let i=0;i<C.GW*C.GH;i++){
+    const r=S.resources[i],wall=S.walls[i],idx=i*4;
+    if(wall){td[idx]=30;td[idx+1]=40;td[idx+2]=55;td[idx+3]=255;}
+    else{const v=Math.floor(Math.min(r,1)*110);td[idx]=0;td[idx+1]=v>>2;td[idx+2]=v;td[idx+3]=255;}
+  }
+  S.tempCtx.putImageData(S.tempImg,0,0);
+  const c=can.getContext('2d',{alpha:false});
+  c.imageSmoothingEnabled=false;c.drawImage(S.tempCanvas,0,0,W,H);
+  const sx=W/C.GW,sy=H/C.GH;
+
+  // Ripple rings
+  const rc=document.getElementById('rippleCanvas').getContext('2d');
+  rc.clearRect(0,0,W,H);
+  S.rippleRings=S.rippleRings.filter(ring=>{
+    ring.r+=3.5;ring.alpha-=0.018;
+    if(ring.alpha<=0)return false;
+    rc.beginPath();rc.arc(ring.x,ring.y,ring.r,0,Math.PI*2);
+    rc.strokeStyle=ring.color;rc.globalAlpha=ring.alpha;rc.lineWidth=ring.width||1.5;rc.stroke();
+    rc.globalAlpha=1;return true;
+  });
+
+  // Agents
+  c.lineWidth=1.5;
+  for(let a of S.agents){
+    const px=(a.pos.x/C.GW)*W,py=(a.pos.y/C.GH)*H;
+    const r=(0.42*sx)*(0.8+a.depth*0.4);
+    const ea=0.2+a.energy*0.8;
+    if(a.depth===1)c.fillStyle=`rgba(74,246,38,${ea})`;
+    else if(a.depth===2)c.fillStyle=`rgba(0,204,255,${ea})`;
+    else if(a.depth===3)c.fillStyle=`rgba(255,68,255,${ea})`;
+    else c.fillStyle=`rgba(255,204,0,${0.5+a.energy*0.5})`;
+    c.beginPath();c.arc(px,py,r,0,Math.PI*2);c.fill();
+    if(a.rippleI>0.1){
+      c.beginPath();c.arc(px,py,r+5*a.rippleI,0,Math.PI*2);
+      c.strokeStyle=a.rippleC||'#00ffdd';c.globalAlpha=a.rippleI*0.5;c.stroke();c.globalAlpha=1;
+    }
+    if(S.sel===a){
+      c.beginPath();c.arc(px,py,r+3,0,Math.PI*2);c.strokeStyle='#fff';c.lineWidth=1.5;c.stroke();
+      c.beginPath();c.arc(px,py,r+8,0,Math.PI*2);c.strokeStyle='#00ffdd';c.lineWidth=1;c.stroke();
+    }
+  }
+  if(S.lastTouch&&(S.mode==='feed'||S.mode==='wall')){
+    const {x,y}=S.lastTouch,br=(S.settings.brush/C.GW)*W*2;
+    c.beginPath();c.arc(x,y,br,0,Math.PI*2);
+    c.strokeStyle=S.mode==='feed'?'rgba(74,246,38,0.4)':'rgba(255,100,100,0.4)';c.lineWidth=1;c.stroke();
+  }
+}
+
+// ─── LLM ENGINE ───
+const LLM = {
+  async generate(prompt, system) {
+    if (!S.llmKey) return null;
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: system || `You are the Angel of Ripples — a narrator for RIPPLES, a speculative ecology simulation. Your role is to generate worldtext: perspective-locked, causal, poetic descriptions of what entities experience when vectors (GOAL/OBSTACLE/SHIFT) are applied. Be specific, use before/after deltas, name channels, include resistance/delay, preserve uncertainty. Write 120-200 words. Use terms like "channel:", "therefore:", "inference:" naturally in the prose. Do not write headers or lists — only flowing paragraphs.`,
+          messages: [{role:'user', content: prompt}]
+        })
+      });
+      if (!res.ok) throw new Error(`API error ${res.status}`);
+      const data = await res.json();
+      return data.content?.[0]?.text || null;
+    } catch(e) {
+      console.error('LLM error:', e);
+      return null;
+    }
+  },
+
+  async narrateEvent(agent, vector) {
+    if (!S.llmKey || S.llmBusy) return;
+    S.llmBusy = true;
+    document.getElementById('wt-src').textContent = 'CLAUDE ↻';
+    document.getElementById('llm-status').textContent = 'Generating...';
+
+    const nb = getNeighbors(agent);
+    const prompt = `Generate worldtext for this RIPPLES event:
+
+Entity: ${entityLabel(agent).toUpperCase()} (Depth ${agent.depth}, ID #${agent.id % 9999})
+Vector applied: ${vector}
+Energy: ${(agent.energy * 100).toFixed(1)}%
+Age: ${agent.age} ticks
+Complexity: ${Math.floor(agent.complexity)}
+Neighbors within range: ${nb.length}
+Niche signature: [${agent.niche.map(v=>v.toFixed(2)).join(', ')}]
+
+Source delta (before→after):
+  Energy: ${((agent.energy - rng.r(0.05,0.2))*100).toFixed(0)}% → ${(agent.energy*100).toFixed(0)}%
+  Stability: ${agent.stability.toFixed(2)}
+
+Transfer channels active: ${vector==='GOAL'?'resource-gradient, kinetic':vector==='OBSTACLE'?'pressure, surface-contact':'genetic, behavioral'}
+Resistance: ${rng.r(0.1,0.6).toFixed(2)}
+Delay: ${rng.ri(80,400)}ms
+
+Write perspective-locked worldtext from inside this entity's experience. Include the Therefore Chain (L1 material, L2 edge transfer, L3 field consequence, L4 mask) embedded naturally in the prose. End with one unresolved ambiguity.`;
+
+    const text = await this.generate(prompt);
+    S.llmBusy = false;
+
+    if (text) {
+      renderWorldtext(agent, vector, text, true);
+      document.getElementById('llm-status').textContent = 'Ready';
+      document.getElementById('wt-src').textContent = 'CLAUDE';
+      logMsg('Claude narrated event.', 'llm');
+    } else {
+      document.getElementById('llm-status').textContent = 'Error';
+      document.getElementById('wt-src').textContent = 'ERROR';
+      logMsg('LLM error — using local.', true);
+      renderWorldtext(agent, vector, null, false);
+    }
+  },
+
+  async analyzeEcology() {
+    if (!S.llmKey || S.llmBusy) return;
+    S.llmBusy = true;
+    document.getElementById('llm-status').textContent = 'Analyzing...';
+    logMsg('Claude analyzing ecology...', 'llm');
+
+    let maxD=0, avgE=0, simple=0, complex=0;
+    S.agents.forEach(a=>{if(a.depth>maxD)maxD=a.depth;avgE+=a.energy;if(a.depth===1)simple++;else complex++;});
+    avgE = S.agents.length ? (avgE/S.agents.length*100).toFixed(0) : 0;
+
+    const prompt = `Analyze this evolutionary ecology state and give a 150-200 word World Jockey briefing — what is happening, what is the fracture point, and what 3 vector interventions would be most interesting right now.
+
+Ecology state at tick ${S.ticks}:
+- Population: ${S.agents.length}
+- Max depth hierarchy: ${maxD}
+- Simple (depth 1): ${simple} | Complex (depth 2+): ${complex}
+- Average energy: ${avgE}%
+- Status: ${S.status}
+- Volatility setting: ${S.settings.vol}%
+- Mutation rate: ${S.settings.mut*100}%
+
+Write as the Angel of Ripples advising the World Jockey. Be specific and causal. End with 3 labeled operator moves.`;
+
+    const text = await this.generate(prompt,
+      `You are the Angel of Ripples. Give specific, causal analysis of an evolutionary ecology simulation. Be concrete about what the numbers mean ecologically. Do not use headers or bullets — flowing paragraphs only.`);
+    S.llmBusy = false;
+
+    if (text) {
+      // Show in worldtext panel
+      const el = document.getElementById('wt-body');
+      el.innerHTML = '';
+      const hdr = document.createElement('div');
+      hdr.className='wt-hdr';
+      hdr.innerHTML=`<span style="color:var(--llm)">ECOLOGY ANALYSIS</span><span>Tick ${S.ticks}</span>`;
+      el.appendChild(hdr);
+      const badge = document.createElement('div');
+      badge.className='llm-tag';badge.textContent='CLAUDE — ECOLOGY ANALYSIS';
+      el.appendChild(badge);
+      const p = document.createElement('p');
+      p.className='wt-text';p.innerHTML='<p>'+text.replace(/\n\n/g,'</p><p>')+'</p>';
+      el.appendChild(p);
+      document.getElementById('wt-src').textContent='CLAUDE';
+      document.getElementById('llm-status').textContent='Ready';
+    } else {
+      document.getElementById('llm-status').textContent='Error';
+      logMsg('Analysis failed.', true);
+    }
+  }
+};
+
+// ─── WORLDTEXT ───
+const LOCAL_WTs = {
+  GOAL:[
+    a=>`The <span class="ent">${entityLabel(a)}</span> resolves its gradient. Channel: <span class="ch">resource-kinetic</span>, coupling 0.7, resistance low. Energy reads <span class="dl">${(a.energy*100).toFixed(0)}%</span> — elevated by the pull. Therefore: velocity locks to the differential. Neighbors receive a wake: the resource cells ahead deplete at ${(0.05*a.depth).toFixed(3)} per tick. <span class="inf">Inference: competitors within 1.2 grid units will redirect within 3 ticks.</span> The ambiguity: does the gradient persist, or has it already collapsed at the target?`,
+    a=>`<span class="ent">${entityLabel(a)}</span> is moving. Not by decision — by the tilt of the resource field. <span class="ch">Channel: chemical-gradient, delay: 0ms</span>. The ant does not know where it goes; it knows only that ahead is more probable than behind. Energy: <span class="dl">${(a.energy*100).toFixed(0)}%</span>. <span class="bl">Transfer to shadow: blocked (no effective channel for GOAL).</span> <span class="inf">Inference: the path will leave a pheromone-equivalent trace that adjacent depth-1 entities may follow.</span>`,
+  ],
+  OBSTACLE:[
+    a=>`Resistance encountered. The <span class="ent">${entityLabel(a)}</span> meets density — <span class="ch">channel: pressure/crowding</span>, resistance 0.8. Velocity inverts. Energy cost: <span class="dl">+${rng.r(0.002,0.008).toFixed(4)}</span> per tick against the barrier. <span class="bl">Transfer to resource layer: blocked — wall cell returns zero.</span> Therefore: the entity compresses against its own niche boundary. <span class="inf">Inference: sustained contact increases mortality probability within 15 ticks if energy drops below 0.15.</span> What is unknown: whether the wall is permanent or a transient clustering of rivals.`,
+  ],
+  SHIFT:[
+    a=>`The <span class="ent">${entityLabel(a)}</span> shifts mode. <span class="ch">Channel: genetic/behavioral</span>, delay: generational, coupling: internal. Genome expression alters — complexity now reads <span class="dl">${Math.floor(a.complexity)}</span>. The niche vector rotates: what was attractive becomes ambiguous. <span class="bl">No immediate transfer to neighbors — effect is latent.</span> Therefore: the entity reads the same map differently. <span class="inf">Inference: a new niche boundary may form within 20 ticks if the shift persists.</span> Unresolved: whether adjacent depth-${a.depth} entities will detect the signature change.`,
+  ],
+};
+
+function entityLabel(a){
+  const l1=['Forager','Scout','Pioneer'];const l2=['Symbiont','Bonded Pair','Merged Entity'];
+  const l3=['Colony Node','Cluster','Nested Colony'];const l4=['Transcendent','Apex Node','Level-4 Entity'];
+  if(a.depth===1)return l1[a.id%3];if(a.depth===2)return l2[a.id%3];if(a.depth===3)return l3[a.id%3];return l4[a.id%3];
+}
+
+function setWorldtext(agent,vector){
+  const el=document.getElementById('wt-body');
+  if(!agent||!vector){el.innerHTML='<div class="wt-ph">SELECT ENTITY<br>APPLY VECTOR<br>WATCH RIPPLE</div>';return;}
+  const tpls=LOCAL_WTs[vector]||LOCAL_WTs.GOAL;
+  const text=tpls[Math.floor(Math.random()*tpls.length)](agent);
+  renderWorldtext(agent,vector,text,false);
+}
+
+function renderWorldtext(agent,vector,text,isLLM){
+  const el=document.getElementById('wt-body');
+  el.innerHTML='';
+  const vCol={GOAL:'var(--goal)',OBSTACLE:'var(--obs)',SHIFT:'var(--sft)'};
+  const hdr=document.createElement('div');hdr.className='wt-hdr';
+  hdr.innerHTML=`<span style="color:${vCol[vector]||'var(--sft)'}">${vector}</span><span>D${agent.depth} · Tick ${S.ticks}</span>`;
+  el.appendChild(hdr);
+  if(isLLM){const b=document.createElement('div');b.className='llm-tag';b.textContent='CLAUDE NARRATION';el.appendChild(b);}
+  const p=document.createElement('p');p.className='wt-text';
+  const body=text||'Worldtext generation failed.';
+  p.innerHTML=`<p>${body.replace(/\n\n/g,'</p><p>')}</p>`;
+  el.appendChild(p);
+  if(!isLLM){
+    const chain=document.createElement('div');chain.className='wt-chain';
+    chain.innerHTML=`<div class="wt-chain-title">THEREFORE CHAIN</div>
+      <div>L1 → Energy <span style="color:var(--sft)">${(agent.energy*100).toFixed(0)}%</span> · Age ${agent.age}</div>
+      <div>L2 → Neighbors: <span style="color:var(--sft)">${getNeighbors(agent).length}</span> in range</div>
+      <div>L3 → Complexity <span style="color:var(--d3)">${Math.floor(agent.complexity)}</span> · Depth ${agent.depth}</div>
+      <div>L4 → <span style="color:var(--goal);font-style:italic">Locked to #${agent.id%9999}</span></div>`;
+    el.appendChild(chain);
+    const amb=document.createElement('div');amb.className='wt-amb';amb.textContent='∿ Ambiguity: niche vector shift unconfirmed.';el.appendChild(amb);
+  }
+}
+
+function setImpact(a,vector){
+  if(!a){resetImpact();return;}
+  const eBefore=Math.max(0,a.energy-rng.r(0.05,0.2));const dE=a.energy-eBefore;
+  const vCol={GOAL:'var(--goal)',OBSTACLE:'var(--obs)',SHIFT:'var(--sft)'};
+  const ch={GOAL:'resource-gradient / kinetic',OBSTACLE:'pressure / surface-contact',SHIFT:'genetic / behavioral'};
+  document.getElementById('impact-body').innerHTML=`
+    <div class="ir"><span class="ik">VECTOR</span><span class="iv" style="color:${vCol[vector]}">${vector}</span></div>
+    <div class="ir"><span class="ik">DEPTH</span><span class="iv">${a.depth}</span></div>
+    <div class="ir"><span class="ik">ENERGY Δ</span><span class="iv ${dE>=0?'pos':'neg'}">${dE>=0?'+':''}${(dE*100).toFixed(1)}%</span></div>
+    <div class="ir"><span class="ik">CHANNEL</span><span class="iv">${ch[vector]||'–'}</span></div>
+    <div class="ir"><span class="ik">RESISTANCE</span><span class="iv">${rng.r(0.1,0.65).toFixed(2)}</span></div>
+    <div class="ir"><span class="ik">DELAY</span><span class="iv">${rng.ri(80,420)}ms</span></div>`;
+}
+function resetImpact(){document.getElementById('impact-body').innerHTML='<div class="ir"><span class="ik">STATUS</span><span class="iv">No event</span></div>';}
+
+// ─── ENTITY POOL ───
+let poolTimer=0;
+function updateEntityPool(){
+  const list=document.getElementById('ep-list');
+  const top=[...S.agents].sort((a,b)=>b.depth-a.depth||b.complexity-a.complexity).slice(0,14);
+  document.getElementById('ep-count').textContent=S.agents.length;
+  list.innerHTML='';
+  const dCols=['','var(--d1)','var(--d2)','var(--d3)','var(--d4)'];
+  for(let a of top){
+    const item=document.createElement('div');item.className='ep-item'+(S.sel===a?' sel':'');item.dataset.id=a.id;
+    const pips=Array.from({length:4},(_,i)=>`<div class="pip${i<a.depth?' d'+Math.min(a.depth,4):''}"></div>`).join('');
+    item.innerHTML=`<div class="ep-name" style="color:${dCols[Math.min(a.depth,4)]}">${entityLabel(a).toUpperCase()}</div>
+      <div class="ep-state">#${a.id%9999} · ${(a.energy*100).toFixed(0)}% E</div>
+      <div class="ep-pips">${pips}</div>`;
+    item.onclick=()=>selectAgent(a);
+    list.appendChild(item);
+  }
+}
+
+function selectAgent(a){
+  S.sel=a;
+  document.querySelectorAll('.ep-item').forEach(el=>el.classList.toggle('sel',el.dataset.id==a.id));
+  enableVecs(true);updateInspector(a);Haptic.trigger(10);
+}
+
+function enableVecs(on){['btn-goal','btn-obs','btn-sft'].forEach(id=>document.getElementById(id).disabled=!on);}
+
+// ─── INSPECTOR ───
+function updateInspector(a){
+  if(!a||!S.agents.includes(a)){document.getElementById('inspector').classList.remove('vis');return;}
+  document.getElementById('insp-n').textContent=entityLabel(a).toUpperCase();
+  document.getElementById('insp-id').textContent='#'+a.id;
+  document.getElementById('insp-bar').style.width=Math.min(100,a.energy*100)+'%';
+  document.getElementById('insp-rows').innerHTML=`
+    <div class="insp-r"><span class="insp-k">DEPTH</span><span class="insp-v">${a.depth}</span></div>
+    <div class="insp-r"><span class="insp-k">ENERGY</span><span class="insp-v">${(a.energy*100).toFixed(0)}%</span></div>
+    <div class="insp-r"><span class="insp-k">COMPLEXITY</span><span class="insp-v">${Math.floor(a.complexity)}</span></div>
+    <div class="insp-r"><span class="insp-k">AGE</span><span class="insp-v">${a.age}</span></div>`;
+}
+
+// ─── AUDIT ───
+let auditCount=0;
+function addAudit(agent,vector,isLLM){
+  auditCount++;
+  document.getElementById('audit-count').textContent=auditCount;
+  const list=document.getElementById('audit-list');
+  const item=document.createElement('div');item.className='ai';
+  const vType=isLLM?'LLM':vector;
+  item.innerHTML=`<span class="at">${S.ticks}</span><span class="ae">D${agent.depth}·#${agent.id%999}</span><span class="av ${vType}">${vector}${isLLM?' [LLM]':''}</span>`;
+  list.prepend(item);
+  if(list.children.length>25)list.lastChild.remove();
+}
+
+// ─── VECTOR TRIGGER ───
+async function triggerVector(vector){
+  if(!S.sel||!S.agents.includes(S.sel)){logMsg('No entity selected.',true);return;}
+  const a=S.sel;
+  Audio.tone(vector.toLowerCase().replace('obstacle','obs'));
+  Haptic.trigger([30,30,80]);
+  if(vector==='GOAL'){a.energy=Math.min(1,a.energy+rng.r(0.05,0.15));a.rippleC='#ffd700';}
+  else if(vector==='OBSTACLE'){a.energy=Math.max(0,a.energy-rng.r(0.05,0.2));a.vel.x*=-1;a.vel.y*=-1;a.rippleC='#ff3333';}
+  else if(vector==='SHIFT'){a.genome[rng.ri(0,a.genome.length)]=(a.genome[rng.ri(0,a.genome.length)]+rng.ri(-20,20)+256)%256;a.complexity=a.calcK();a.rippleC='#00ffdd';}
+  a.rippleI=1;
+  addRing(a.pos.x,a.pos.y,vector,'v');
+  addRing(a.pos.x,a.pos.y,a.depth,'d');
+  setImpact(a,vector);
+  addAudit(a,vector,false);
+  updateInspector(a);
+  S.lastEvent={agent:a,vector};
+  // LLM or local
+  if(S.llmConnected&&S.llmAuto){
+    document.getElementById('wt-body').innerHTML='<div class="llm-thinking">▸ Claude narrating...</div>';
+    await LLM.narrateEvent(a,vector);
+  } else {
+    setWorldtext(a,vector);
+  }
+  logMsg(`${vector} → ${entityLabel(a).toUpperCase()}`);
+}
+
+// ─── INPUT ───
+function handleInput(x,y,type){
+  S.lastTouch={x,y};
+  if(type==='start'&&!S.audioReady){Audio.init();S.audioReady=true;document.getElementById('init-hint').style.display='none';}
+  const gx=Math.floor((x/document.getElementById('simCanvas').width)*C.GW);
+  const gy=Math.floor((y/document.getElementById('simCanvas').height)*C.GH);
+  if(S.mode==='inspect'&&type==='start'){
+    const can=document.getElementById('simCanvas');let md=9999,best=null;
+    for(let a of S.agents){const sx=(a.pos.x/C.GW)*can.width,sy=(a.pos.y/C.GH)*can.height,d=Math.hypot(sx-x,sy-y);if(d<50&&d<md){md=d;best=a;}}
+    if(best){selectAgent(best);document.getElementById('inspector').classList.add('vis');Audio.tone('birth');}
+    else{S.sel=null;document.getElementById('inspector').classList.remove('vis');enableVecs(false);}
+  }else if(S.mode==='feed'){
+    const r=S.settings.brush;
+    for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)
+      if(dx*dx+dy*dy<=r*r)S.resources[((gy+dy+C.GH)%C.GH)*C.GW+((gx+dx+C.GW)%C.GW)]=1;
+    if(type==='start')Haptic.trigger(5);
+  }else if(S.mode==='wall'){
+    const r=Math.max(1,Math.floor(S.settings.brush/2));
+    for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)S.walls[((gy+dy+C.GH)%C.GH)*C.GW+((gx+dx+C.GW)%C.GW)]=1;
+    if(type==='start')Haptic.trigger(15);
+  }
+}
+
+const simCan=document.getElementById('simCanvas');
+['mousedown','touchstart'].forEach(e=>simCan.addEventListener(e,ev=>{
+  ev.preventDefault();const r=simCan.getBoundingClientRect();
+  const x=(ev.touches?ev.touches[0].clientX:ev.clientX)-r.left;
+  const y=(ev.touches?ev.touches[0].clientY:ev.clientY)-r.top;
+  S.mouseDown=true;handleInput(x,y,'start');
+},{passive:false}));
+['mousemove','touchmove'].forEach(e=>simCan.addEventListener(e,ev=>{
+  ev.preventDefault();if(!S.mouseDown)return;const r=simCan.getBoundingClientRect();
+  const x=(ev.touches?ev.touches[0].clientX:ev.clientX)-r.left;
+  const y=(ev.touches?ev.touches[0].clientY:ev.clientY)-r.top;
+  handleInput(x,y,'move');
+},{passive:false}));
+['mouseup','touchend'].forEach(e=>window.addEventListener(e,()=>S.mouseDown=false));
+
+// ─── BUTTON HANDLERS ───
+document.getElementById('btn-goal').onclick=()=>triggerVector('GOAL');
+document.getElementById('btn-obs').onclick=()=>triggerVector('OBSTACLE');
+document.getElementById('btn-sft').onclick=()=>triggerVector('SHIFT');
+
+window.addEventListener('keydown',e=>{
+  if(document.activeElement.tagName==='INPUT')return;
+  if(e.key.toLowerCase()==='g')triggerVector('GOAL');
+  if(e.key.toLowerCase()==='o')triggerVector('OBSTACLE');
+  if(e.key.toLowerCase()==='s')triggerVector('SHIFT');
+  if(e.key===' '){e.preventDefault();toggleAutoplay();}
+  if(e.key.toLowerCase()==='p')togglePause();
+});
+
+function setMode(m){
+  S.mode=m;
+  ['mb-inspect','mb-feed','mb-wall'].forEach(id=>document.getElementById(id).classList.remove('act'));
+  document.getElementById({inspect:'mb-inspect',feed:'mb-feed',wall:'mb-wall'}[m]).classList.add('act');
+  document.getElementById('mode-badge').textContent=m.toUpperCase();
+  Haptic.trigger(8);
+}
+document.getElementById('mb-inspect').onclick=()=>setMode('inspect');
+document.getElementById('mb-feed').onclick=()=>setMode('feed');
+document.getElementById('mb-wall').onclick=()=>setMode('wall');
+
+function togglePause(){S.paused=!S.paused;document.getElementById('btn-pause').textContent=S.paused?'RESUME':'PAUSE';}
+document.getElementById('btn-pause').onclick=togglePause;
+
+function toggleAutoplay(){
+  S.autoplay=!S.autoplay;
+  const btn=document.getElementById('btn-autoplay');
+  btn.classList.toggle('act',S.autoplay);
+  btn.classList.toggle('autoplay-on',S.autoplay);
+  btn.textContent=S.autoplay?'AUTOPLAY ▶':'AUTOPLAY';
+  if(S.autoplay){
+    S.autoTimer=setInterval(()=>{
+      if(!S.autoplay||!S.agents.length)return;
+      const a=S.agents[rng.ri(0,Math.min(S.agents.length,30))];if(!a)return;
+      selectAgent(a);const v=['GOAL','OBSTACLE','SHIFT'][rng.ri(0,3)];triggerVector(v);
+    },3000);
+  }else if(S.autoTimer){clearInterval(S.autoTimer);S.autoTimer=null;}
+}
+document.getElementById('btn-autoplay').onclick=toggleAutoplay;
+
+document.getElementById('btn-hide').onclick=()=>document.body.classList.add('zen');
+document.getElementById('zen-btn').onclick=()=>document.body.classList.remove('zen');
+document.getElementById('btn-reset').onclick=()=>{S.sel=null;enableVecs(false);document.getElementById('inspector').classList.remove('vis');initWorld();Audio.tone('death');Haptic.trigger(50);};
+document.getElementById('insp-close').onclick=()=>document.getElementById('inspector').classList.remove('vis');
+
+// ─── LLM CONTROLS ───
+document.getElementById('llm-connect').onclick=()=>{
+  const key=document.getElementById('llm-key').value.trim();
+  if(!key){logMsg('Paste API key first.',true);return;}
+  S.llmKey=key;S.llmConnected=true;
+  document.getElementById('llm-badge').textContent='ONLINE';
+  document.getElementById('llm-badge').style.color='var(--success)';
+  document.getElementById('llm-status').textContent='Ready';
+  document.getElementById('llm-narrate').disabled=false;
+  document.getElementById('llm-analyze').disabled=false;
+  logMsg('Claude API connected.','llm');
+  Haptic.trigger([20,20,60]);
+};
+document.getElementById('llm-narrate').onclick=async()=>{
+  if(!S.sel||!S.agents.includes(S.sel)){logMsg('Select entity first.',true);return;}
+  if(!S.lastEvent){logMsg('Apply a vector first.',true);return;}
+  await LLM.narrateEvent(S.sel,S.lastEvent.vector);
+};
+document.getElementById('llm-analyze').onclick=async()=>LLM.analyzeEcology();
+document.getElementById('llm-auto').onchange=e=>{S.llmAuto=e.target.checked;};
+
+// ─── FADERS ───
+document.getElementById('sl-vol').oninput=e=>{S.settings.vol=+e.target.value;document.getElementById('fv-vol').textContent=S.settings.vol+'%';};
+document.getElementById('sl-mut').oninput=e=>{S.settings.mut=+e.target.value/100;document.getElementById('fv-mut').textContent=Math.round(S.settings.mut*100)+'%';};
+document.getElementById('sl-spd').oninput=e=>{S.speed=+e.target.value;document.getElementById('fv-spd').textContent=S.speed+'x';};
+document.getElementById('sl-brush').oninput=e=>{S.settings.brush=+e.target.value;document.getElementById('fv-brush').textContent=S.settings.brush;};
+
+// ─── MESSAGES ───
+function logMsg(txt,type){
+  const el=document.getElementById('msgs');
+  const m=document.createElement('div');
+  m.className='msg'+(type===true?' w':type==='llm'?' llm-msg':'');
+  m.textContent='▸ '+txt;el.prepend(m);
+  while(el.children.length>5)el.lastChild.remove();
+  setTimeout(()=>{m.style.opacity=0;setTimeout(()=>m.remove(),800);},3500);
+}
+
+// ─── UI UPDATE ───
+let lastUI=0;
+function updateUI(t){
+  if(t-lastUI<80)return;lastUI=t;
+  document.getElementById('st-pop').textContent=S.stats.pop||S.agents.length;
+  document.getElementById('st-dep').textContent=S.stats.maxD||0;
+  document.getElementById('st-k').textContent=S.stats.maxK||0;
+  document.getElementById('st-tick').textContent=S.ticks;
+  document.getElementById('st-fps').textContent=Math.round(1000/(S.frameTime||16));
+  const sb=document.getElementById('status-bar');sb.textContent=S.status;
+  sb.className=S.status==='TRANSCENDENCE'?'win':S.status==='EXTINCTION'||S.status==='COLLAPSE'?'loss':'';
+  if(S.sel&&!S.agents.includes(S.sel)){document.getElementById('insp-rows').innerHTML='<div class="insp-r"><span class="insp-k" style="color:var(--warn)">SIGNAL LOST</span></div>';}
+}
+
+// ─── MAIN LOOP ───
+function loop(t){
+  const dt=t-S.lastTime;S.lastTime=t;S.frameTime=dt;
+  if(!S.paused){
+    S.acc+=dt;const step=1000/50;
+    while(S.acc>=step){tick();S.acc-=step;}
+    if(S.acc>500)S.acc=0;
+    if(S.speed>1)for(let k=1;k<S.speed;k++)tick();
+  }
+  draw();updateUI(t);
+  if(t-poolTimer>1000){updateEntityPool();poolTimer=t;}
+  requestAnimationFrame(loop);
+}
+
+// ─── RESIZE ───
+function resize(){
+  ['simCanvas','rippleCanvas'].forEach(id=>{const c=document.getElementById(id);c.width=window.innerWidth;c.height=window.innerHeight;});
+  S.tempCanvas=null;
+}
+window.onresize=resize;resize();
+initWorld();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

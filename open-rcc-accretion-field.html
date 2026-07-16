@@ -1,0 +1,2175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071412">
+<title>Open RCC Accretion Field — Semantic Fisheye Mountains</title>
+
+<style>
+  :root {
+    color-scheme: dark;
+    --ink: #e8eef0;
+    --paper: #f3e7c9;
+    --muted: #92a7ae;
+    --quiet: #637981;
+    --cyan: #7dd4df;
+    --cyan-dim: rgba(96, 196, 211, .28);
+    --amber: #f0c37d;
+    --amber-dim: rgba(240, 195, 125, .22);
+    --danger: #ffb3a7;
+    --success: #a8e5ca;
+    --panel: rgba(7, 18, 25, .78);
+    --panel-strong: rgba(6, 15, 21, .95);
+    --line: rgba(143, 205, 216, .21);
+    --line-strong: rgba(143, 205, 216, .48);
+    --shadow: 0 22px 80px rgba(0, 0, 0, .48);
+    --radius: 10px;
+    --composer-h: 188px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+  body {
+    font-family: "Arial Narrow", "Roboto Condensed", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #071018;
+    color: var(--ink);
+    overscroll-behavior: none;
+  }
+
+  button, textarea, input, select { font: inherit; }
+  button { -webkit-tap-highlight-color: transparent; }
+  button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 3px;
+  }
+
+  .app {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 100dvh;
+    isolation: isolate;
+    overflow: hidden;
+    background: #071018;
+  }
+
+  #pondCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: crosshair;
+  }
+
+  .topbar {
+    position: absolute;
+    z-index: 12;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: calc(18px + env(safe-area-inset-top)) 24px 12px;
+    pointer-events: none;
+  }
+
+  .brand, .top-actions { pointer-events: auto; }
+  .brand { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(139, 211, 223, .58);
+    border-radius: 50%;
+    display: grid;
+    align-content: center;
+    gap: 3px;
+    padding: 8px 7px;
+    box-shadow: inset 0 0 22px rgba(81, 178, 193, .12), 0 0 24px rgba(81, 178, 193, .08);
+  }
+  .brand-mark i { height: 1px; display: block; background: rgba(172, 224, 232, .8); }
+  .brand-copy { min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-size: clamp(18px, 2.2vw, 28px);
+    font-weight: 460;
+    letter-spacing: -.02em;
+    line-height: 1.05;
+    text-shadow: 0 2px 20px #000;
+  }
+  .brand span {
+    display: block;
+    margin-top: 3px;
+    color: #78949e;
+    font-size: clamp(12px, 1.2vw, 16px);
+    letter-spacing: .025em;
+  }
+
+  .top-actions { display: flex; align-items: stretch; gap: 8px; }
+  .system-monitor {
+    min-width: 224px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: rgba(8, 21, 29, .58);
+    box-shadow: inset 0 0 26px rgba(54, 139, 153, .06);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    font-size: 11px;
+    line-height: 1.65;
+    color: #9babb0;
+  }
+  .system-monitor b { color: var(--cyan); font-weight: 520; letter-spacing: .04em; }
+
+  .icon-button, .soft-button, .action-button, .mode-button, .prediction-button {
+    border: 1px solid var(--line);
+    color: var(--ink);
+    background: rgba(6, 18, 25, .78);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 8px 30px rgba(0,0,0,.22);
+    cursor: pointer;
+    transition: transform .16s ease, background .16s ease, border-color .16s ease, opacity .16s ease;
+  }
+  .icon-button:hover, .soft-button:hover, .mode-button:hover, .prediction-button:hover {
+    background: rgba(13, 38, 49, .9);
+    border-color: var(--line-strong);
+  }
+  .icon-button:active, .soft-button:active, .action-button:active, .mode-button:active, .prediction-button:active { transform: translateY(1px) scale(.985); }
+  .icon-button { min-width: 46px; height: 46px; border-radius: 7px; padding: 0 13px; }
+
+  .field-intro {
+    position: absolute;
+    z-index: 5;
+    top: calc(92px + env(safe-area-inset-top));
+    left: 24px;
+    width: 220px;
+    color: rgba(202, 215, 217, .76);
+    font-size: 12px;
+    line-height: 1.5;
+    pointer-events: none;
+    text-shadow: 0 2px 12px rgba(0,0,0,.7);
+  }
+  .field-intro strong { color: var(--cyan); font-weight: 560; }
+
+  .state-pill {
+    position: absolute;
+    z-index: 14;
+    top: calc(78px + env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    max-width: min(82vw, 620px);
+    padding: 8px 13px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: #b6c5c8;
+    background: rgba(5, 15, 21, .8);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    font-size: 12px;
+    line-height: 1.3;
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .25s ease, transform .25s ease;
+  }
+  .state-pill.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .state-pill[data-tone="danger"] { color: var(--danger); }
+  .state-pill[data-tone="success"] { color: var(--success); }
+
+  .node-card {
+    position: absolute;
+    z-index: 9;
+    right: 24px;
+    top: 33%;
+    width: 178px;
+    padding: 12px 13px;
+    border-radius: 5px;
+    border: 1px solid rgba(231, 193, 126, .35);
+    background: rgba(39, 31, 24, .58);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: var(--shadow);
+    display: none;
+    pointer-events: none;
+  }
+  .node-card.visible { display: block; }
+  .node-kicker { color: var(--paper); font-size: 10px; text-transform: uppercase; letter-spacing: .12em; }
+  .node-title { margin-top: 7px; font-size: 15px; color: var(--paper); }
+  .node-meta { margin-top: 6px; color: #d3c6ad; font-size: 11px; line-height: 1.5; white-space: pre-line; }
+
+  .driver-panel, .stack-panel {
+    position: absolute;
+    z-index: 6;
+    bottom: calc(var(--composer-h) + 32px + env(safe-area-inset-bottom));
+    width: 170px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px;
+    background: rgba(6, 17, 24, .58);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    pointer-events: none;
+  }
+  .driver-panel { left: 24px; }
+  .stack-panel { right: 24px; }
+  .hud-title { color: #9ec5cd; font-size: 10px; text-transform: uppercase; letter-spacing: .11em; margin-bottom: 9px; }
+  .driver-row { display: grid; grid-template-columns: 54px 1fr 22px; gap: 6px; align-items: center; margin: 7px 0; color: #8fa3aa; font-size: 10px; }
+  .driver-track { height: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
+  .driver-track i { display: block; height: 100%; width: 40%; background: var(--cyan); box-shadow: 0 0 10px rgba(125,212,223,.4); }
+  .driver-row output { text-align: right; color: #b6c9ce; }
+  .mini-stack { height: 78px; position: relative; display: flex; flex-direction: column-reverse; justify-content: center; align-items: center; gap: 2px; }
+  .mini-stack i { display: block; height: 5px; border: 1px solid rgba(118,191,204,.28); background: rgba(75,130,141,.23); }
+  .mini-stack i:nth-child(1){width:78px}.mini-stack i:nth-child(2){width:70px}.mini-stack i:nth-child(3){width:62px}.mini-stack i:nth-child(4){width:54px}.mini-stack i:nth-child(5){width:46px}.mini-stack i:nth-child(6){width:38px}.mini-stack i:nth-child(7){width:30px}.mini-stack i:nth-child(8){width:22px}
+  .mini-stack i.focus { background: rgba(240,195,125,.52); border-color: rgba(240,195,125,.8); box-shadow: 0 0 12px rgba(240,195,125,.18); }
+  .stack-scale { display: flex; justify-content: space-between; color: #6f8c95; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+
+  .composition {
+    position: absolute;
+    z-index: 15;
+    left: 50%;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    width: min(940px, calc(100vw - 48px));
+    min-height: var(--composer-h);
+    padding: 14px 16px 12px;
+    border: 1px solid rgba(133, 196, 207, .3);
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(8, 20, 28, .84), rgba(5, 14, 20, .94));
+    backdrop-filter: blur(24px) saturate(1.15);
+    -webkit-backdrop-filter: blur(24px) saturate(1.15);
+    box-shadow: 0 22px 80px rgba(0,0,0,.54), inset 0 1px rgba(255,255,255,.025);
+    transition: opacity .2s ease, transform .2s ease;
+  }
+  .composer-label { color: #97abb1; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; margin: 0 0 8px 2px; }
+
+  .input-wrap { display: grid; grid-template-columns: minmax(0,1fr) minmax(180px, 260px); gap: 12px; align-items: stretch; }
+  textarea {
+    width: 100%;
+    min-height: 72px;
+    max-height: 136px;
+    resize: none;
+    border: 1px solid rgba(136, 193, 203, .25);
+    border-radius: 6px;
+    background: rgba(255,255,255,.025);
+    color: var(--ink);
+    padding: 19px 18px;
+    line-height: 1.4;
+    caret-color: var(--cyan);
+    font-size: clamp(16px, 1.9vw, 21px);
+  }
+  textarea::placeholder { color: #6f8289; }
+
+  .action-button {
+    min-width: 180px;
+    border-radius: 6px;
+    padding: 0 20px;
+    background: linear-gradient(145deg, rgba(67, 135, 154, .86), rgba(30, 75, 93, .92));
+    color: #e9f5f6;
+    border-color: rgba(135, 215, 226, .58);
+    font-size: clamp(16px, 2vw, 22px);
+    font-weight: 450;
+    letter-spacing: .01em;
+    text-shadow: 0 2px 8px rgba(0,0,0,.4);
+  }
+  .action-button::before { content: "↧"; display: inline-block; margin-right: 12px; font-size: 26px; vertical-align: -2px; }
+  .action-button:hover { filter: brightness(1.12); }
+  .action-button:disabled { opacity: .34; cursor: not-allowed; transform: none; filter: grayscale(.25); }
+
+  .compose-tools { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; min-height: 35px; }
+  .tool-cluster { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .mode-button, .soft-button { min-height: 36px; border-radius: 5px; padding: 8px 11px; font-size: 11px; }
+  .mode-button strong { color: var(--amber); font-weight: 600; }
+  .hint { color: #71868d; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .mode-menu {
+    position: absolute;
+    z-index: 6;
+    left: 16px;
+    bottom: 56px;
+    width: min(340px, calc(100% - 32px));
+    padding: 7px;
+    border: 1px solid var(--line-strong);
+    border-radius: 7px;
+    background: var(--panel-strong);
+    box-shadow: var(--shadow);
+    display: none;
+  }
+  .mode-menu.open { display: grid; gap: 4px; }
+  .mode-option {
+    display: grid;
+    grid-template-columns: 74px 1fr;
+    gap: 10px;
+    align-items: start;
+    width: 100%;
+    min-height: 52px;
+    padding: 10px;
+    border: 0;
+    border-radius: 4px;
+    color: var(--ink);
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+  }
+  .mode-option:hover, .mode-option[aria-checked="true"] { background: rgba(100, 191, 205, .08); }
+  .mode-option b { color: var(--amber); }
+  .mode-option span { color: var(--muted); font-size: 11px; line-height: 1.35; }
+
+  .prediction-row { display: none; align-items: center; gap: 6px; margin-top: 8px; }
+  .prediction-row.visible { display: flex; }
+  .prediction-label { color: #73868d; font-size: 10px; margin-right: 2px; text-transform: uppercase; letter-spacing: .08em; }
+  .prediction-button { min-height: 30px; padding: 5px 9px; border-radius: 4px; font-size: 10px; }
+  .prediction-button[aria-pressed="true"] { color: var(--amber); border-color: rgba(240,195,125,.52); background: rgba(240,195,125,.08); }
+
+  .working-card, .result-card {
+    position: absolute;
+    z-index: 16;
+    right: 24px;
+    bottom: calc(var(--composer-h) + 30px + env(safe-area-inset-bottom));
+    width: min(390px, calc(100vw - 48px));
+    padding: 15px;
+    border: 1px solid var(--line-strong);
+    border-radius: 7px;
+    background: rgba(5, 15, 22, .9);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    box-shadow: var(--shadow);
+    display: none;
+  }
+  .working-card.visible, .result-card.visible { display: block; }
+  .eyebrow { color: var(--cyan); text-transform: uppercase; letter-spacing: .13em; font-size: 9px; }
+  .working-line, .result-line { margin-top: 8px; color: var(--paper); font-size: clamp(17px, 2vw, 23px); line-height: 1.25; }
+  .progress-track { height: 3px; margin-top: 13px; background: rgba(255,255,255,.08); overflow: hidden; }
+  .progress-bar { width: 0; height: 100%; background: var(--cyan); box-shadow: 0 0 12px rgba(125,212,223,.45); transition: width .3s ease; }
+  .card-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+  .soft-button.danger { color: var(--danger); }
+  .soft-button.primary { background: rgba(67, 135, 154, .76); color: #eef9fa; border-color: rgba(125,212,223,.46); }
+
+  .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 13px; }
+  .compare-cell { padding: 9px 10px; border: 1px solid rgba(255,255,255,.07); background: rgba(255,255,255,.025); }
+  .compare-label { color: #6c838b; font-size: 9px; text-transform: uppercase; letter-spacing: .11em; }
+  .compare-value { margin-top: 4px; color: #d9e4e6; font-size: 12px; }
+  .causal-trace { margin-top: 10px; color: #91a4aa; font-size: 11px; line-height: 1.45; }
+  .prediction-result { margin-top: 7px; color: #667b82; font-size: 10px; }
+
+  .history-trace {
+    position: absolute;
+    z-index: 14;
+    left: 50%;
+    bottom: calc(var(--composer-h) + 25px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    width: min(520px, calc(100vw - 410px));
+    height: 24px;
+    padding: 0 12px;
+    border-radius: 999px;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: rgba(73, 116, 129, .7);
+    border: 1px solid rgba(175, 221, 228, .4);
+    color: #d8e8ea;
+    cursor: pointer;
+    box-shadow: inset 0 1px rgba(255,255,255,.2), 0 8px 26px rgba(0,0,0,.3);
+  }
+  .history-trace.visible { display: flex; }
+  .trace-dots { display: flex; gap: 5px; align-items: center; min-width: 0; flex: 1; }
+  .trace-dot { width: 2px; height: 10px; border-radius: 0; background: rgba(232,245,246,.3); }
+  .trace-dot.current { width: 3px; height: 16px; background: var(--paper); box-shadow: 0 0 10px rgba(243,231,201,.45); }
+  .trace-label { color: #e1edef; font-size: 9px; white-space: nowrap; }
+
+  dialog { padding: 0; border: 0; background: transparent; color: var(--ink); max-width: none; max-height: none; }
+  dialog::backdrop { background: rgba(1, 7, 10, .72); backdrop-filter: blur(7px); }
+  .drawer {
+    position: fixed;
+    right: 0;
+    top: 0;
+    width: min(430px, 100vw);
+    height: 100dvh;
+    overflow-y: auto;
+    padding: calc(20px + env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom));
+    border-left: 1px solid var(--line);
+    background: linear-gradient(180deg, #0a1921, #061018);
+    box-shadow: -30px 0 90px rgba(0,0,0,.52);
+  }
+  .drawer-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .drawer-header h2 { margin: 0; font-size: 25px; font-weight: 430; }
+  .drawer-section { padding: 15px 0; border-top: 1px solid var(--line); }
+  .drawer-section:first-of-type { border-top: 0; }
+  .drawer-section h3 { margin: 0 0 8px; font-size: 10px; color: var(--cyan); text-transform: uppercase; letter-spacing: .13em; }
+  .drawer-section p { margin: 6px 0; color: var(--muted); line-height: 1.5; font-size: 12px; }
+  .menu-list { display: grid; gap: 7px; }
+  .menu-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 11px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    color: var(--ink);
+    background: rgba(255,255,255,.025);
+    text-align: left;
+    cursor: pointer;
+  }
+  .menu-action:hover { background: rgba(125,212,223,.06); }
+  .menu-action small { color: var(--quiet); }
+  .menu-action:disabled { opacity: .36; cursor: not-allowed; }
+
+  .history-list { display: grid; gap: 9px; }
+  .history-item { padding: 13px; border: 1px solid var(--line); border-radius: 5px; background: rgba(255,255,255,.025); }
+  .history-item.current { border-color: rgba(240,195,125,.55); }
+  .history-line { color: var(--paper); font-size: 17px; line-height: 1.35; }
+  .history-meta { margin-top: 6px; color: var(--quiet); font-size: 10px; }
+  .history-actions { display: flex; gap: 7px; margin-top: 9px; }
+  .history-actions button { min-height: 34px; }
+
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 9px 0; }
+  .toggle-copy b { display: block; font-size: 13px; }
+  .toggle-copy span { display: block; color: var(--quiet); font-size: 10px; margin-top: 2px; }
+  .switch { position: relative; width: 46px; height: 27px; }
+  .switch input { position: absolute; opacity: 0; }
+  .switch span { position: absolute; inset: 0; border-radius: 999px; background: rgba(255,255,255,.1); border: 1px solid var(--line); transition: .2s; }
+  .switch span::after { content: ""; position: absolute; width: 19px; height: 19px; left: 3px; top: 3px; border-radius: 50%; background: var(--ink); transition: .2s; }
+  .switch input:checked + span { background: rgba(125,212,223,.2); border-color: rgba(125,212,223,.5); }
+  .switch input:checked + span::after { transform: translateX(19px); background: var(--cyan); }
+
+  .reading-overlay { position: absolute; z-index: 20; inset: 0; display: none; place-items: center; padding: 8vw; pointer-events: none; background: rgba(1, 7, 10, .08); }
+  .reading-overlay.visible { display: grid; }
+  .reading-text { max-width: 900px; color: var(--paper); font-size: clamp(28px, 5.2vw, 74px); line-height: 1.08; text-align: center; text-shadow: 0 4px 28px #000, 0 0 32px rgba(240,195,125,.22); }
+  .reading-exit { position: absolute; z-index: 22; top: calc(18px + env(safe-area-inset-top)); right: 18px; display: none; }
+  .reading-exit.visible { display: block; }
+  body.reading .topbar, body.reading .composition, body.reading .history-trace, body.reading .driver-panel, body.reading .stack-panel, body.reading .field-intro, body.reading .node-card { opacity: 0; pointer-events: none; }
+
+  .empty-note { color: var(--quiet); text-align: center; padding: 26px 10px; }
+  .diagnostics { white-space: pre-wrap; color: #91a9b0; font: 10px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
+
+  @media (max-width: 900px) {
+    :root { --composer-h: 178px; }
+    .topbar { padding-left: 14px; padding-right: 14px; }
+    .system-monitor, .field-intro, .driver-panel, .stack-panel { display: none; }
+    .brand-mark { width: 30px; height: 30px; }
+    .brand span { font-size: 11px; }
+    .node-card { right: 12px; top: 21%; width: 148px; }
+    .composition { width: calc(100vw - 20px); bottom: calc(8px + env(safe-area-inset-bottom)); padding: 11px; }
+    .input-wrap { grid-template-columns: minmax(0,1fr) 150px; gap: 8px; }
+    textarea { min-height: 62px; padding: 15px; font-size: 16px; }
+    .action-button { min-width: 0; padding: 0 12px; font-size: 16px; }
+    .action-button::before { margin-right: 5px; font-size: 20px; }
+    .history-trace { width: min(410px, calc(100vw - 30px)); bottom: calc(var(--composer-h) + 18px + env(safe-area-inset-bottom)); }
+    .working-card, .result-card { right: 10px; bottom: calc(var(--composer-h) + 16px + env(safe-area-inset-bottom)); width: calc(100vw - 20px); }
+  }
+
+  @media (max-width: 560px) {
+    :root { --composer-h: 188px; }
+    .topbar { padding-top: calc(11px + env(safe-area-inset-top)); }
+    .brand h1 { font-size: 16px; }
+    .brand span { font-size: 10px; }
+    .top-actions { gap: 5px; }
+    .icon-button { min-width: 42px; height: 42px; padding: 0 9px; font-size: 11px; }
+    .node-card { display: none !important; }
+    .composer-label { display: none; }
+    .input-wrap { grid-template-columns: 1fr 116px; }
+    .action-button { font-size: 14px; }
+    .action-button::before { display: block; margin: 0; line-height: 1; }
+    .compose-tools { align-items: flex-start; }
+    .hint { max-width: 43vw; padding-top: 8px; }
+    .prediction-row { overflow-x: auto; padding-bottom: 1px; }
+    .prediction-label { display: none; }
+    .working-card, .result-card { padding: 13px; }
+    .comparison { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .001ms !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <canvas id="pondCanvas" aria-label="Interactive poetry pond. Select a node, write a line, and drop it into the field."></canvas>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="brand-copy">
+        <h1>Open RCC Accretion Field</h1>
+        <span>Semantic Fisheye Mountains</span>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div class="system-monitor" aria-live="polite">
+        <div>Accretion state: <b id="phaseReadout">LISTENING</b></div>
+        <div>Semantic engine: <b>LOCAL · CONNECTED</b></div>
+      </div>
+      <button class="icon-button" id="historyButton" type="button" aria-label="Open history" title="History" hidden>History</button>
+      <button class="icon-button" id="menuButton" type="button" aria-label="Open menu" title="Menu">Menu</button>
+    </div>
+  </header>
+
+  <aside class="field-intro" aria-hidden="true">
+    A liquid field for language.<br>
+    You choose a mountain.<br>
+    You drop a stone.<br>
+    <strong>Meaning accretes.</strong><br>
+    Mountains remember.
+  </aside>
+
+  <div class="state-pill" id="statePill" role="status" aria-live="polite"></div>
+  <div class="node-card" id="nodeCard" aria-live="polite">
+    <div class="node-kicker">Layer stats</div>
+    <div class="node-title" id="nodeTitle"></div>
+    <div class="node-meta" id="nodeMeta"></div>
+  </div>
+
+  <aside class="driver-panel" aria-hidden="true">
+    <div class="hud-title">Accretion drivers</div>
+    <div class="driver-row"><span>Pressure</span><span class="driver-track"><i id="driverPressure"></i></span><output id="pressureValue">12</output></div>
+    <div class="driver-row"><span>Density</span><span class="driver-track"><i id="driverDensity"></i></span><output id="densityValue">15</output></div>
+    <div class="driver-row"><span>Memory</span><span class="driver-track"><i id="driverMemory"></i></span><output id="memoryValue">12</output></div>
+    <div class="driver-row"><span>Tension</span><span class="driver-track"><i id="driverTension"></i></span><output id="tensionValue">14</output></div>
+  </aside>
+
+  <aside class="stack-panel" aria-hidden="true">
+    <div class="hud-title">Stack overview</div>
+    <div class="mini-stack" id="miniStack"><i></i><i></i><i></i><i class="focus"></i><i></i><i></i><i></i><i></i></div>
+    <div class="stack-scale"><span>Base</span><span>Focus</span><span>Peak</span></div>
+  </aside>
+
+  <button class="history-trace" id="historyTrace" type="button" aria-label="Open history">
+    <span class="trace-dots" id="traceDots"></span>
+    <span class="trace-label" id="traceLabel">History</span>
+  </button>
+
+  <section class="composition" id="composition" aria-label="Compose a line">
+    <div class="composer-label">Composer</div>
+    <div class="mode-menu" id="modeMenu" role="radiogroup" aria-label="Choose how the line should act">
+      <button class="mode-option" type="button" role="radio" data-mode="stone" aria-checked="true"><b>Stone</b><span>Deepen weight, presence, memory, or pressure.</span></button>
+      <button class="mode-option" type="button" role="radio" data-mode="obstacle" aria-checked="false"><b>Obstacle</b><span>Interrupt, resist, divide, or redirect a relation.</span></button>
+      <button class="mode-option" type="button" role="radio" data-mode="goal" aria-checked="false"><b>Goal</b><span>Attract movement toward a place, image, or state.</span></button>
+      <button class="mode-option" type="button" role="radio" data-mode="turn" aria-checked="false"><b>Turn</b><span>Invert or reinterpret a pattern already in the pond.</span></button>
+    </div>
+
+    <div class="input-wrap">
+      <textarea id="lineInput" rows="2" maxlength="280" placeholder="Write a line into the pond" aria-label="Write a line into the pond"></textarea>
+      <button class="action-button" id="dropButton" type="button" disabled>Drop Stone</button>
+    </div>
+
+    <div class="compose-tools">
+      <div class="tool-cluster">
+        <button class="mode-button" id="modeButton" type="button" aria-haspopup="true" aria-expanded="false">Intention: <strong>Stone</strong></button>
+        <button class="soft-button" id="clearButton" type="button" hidden>Clear</button>
+      </div>
+      <span class="hint" id="targetHint">Touch a node to choose where the line enters.</span>
+    </div>
+
+    <div class="prediction-row" id="predictionRow">
+      <span class="prediction-label">I expect it to</span>
+      <button class="prediction-button" type="button" data-prediction="deepen" aria-pressed="false">Deepen</button>
+      <button class="prediction-button" type="button" data-prediction="spread" aria-pressed="false">Spread</button>
+      <button class="prediction-button" type="button" data-prediction="break" aria-pressed="false">Break</button>
+      <button class="prediction-button" type="button" data-prediction="" aria-pressed="true">No prediction</button>
+    </div>
+  </section>
+
+  <section class="working-card" id="workingCard" aria-live="polite">
+    <div class="eyebrow">Listening</div>
+    <div class="working-line" id="workingLine"></div>
+    <div class="causal-trace" id="workingStatus">The stone is entering the field.</div>
+    <div class="progress-track" aria-hidden="true"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="card-actions">
+      <button class="soft-button danger" id="stopButton" type="button">Stop</button>
+    </div>
+  </section>
+
+  <section class="result-card" id="resultCard" aria-live="polite">
+    <div class="eyebrow" id="resultEyebrow">The pond changed</div>
+    <div class="result-line" id="resultLine"></div>
+    <div class="comparison">
+      <div class="compare-cell"><div class="compare-label">Before</div><div class="compare-value" id="beforeValue"></div></div>
+      <div class="compare-cell"><div class="compare-label">Now</div><div class="compare-value" id="afterValue"></div></div>
+    </div>
+    <div class="causal-trace" id="causalTrace"></div>
+    <div class="prediction-result" id="predictionResult"></div>
+    <div class="card-actions">
+      <button class="soft-button danger" id="undoButton" type="button">Undo this stone</button>
+      <button class="soft-button" id="carryButton" type="button">Carry fragment</button>
+      <button class="soft-button" id="speakButton" type="button">Read aloud</button>
+      <button class="soft-button primary" id="continueButton" type="button">Continue</button>
+    </div>
+  </section>
+
+  <div class="reading-overlay" id="readingOverlay" aria-hidden="true"><div class="reading-text" id="readingText"></div></div>
+  <button class="icon-button reading-exit" id="readingExit" type="button">Exit reading</button>
+
+  <dialog id="menuDialog" aria-labelledby="menuTitle">
+    <div class="drawer">
+      <div class="drawer-header"><h2 id="menuTitle">Pond menu</h2><button class="icon-button" data-close-dialog="menuDialog" type="button" aria-label="Close menu">Close</button></div>
+
+      <section class="drawer-section">
+        <h3>Current pond</h3>
+        <div class="menu-list">
+          <button class="menu-action" id="readingModeButton" type="button"><span>Reading mode</span><small>Show only the pond and current line</small></button>
+          <button class="menu-action" id="performButton" type="button" disabled><span>Perform history</span><small>Replay accepted lines without changing the pond</small></button>
+          <button class="menu-action" id="recordButton" type="button"><span>Record pond</span><small id="recordStatus">Capture the canvas as WebM</small></button>
+        </div>
+      </section>
+
+      <section class="drawer-section">
+        <h3>Export</h3>
+        <div class="menu-list">
+          <button class="menu-action" id="exportImageButton" type="button"><span>Save pond image</span><small>PNG</small></button>
+          <button class="menu-action" id="exportDataButton" type="button" disabled><span>Export field history</span><small>JSON</small></button>
+        </div>
+      </section>
+
+      <section class="drawer-section">
+        <h3>View</h3>
+        <div class="toggle-row">
+          <div class="toggle-copy"><b>Show node names</b><span>Reveal the pond’s readable conditions</span></div>
+          <label class="switch"><input id="showLabelsToggle" type="checkbox" checked><span></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-copy"><b>Reduced motion</b><span>Keep consequences visible with less animation</span></div>
+          <label class="switch"><input id="reducedMotionToggle" type="checkbox"><span></span></label>
+        </div>
+      </section>
+
+      <section class="drawer-section">
+        <h3>Field</h3>
+        <p>This version works locally. No line or key is sent to a remote service.</p>
+        <button class="menu-action" id="resetButton" type="button"><span>Reset pond</span><small>Return to the undisturbed field</small></button>
+      </section>
+
+      <section class="drawer-section" id="diagnosticsSection" hidden>
+        <h3>Diagnostics</h3>
+        <div class="diagnostics" id="diagnostics"></div>
+      </section>
+    </div>
+  </dialog>
+
+  <dialog id="historyDialog" aria-labelledby="historyTitle">
+    <div class="drawer">
+      <div class="drawer-header"><h2 id="historyTitle">History</h2><button class="icon-button" data-close-dialog="historyDialog" type="button" aria-label="Close history">Close</button></div>
+      <section class="drawer-section">
+        <p>Touch an earlier stone to preview it. Restoring is a separate action.</p>
+        <div class="history-list" id="historyList"></div>
+      </section>
+    </div>
+  </dialog>
+</div>
+
+<div class="sr-only" id="liveRegion" aria-live="assertive"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+
+  const canvas = $("#pondCanvas");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  const app = $("#app");
+  const lineInput = $("#lineInput");
+  const dropButton = $("#dropButton");
+  const clearButton = $("#clearButton");
+  const modeButton = $("#modeButton");
+  const modeMenu = $("#modeMenu");
+  const predictionRow = $("#predictionRow");
+  const composition = $("#composition");
+  const workingCard = $("#workingCard");
+  const resultCard = $("#resultCard");
+  const historyTrace = $("#historyTrace");
+  const historyButton = $("#historyButton");
+  const nodeCard = $("#nodeCard");
+  const statePill = $("#statePill");
+  const liveRegion = $("#liveRegion");
+
+  const MODES = {
+    stone: { label: "Stone", verb: "deepened", tendency: "deepen" },
+    obstacle: { label: "Obstacle", verb: "divided", tendency: "break" },
+    goal: { label: "Goal", verb: "drew", tendency: "spread" },
+    turn: { label: "Turn", verb: "reframed", tendency: "turn" }
+  };
+
+  const QUALITY_NAMES = [
+    "Still", "Listening", "Echoing", "Rooted", "Remembering", "Open",
+    "Crowded", "Divided", "Branching", "Resistant", "Flooded", "Refusing"
+  ];
+
+  const FOUNDATION_LINES = [
+    "Open RCC — Text Is the Mountain",
+    "Every line becomes a readable stratum.",
+    "Language compresses into geological time.",
+    "Stone, consequence, and spawn.",
+    "Meaning accretes through pressure.",
+    "A thousand small choices shape the peak.",
+    "History settles below the surface.",
+    "Future branches rise from tension."
+  ];
+
+  const STOP_WORDS = new Set("a an and are as at be but by for from had has have he her hers him his i if in into is it its me my of on or our she so than that the their them there they this to was we were what when where which who will with you your".split(" "));
+
+  const state = {
+    phase: "REST",
+    mode: "stone",
+    prediction: "",
+    selectedNodeId: null,
+    hoverNodeId: null,
+    nodes: [],
+    stones: [],
+    branches: [],
+    ripples: [],
+    particles: [],
+    history: [],
+    currentHistoryIndex: -1,
+    currentOperation: null,
+    lastResult: null,
+    lastRemovedEvent: null,
+    previewSnapshot: null,
+    fieldTerms: {},
+    frame: 0,
+    now: performance.now(),
+    dpr: 1,
+    width: 0,
+    height: 0,
+    pointer: { x: 0, y: 0, active: false },
+    settings: {
+      showLabels: true,
+      reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches
+    },
+    reading: false,
+    performing: false,
+    recording: false,
+    mediaRecorder: null,
+    recordedChunks: [],
+    debugClicks: 0,
+    scene: {
+      horizon: 0,
+      fieldBottom: 0,
+      selectedLayer: 0,
+      ambientWind: 0,
+      lastRender: 0
+    }
+  };
+
+  function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function deepClone(value) { return JSON.parse(JSON.stringify(value)); }
+
+  function hashString(input) {
+    let h = 2166136261;
+    for (let i = 0; i < input.length; i++) {
+      h ^= input.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function() {
+      a |= 0;
+      a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function choice(list, random) { return list[Math.floor(random() * list.length) % list.length]; }
+
+  function titleCase(text) { return text ? text.charAt(0).toUpperCase() + text.slice(1) : ""; }
+
+  function safeText(value) { return String(value ?? ""); }
+
+  function setPhase(phase) {
+    state.phase = phase;
+    composition.hidden = phase === "WORKING" || phase === "CHANGED" || phase === "FAULT";
+    workingCard.classList.toggle("visible", phase === "WORKING");
+    resultCard.classList.toggle("visible", phase === "CHANGED" || phase === "FAULT" || phase === "RECOVERY");
+    const labels = { REST: "LISTENING", READY: "STONE PREPARED", WORKING: "ACCRETING", CHANGED: "LAYER FORMED", COMPLETE: "RESTING", FAULT: "PARTIAL", RECOVERY: "RESTORED" };
+    const readout = $("#phaseReadout");
+    if (readout) readout.textContent = labels[phase] || phase;
+    updateFieldHUD();
+    updateDiagnostics();
+  }
+
+  function announce(message, tone = "") {
+    statePill.textContent = message;
+    statePill.dataset.tone = tone;
+    statePill.classList.add("visible");
+    liveRegion.textContent = message;
+    clearTimeout(announce.timeout);
+    announce.timeout = setTimeout(() => statePill.classList.remove("visible"), 3400);
+  }
+
+  function updateInputState() {
+    const hasText = lineInput.value.trim().length > 0;
+    dropButton.disabled = !hasText || state.phase === "WORKING";
+    clearButton.hidden = !hasText;
+    predictionRow.classList.toggle("visible", hasText);
+    if (state.phase !== "WORKING" && state.phase !== "CHANGED") setPhase(hasText ? "READY" : "REST");
+    autoSizeInput();
+  }
+
+  function autoSizeInput() {
+    lineInput.style.height = "auto";
+    lineInput.style.height = Math.min(150, Math.max(62, lineInput.scrollHeight)) + "px";
+  }
+
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    state.dpr = clamp(window.devicePixelRatio || 1, 1, 2);
+    state.width = Math.max(1, rect.width);
+    state.height = Math.max(1, rect.height);
+    canvas.width = Math.floor(state.width * state.dpr);
+    canvas.height = Math.floor(state.height * state.dpr);
+    ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+    layoutNodes();
+  }
+
+  function createNodes() {
+    const coords = [
+      [0.08,0.35],[0.24,0.18],[0.43,0.31],[0.63,0.16],[0.84,0.34],
+      [0.17,0.67],[0.50,0.73],[0.79,0.66],[0.62,0.50]
+    ];
+    state.nodes = coords.map((pair, index) => ({
+      id: `node-${index + 1}`,
+      index: index + 1,
+      nx: pair[0],
+      ny: pair[1],
+      x: 0,
+      y: 0,
+      drawX: 0,
+      drawY: 0,
+      visualW: 0,
+      visualH: 0,
+      radius: 24,
+      energy: 0.12 + (index % 4) * 0.025,
+      depth: 0.15 + (index % 3) * .03,
+      openness: 0.52,
+      memory: 0.12,
+      saturation: 0,
+      resistance: 0.14,
+      branching: 0,
+      qualities: index === 6 ? ["Listening", "Remembering"] : index === 8 ? ["Still", "Rooted"] : [index % 2 ? "Still" : "Open"],
+      layers: [],
+      pulse: Math.random() * Math.PI * 2,
+      selected: false,
+      lastChangedAt: 0
+    }));
+    state.selectedNodeId = "node-7";
+    state.nodes.forEach(node => node.selected = node.id === state.selectedNodeId);
+    layoutNodes();
+    updateFieldHUD();
+  }
+
+  function layoutNodes() {
+    const composerReserve = state.width < 900 ? 218 : 238;
+    state.scene.horizon = Math.max(150, state.height * .31);
+    state.scene.fieldBottom = Math.max(state.scene.horizon + 210, state.height - composerReserve);
+    const side = Math.max(18, state.width * .035);
+    const usableWidth = state.width - side * 2;
+    const usableHeight = state.scene.fieldBottom - state.scene.horizon;
+    for (const node of state.nodes) {
+      node.x = side + node.nx * usableWidth;
+      node.y = state.scene.horizon + node.ny * usableHeight;
+      node.drawX = node.x;
+      node.drawY = node.y;
+    }
+  }
+
+  function getNode(id) { return state.nodes.find(node => node.id === id) || null; }
+
+  function nodeSnapshotLabel(node) {
+    if (!node) return "Undisturbed";
+    return node.qualities.slice(0, 2).join(" · ") || "Listening";
+  }
+
+  function setSelectedNode(node) {
+    state.selectedNodeId = node ? node.id : "node-7";
+    const selected = getNode(state.selectedNodeId);
+    for (const item of state.nodes) item.selected = item.id === state.selectedNodeId;
+    if (selected) {
+      $("#targetHint").textContent = `The line will enter Mountain ${selected.index}.`;
+      showNodeCard(selected);
+    }
+    updateFieldHUD();
+  }
+
+  function showNodeCard(node) {
+    const newest = node.layers.length ? node.layers[node.layers.length - 1].text : FOUNDATION_LINES[Math.min(node.index - 1, FOUNDATION_LINES.length - 1)];
+    $("#nodeTitle").textContent = `Mountain ${node.index}`;
+    $("#nodeMeta").textContent = `${nodeSnapshotLabel(node)}
+Strata: ${Math.max(8, 12 + node.layers.length * 2)}
+Density: ${Math.round((node.depth + node.saturation) * 50)}%
+Focus: ${newest.length > 42 ? newest.slice(0, 39) + "…" : newest}`;
+    nodeCard.classList.add("visible");
+    clearTimeout(showNodeCard.timeout);
+    showNodeCard.timeout = setTimeout(() => {
+      if (state.phase !== "WORKING") nodeCard.classList.remove("visible");
+    }, 3200);
+  }
+
+  function nearestNode(x, y, maxDistance = 54) {
+    const ordered = [...state.nodes].sort((a,b) => (b.drawY || b.y) - (a.drawY || a.y));
+    for (const node of ordered) {
+      const nx = node.drawX || node.x;
+      const ny = node.drawY || node.y;
+      const w = Math.max(node.visualW || 50, maxDistance * 1.5);
+      const h = Math.max(node.visualH || 70, maxDistance * 1.8);
+      if (x >= nx - w * .55 && x <= nx + w * .62 && y >= ny - h && y <= ny + 18) return node;
+    }
+    let best = null;
+    let bestDistance = maxDistance;
+    for (const node of state.nodes) {
+      const distance = Math.hypot((node.drawX || node.x) - x, (node.drawY || node.y) - y);
+      if (distance < bestDistance) { best = node; bestDistance = distance; }
+    }
+    return best;
+  }
+
+  function canvasPoint(event) {
+    const rect = canvas.getBoundingClientRect();
+    const source = event.touches ? event.touches[0] : event;
+    return { x: source.clientX - rect.left, y: source.clientY - rect.top };
+  }
+
+  function parseLine(line) {
+    const cleaned = line.toLowerCase().replace(/[“”"'.,/#!$%^&*;:{}=\-_`~()]/g, " ");
+    const tokens = cleaned.split(/\s+/).filter(Boolean);
+    const meaningful = tokens.filter(token => !STOP_WORDS.has(token) && token.length > 2);
+    const counts = {};
+    for (const token of meaningful) counts[token] = (counts[token] || 0) + 1;
+    const keywords = Object.entries(counts).sort((a,b) => b[1] - a[1] || b[0].length - a[0].length).slice(0,4).map(([word]) => word);
+    const includesAny = words => words.some(word => tokens.includes(word));
+    const hasPhrase = phrases => phrases.some(phrase => cleaned.includes(phrase));
+    return {
+      tokens,
+      keywords,
+      question: /\?$/.test(line.trim()) || includesAny(["why","how","when","where","who","what"]),
+      contradiction: includesAny(["but","although","yet","however","neither","both"]) || hasPhrase(["and not", "but also"]),
+      memory: includesAny(["remember","memory","forgot","forget","before","past","again","once","yesterday","ancestor"]),
+      future: includesAny(["tomorrow","future","will","become","soon","after","next"]),
+      motion: includesAny(["run","move","fall","rise","cross","flow","turn","leave","enter","return","fly","walk","drift"]),
+      connection: includesAny(["bridge","join","together","link","touch","meet","between","with","thread","road","path"]),
+      absence: includesAny(["no","not","never","nothing","empty","without","gone","missing","silence"]),
+      command: /^(go|bring|make|let|remember|forget|open|close|hold|break|follow|leave|return|be)\b/i.test(line.trim()),
+      place: includesAny(["river","pond","house","city","forest","sea","room","road","bridge","mountain","field","shore","door"]),
+      sensory: includesAny(["red","blue","gold","dark","bright","cold","warm","soft","loud","quiet","salt","sweet","shadow","light"]),
+      length: tokens.length,
+      specificity: clamp((new Set(meaningful).size + (keywords.length * 1.5)) / Math.max(5, tokens.length), 0, 1)
+    };
+  }
+
+  function snapshotField() {
+    return {
+      nodes: deepClone(state.nodes.map(({x,y,pulse,selected,...rest}) => rest)),
+      stones: deepClone(state.stones),
+      branches: deepClone(state.branches),
+      fieldTerms: deepClone(state.fieldTerms),
+      selectedNodeId: state.selectedNodeId
+    };
+  }
+
+  function restoreSnapshot(snapshot) {
+    if (!snapshot) return false;
+    const byId = new Map(state.nodes.map(node => [node.id, node]));
+    state.nodes = snapshot.nodes.map(saved => {
+      const current = byId.get(saved.id) || {};
+      return { ...deepClone(saved), x: current.x || 0, y: current.y || 0, drawX: current.drawX || current.x || 0, drawY: current.drawY || current.y || 0, visualW: current.visualW || 0, visualH: current.visualH || 0, pulse: current.pulse || 0, selected: false };
+    });
+    state.stones = deepClone(snapshot.stones || []);
+    state.branches = deepClone(snapshot.branches || []);
+    state.fieldTerms = deepClone(snapshot.fieldTerms || {});
+    layoutNodes();
+    setSelectedNode(getNode(snapshot.selectedNodeId));
+    updateFieldHUD();
+    return true;
+  }
+
+  function snapshotHash(snapshot) {
+    return hashString(JSON.stringify(snapshot.nodes.map(node => [node.id,node.qualities,node.layers.length,Math.round(node.energy*10),Math.round(node.saturation*10)])));
+  }
+
+  function chooseTarget(profile, random) {
+    if (state.selectedNodeId) return getNode(state.selectedNodeId);
+    const candidates = state.nodes.map(node => {
+      let weight = 1;
+      if (profile.memory) weight += node.memory * 4;
+      if (profile.question) weight += node.openness * 3;
+      if (profile.connection) weight += (1 + node.branching) * 2;
+      if (profile.absence) weight += (1 - node.energy) * 3;
+      if (state.mode === "obstacle") weight += node.openness * 2;
+      if (state.mode === "goal") weight += (1 - node.saturation) * 2;
+      return { node, weight };
+    });
+    let total = candidates.reduce((sum,item) => sum + item.weight, 0);
+    let roll = random() * total;
+    for (const item of candidates) {
+      roll -= item.weight;
+      if (roll <= 0) return item.node;
+    }
+    return candidates[candidates.length - 1].node;
+  }
+
+  function semanticDecision(line, beforeSnapshot) {
+    const profile = parseLine(line);
+    const seed = hashString(`${line}|${state.mode}|${state.selectedNodeId || "auto"}|${snapshotHash(beforeSnapshot)}`);
+    const random = mulberry32(seed);
+    const target = chooseTarget(profile, random);
+    const beforeQuality = nodeSnapshotLabel(target);
+    const keywords = profile.keywords.length ? profile.keywords : ["line"];
+    const primaryWord = keywords[0];
+    const secondaryWord = keywords[1] || keywords[0];
+    const priorCount = state.fieldTerms[primaryWord] || 0;
+
+    const scores = {
+      deepen: state.mode === "stone" ? 3 : 0,
+      spread: state.mode === "goal" ? 3 : 0,
+      break: state.mode === "obstacle" ? 3 : 0,
+      turn: state.mode === "turn" ? 3 : 0
+    };
+    if (profile.memory) scores.deepen += 2.4;
+    if (profile.connection || profile.motion) scores.spread += 2.2;
+    if (profile.contradiction || profile.absence) scores.break += 2.4;
+    if (profile.question || profile.future) scores.turn += 1.8;
+    if (profile.command) scores.break += .8;
+    if (target.saturation > .62 || priorCount >= 3) scores.turn += 2.6;
+    if (target.resistance > .65) scores.break += 1.2;
+    if (state.prediction && scores[state.prediction] != null) scores[state.prediction] += .25;
+
+    const ranked = Object.entries(scores).sort((a,b) => b[1] - a[1]);
+    let effect = ranked[0][0];
+    if (ranked[0][1] === ranked[1][1] && random() > .5) effect = ranked[1][0];
+
+    const saturated = priorCount >= 3 || target.saturation > .72;
+    const compound = state.history.length >= 3 && (profile.memory || profile.contradiction || profile.connection) && random() > .45;
+    if (saturated && effect === "deepen") effect = "turn";
+
+    const templates = {
+      deepen: [
+        `The ${primaryWord} settles below the visible water.`,
+        `${titleCase(primaryWord)} gains weight and the node begins to remember it.`,
+        `A lower layer forms around ${primaryWord}.`
+      ],
+      spread: [
+        `The ${primaryWord} reaches toward a neighboring node.`,
+        `${titleCase(primaryWord)} becomes a route rather than an object.`,
+        `The line carries ${secondaryWord} across the field.`
+      ],
+      break: [
+        `The line separates what the node had kept together.`,
+        `${titleCase(primaryWord)} interrupts the older current.`,
+        `A passage closes, leaving two possible readings.`
+      ],
+      turn: [
+        `The node keeps the words but changes their direction.`,
+        `${titleCase(primaryWord)} returns as an exception to its earlier meaning.`,
+        `The field reads ${secondaryWord} from the opposite shore.`
+      ]
+    };
+
+    let fragment = choice(templates[effect], random);
+    if (saturated) fragment = `The pond has heard “${primaryWord}” before; repetition now changes its meaning.`;
+    if (compound) fragment += ` An older condition answers from beneath it.`;
+
+    const causalBits = [];
+    if (profile.memory) causalBits.push(`the reference to memory`);
+    if (profile.question) causalBits.push(`the line's open question`);
+    if (profile.contradiction) causalBits.push(`its internal contradiction`);
+    if (profile.connection) causalBits.push(`the image of connection`);
+    if (profile.absence) causalBits.push(`the language of absence`);
+    if (!causalBits.length) causalBits.push(`the concrete pressure around “${primaryWord}”`);
+    const causalTrace = `The node ${effect === "deepen" ? "deepened" : effect === "spread" ? "spread outward" : effect === "break" ? "divided" : "changed direction"} around ${causalBits.slice(0,2).join(" and ")}.`;
+
+    const branchChance = clamp((effect === "spread" ? .46 : .08) + (profile.connection ? .22 : 0) + target.branching * .08 - target.saturation * .12, 0, .82);
+    const createBranch = random() < branchChance;
+    const neighbor = createBranch ? chooseNeighbor(target, random) : null;
+
+    return {
+      seed,
+      profile,
+      targetId: target.id,
+      beforeQuality,
+      effect,
+      fragment,
+      causalTrace,
+      createBranch,
+      neighborId: neighbor ? neighbor.id : null,
+      primaryWord,
+      secondaryWord,
+      saturated,
+      compound,
+      randomValues: [random(), random(), random()]
+    };
+  }
+
+  function chooseNeighbor(target, random) {
+    const candidates = state.nodes
+      .filter(node => node.id !== target.id)
+      .map(node => ({ node, d: Math.hypot(node.x - target.x, node.y - target.y) }))
+      .filter(item => item.d < Math.min(state.width, state.height) * .34)
+      .sort((a,b) => a.d - b.d)
+      .slice(0,5);
+    return candidates.length ? choice(candidates, random).node : null;
+  }
+
+  function qualityForEffect(effect, node, decision) {
+    if (decision.saturated) return node.saturation > .8 ? "Refusing" : "Crowded";
+    if (effect === "deepen") return decision.profile.memory ? "Remembering" : "Rooted";
+    if (effect === "spread") return decision.createBranch ? "Branching" : "Open";
+    if (effect === "break") return decision.profile.absence ? "Still" : "Divided";
+    if (effect === "turn") return decision.profile.question ? "Listening" : "Echoing";
+    return "Listening";
+  }
+
+  function applyDecisionStage(decision, stage) {
+    const node = getNode(decision.targetId);
+    if (!node) return;
+    const now = performance.now();
+
+    if (stage === "impact") {
+      node.energy = clamp(node.energy + .18, 0, 1);
+      node.lastChangedAt = now;
+      state.stones.push({ id: crypto.randomUUID ? crypto.randomUUID() : `stone-${Date.now()}`, nodeId: node.id, born: now, line: state.currentOperation.line, mode: state.mode });
+      state.ripples.push({ x: node.drawX || node.x, y: node.drawY || node.y, born: now, strength: .9, life: 2600 });
+      for (let i = 0; i < 18; i++) {
+        const angle = (Math.PI * 2 * i / 18) + decision.randomValues[0];
+        state.particles.push({ x: node.drawX || node.x, y: node.drawY || node.y, vx: Math.cos(angle) * (12 + i % 4), vy: Math.sin(angle) * (8 + i % 5), born: now, life: 1100 + (i%3)*230 });
+      }
+    }
+
+    if (stage === "primary") {
+      if (decision.effect === "deepen") {
+        node.depth = clamp(node.depth + .22, 0, 1);
+        node.memory = clamp(node.memory + (decision.profile.memory ? .26 : .12), 0, 1);
+        node.energy = clamp(node.energy + .08, 0, 1);
+      } else if (decision.effect === "spread") {
+        node.openness = clamp(node.openness + .23, 0, 1);
+        node.branching = clamp(node.branching + .28, 0, 1);
+        node.energy = clamp(node.energy + .16, 0, 1);
+      } else if (decision.effect === "break") {
+        node.resistance = clamp(node.resistance + .25, 0, 1);
+        node.openness = clamp(node.openness - .16, 0, 1);
+        node.energy = clamp(node.energy + .11, 0, 1);
+      } else {
+        const previousDepth = node.depth;
+        node.depth = node.openness;
+        node.openness = previousDepth;
+        node.memory = clamp(node.memory + .07, 0, 1);
+        node.energy = clamp(node.energy + .14, 0, 1);
+      }
+      node.saturation = clamp(node.saturation + .12 + Math.min(.22, (state.fieldTerms[decision.primaryWord] || 0) * .05), 0, 1);
+      const nextQuality = qualityForEffect(decision.effect, node, decision);
+      node.qualities = [nextQuality, ...(node.qualities.filter(q => q !== nextQuality).slice(0,1))];
+      node.lastChangedAt = now;
+      updateFieldHUD();
+    }
+
+    if (stage === "fragment") {
+      node.layers.push({ text: decision.fragment, born: now, source: decision.primaryWord });
+      state.fieldTerms[decision.primaryWord] = (state.fieldTerms[decision.primaryWord] || 0) + 1;
+      updateFieldHUD();
+    }
+
+    if (stage === "branch" && decision.createBranch && decision.neighborId) {
+      const neighbor = getNode(decision.neighborId);
+      if (neighbor) {
+        state.branches.push({ from: node.id, to: neighbor.id, born: now, word: decision.primaryWord, active: true });
+        neighbor.energy = clamp(neighbor.energy + .16, 0, 1);
+        neighbor.qualities = ["Listening", ...neighbor.qualities.filter(q => q !== "Listening").slice(0,1)];
+        state.ripples.push({ x: neighbor.drawX || neighbor.x, y: neighbor.drawY || neighbor.y, born: now, strength: .52, life: 2200 });
+      }
+    }
+  }
+
+  function cancellableWait(ms, operation) {
+    return new Promise((resolve, reject) => {
+      if (operation.controller.signal.aborted) return reject(new DOMException("Aborted", "AbortError"));
+      const id = setTimeout(() => {
+        operation.timers.delete(id);
+        resolve();
+      }, state.settings.reducedMotion ? Math.min(100, ms) : ms);
+      operation.timers.add(id);
+      operation.controller.signal.addEventListener("abort", () => {
+        clearTimeout(id);
+        operation.timers.delete(id);
+        reject(new DOMException("Aborted", "AbortError"));
+      }, { once: true });
+    });
+  }
+
+  function cancelOperation(reason = "stopped") {
+    const operation = state.currentOperation;
+    if (!operation) return;
+    operation.stopReason = reason;
+    operation.controller.abort();
+    for (const id of operation.timers) clearTimeout(id);
+    operation.timers.clear();
+  }
+
+  async function processStone() {
+    const line = lineInput.value.trim();
+    if (!line || state.currentOperation) return;
+
+    const beforeSnapshot = snapshotField();
+    const decision = semanticDecision(line, beforeSnapshot);
+    const operation = {
+      id: crypto.randomUUID ? crypto.randomUUID() : `op-${Date.now()}`,
+      line,
+      mode: state.mode,
+      prediction: state.prediction,
+      beforeSnapshot,
+      decision,
+      controller: new AbortController(),
+      timers: new Set(),
+      stagesCompleted: [],
+      stopReason: ""
+    };
+    state.currentOperation = operation;
+    setPhase("WORKING");
+    $("#workingLine").textContent = `“${line}”`;
+    $("#workingStatus").textContent = `The stone is entering Node ${getNode(decision.targetId).index}.`;
+    $("#progressBar").style.width = "8%";
+    nodeCard.classList.remove("visible");
+    lineInput.blur();
+
+    try {
+      applyDecisionStage(decision, "impact");
+      operation.stagesCompleted.push("impact");
+      $("#progressBar").style.width = "24%";
+      await cancellableWait(520, operation);
+
+      applyDecisionStage(decision, "primary");
+      operation.stagesCompleted.push("primary");
+      $("#workingStatus").textContent = `${titleCase(decision.effect)} is changing Node ${getNode(decision.targetId).index}.`;
+      $("#progressBar").style.width = "50%";
+      await cancellableWait(620, operation);
+
+      applyDecisionStage(decision, "fragment");
+      operation.stagesCompleted.push("fragment");
+      $("#workingStatus").textContent = decision.fragment;
+      $("#progressBar").style.width = "73%";
+      await cancellableWait(560, operation);
+
+      if (decision.createBranch) {
+        applyDecisionStage(decision, "branch");
+        operation.stagesCompleted.push("branch");
+        $("#workingStatus").textContent = "The consequence reaches a neighboring node.";
+      } else {
+        $("#workingStatus").textContent = "The consequence settles in the field.";
+      }
+      $("#progressBar").style.width = "90%";
+      await cancellableWait(430, operation);
+
+      finalizeOperation(operation, false);
+    } catch (error) {
+      if (error && error.name === "AbortError") {
+        finalizeOperation(operation, true);
+      } else {
+        console.error(error);
+        showFault(error, operation);
+      }
+    }
+  }
+
+  function finalizeOperation(operation, interrupted) {
+    const decision = operation.decision;
+    const node = getNode(decision.targetId);
+    const afterSnapshot = snapshotField();
+    const afterQuality = nodeSnapshotLabel(node);
+    const fragment = operation.stagesCompleted.includes("fragment") ? decision.fragment : `“${operation.line}” remains as an unfinished stone.`;
+    const event = {
+      id: operation.id,
+      timestamp: new Date().toISOString(),
+      line: operation.line,
+      mode: operation.mode,
+      prediction: operation.prediction,
+      targetId: decision.targetId,
+      targetIndex: node.index,
+      effect: decision.effect,
+      fragment,
+      causalTrace: interrupted ? `Generation stopped after ${operation.stagesCompleted.length} completed stage${operation.stagesCompleted.length === 1 ? "" : "s"}. Existing changes were preserved.` : decision.causalTrace,
+      beforeQuality: decision.beforeQuality,
+      afterQuality,
+      interrupted,
+      stagesCompleted: [...operation.stagesCompleted],
+      beforeSnapshot: operation.beforeSnapshot,
+      afterSnapshot,
+      carried: false
+    };
+
+    if (state.currentHistoryIndex < state.history.length - 1) state.history = state.history.slice(0, state.currentHistoryIndex + 1);
+    state.history.push(event);
+    state.currentHistoryIndex = state.history.length - 1;
+    state.lastResult = event;
+    state.currentOperation = null;
+    $("#progressBar").style.width = "100%";
+    renderResult(event);
+    updateHistoryUI();
+    setPhase("CHANGED");
+    announce(interrupted ? "Generation stopped. Completed changes remain in the pond." : `Node ${node.index} changed.`, interrupted ? "danger" : "success");
+  }
+
+  function renderResult(event) {
+    $("#resultEyebrow").textContent = event.interrupted ? "The operation stopped" : `Node ${event.targetIndex} changed`;
+    $("#resultLine").textContent = event.fragment;
+    $("#beforeValue").textContent = event.beforeQuality;
+    $("#afterValue").textContent = event.afterQuality;
+    $("#causalTrace").textContent = event.causalTrace;
+    $("#predictionResult").textContent = event.prediction ? `You expected the line to ${event.prediction}. The field ${event.effect === event.prediction ? "followed that tendency" : `moved primarily toward ${event.effect}`}.` : "No prediction was recorded.";
+    $("#carryButton").hidden = event.interrupted || !event.fragment;
+    $("#speakButton").hidden = !("speechSynthesis" in window);
+    $("#undoButton").textContent = "Undo this stone";
+  }
+
+  function showFault(error, operation) {
+    state.currentOperation = null;
+    const event = {
+      line: operation ? operation.line : "",
+      fragment: "The pond could not finish this change.",
+      beforeQuality: "Preserved",
+      afterQuality: "Partial result",
+      causalTrace: `What was completed remains. ${error && error.message ? error.message : "An unknown local error occurred."}`,
+      prediction: operation ? operation.prediction : "",
+      effect: "fault",
+      targetIndex: operation && getNode(operation.decision.targetId) ? getNode(operation.decision.targetId).index : "—",
+      interrupted: true
+    };
+    state.lastResult = event;
+    renderResult(event);
+    $("#resultEyebrow").textContent = "The operation could not finish";
+    $("#continueButton").textContent = "Return to pond";
+    setPhase("FAULT");
+    announce("The operation failed, but existing work was preserved.", "danger");
+  }
+
+  function undoLastStone() {
+    const event = state.history[state.currentHistoryIndex];
+    if (!event) return;
+    state.lastRemovedEvent = event;
+    restoreSnapshot(event.beforeSnapshot);
+    state.currentHistoryIndex -= 1;
+    state.lastResult = {
+      ...event,
+      fragment: "Stone removed. Previous pond restored.",
+      beforeQuality: event.afterQuality,
+      afterQuality: event.beforeQuality,
+      causalTrace: "The removed stone can be restored until another destructive change is made.",
+      interrupted: false
+    };
+    renderResult(state.lastResult);
+    $("#resultEyebrow").textContent = "Previous pond restored";
+    $("#undoButton").textContent = "Restore removed stone";
+    $("#carryButton").hidden = true;
+    setPhase("RECOVERY");
+    updateHistoryUI();
+    announce("Stone removed. Previous pond restored.", "success");
+  }
+
+  function restoreRemovedStone() {
+    const event = state.lastRemovedEvent;
+    if (!event) return;
+    restoreSnapshot(event.afterSnapshot);
+    state.currentHistoryIndex = state.history.findIndex(item => item.id === event.id);
+    state.lastResult = event;
+    state.lastRemovedEvent = null;
+    renderResult(event);
+    setPhase("CHANGED");
+    updateHistoryUI();
+    announce("Removed stone restored.", "success");
+  }
+
+  function continueComposing() {
+    if (state.phase === "FAULT") {
+      setPhase(lineInput.value.trim() ? "READY" : "REST");
+      $("#continueButton").textContent = "Continue";
+      return;
+    }
+    lineInput.value = "";
+    state.prediction = "";
+    updatePredictionButtons();
+    setSelectedNode(null);
+    setPhase("REST");
+    updateInputState();
+    requestAnimationFrame(() => lineInput.focus({ preventScroll: true }));
+  }
+
+  function carryFragment() {
+    const event = state.history[state.currentHistoryIndex];
+    if (!event || !event.fragment) return;
+    event.carried = true;
+    lineInput.value = event.fragment;
+    setPhase("READY");
+    updateInputState();
+    lineInput.focus({ preventScroll: true });
+    announce("Fragment carried into the next line.", "success");
+  }
+
+  function updateHistoryUI() {
+    const hasHistory = state.history.length > 0;
+    historyTrace.classList.toggle("visible", hasHistory && state.phase !== "WORKING" && state.phase !== "CHANGED" && state.phase !== "RECOVERY");
+    historyButton.hidden = !hasHistory;
+    $("#performButton").disabled = !hasHistory;
+    $("#exportDataButton").disabled = !hasHistory;
+    const dots = state.history.slice(Math.max(0, state.history.length - 12));
+    $("#traceDots").innerHTML = "";
+    dots.forEach((event, i) => {
+      const dot = document.createElement("span");
+      dot.className = "trace-dot" + ((state.history.length - dots.length + i) === state.currentHistoryIndex ? " current" : "");
+      dot.title = event.line;
+      $("#traceDots").appendChild(dot);
+    });
+    $("#traceLabel").textContent = `${state.currentHistoryIndex + 1} of ${state.history.length}`;
+    renderHistoryList();
+    updateDiagnostics();
+  }
+
+  function renderHistoryList() {
+    const list = $("#historyList");
+    list.innerHTML = "";
+    if (!state.history.length) {
+      list.innerHTML = '<div class="empty-note">The pond is undisturbed.</div>';
+      return;
+    }
+    [...state.history].reverse().forEach((event, reverseIndex) => {
+      const actualIndex = state.history.length - 1 - reverseIndex;
+      const item = document.createElement("article");
+      item.className = "history-item" + (actualIndex === state.currentHistoryIndex ? " current" : "");
+      const line = document.createElement("div");
+      line.className = "history-line";
+      line.textContent = `“${event.line}”`;
+      const meta = document.createElement("div");
+      meta.className = "history-meta";
+      meta.textContent = `${MODES[event.mode].label} · Node ${event.targetIndex} · ${titleCase(event.effect)}${event.interrupted ? " · Interrupted" : ""}`;
+      const fragment = document.createElement("p");
+      fragment.textContent = event.fragment;
+      const actions = document.createElement("div");
+      actions.className = "history-actions";
+      const preview = document.createElement("button");
+      preview.className = "soft-button";
+      preview.type = "button";
+      preview.textContent = "Preview";
+      preview.addEventListener("click", () => previewHistory(actualIndex));
+      const restore = document.createElement("button");
+      restore.className = "soft-button";
+      restore.type = "button";
+      restore.textContent = "Restore this state";
+      restore.addEventListener("click", () => restoreHistory(actualIndex));
+      actions.append(preview, restore);
+      item.append(line, meta, fragment, actions);
+      list.appendChild(item);
+    });
+  }
+
+  function previewHistory(index) {
+    const event = state.history[index];
+    if (!event) return;
+    state.previewSnapshot = snapshotField();
+    restoreSnapshot(event.afterSnapshot);
+    announce(`Previewing the pond after stone ${index + 1}. No live history has changed.`);
+    setTimeout(() => {
+      if (state.previewSnapshot) {
+        restoreSnapshot(state.previewSnapshot);
+        state.previewSnapshot = null;
+        announce("Returned to the current pond.");
+      }
+    }, state.settings.reducedMotion ? 900 : 2600);
+  }
+
+  function restoreHistory(index) {
+    const event = state.history[index];
+    if (!event) return;
+    restoreSnapshot(event.afterSnapshot);
+    state.currentHistoryIndex = index;
+    state.lastRemovedEvent = null;
+    if (index < state.history.length - 1) state.history = state.history.slice(0, index + 1);
+    updateHistoryUI();
+    $("#historyDialog").close();
+    announce(`Restored the pond after stone ${index + 1}.`, "success");
+  }
+
+  function speak(text) {
+    if (!("speechSynthesis" in window) || !text) return;
+    speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = .86;
+    utterance.pitch = .94;
+    speechSynthesis.speak(utterance);
+  }
+
+  function enterReadingMode(text = "") {
+    state.reading = true;
+    document.body.classList.add("reading");
+    $("#readingText").textContent = text || (state.lastResult ? state.lastResult.fragment : "The water is listening.");
+    $("#readingOverlay").classList.add("visible");
+    $("#readingOverlay").setAttribute("aria-hidden", "false");
+    $("#readingExit").classList.add("visible");
+    if ($("#menuDialog").open) $("#menuDialog").close();
+  }
+
+  function exitReadingMode() {
+    state.reading = false;
+    document.body.classList.remove("reading");
+    $("#readingOverlay").classList.remove("visible");
+    $("#readingOverlay").setAttribute("aria-hidden", "true");
+    $("#readingExit").classList.remove("visible");
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+  }
+
+  async function performHistory() {
+    if (!state.history.length || state.performing) return;
+    state.performing = true;
+    enterReadingMode(state.history[0].line);
+    $("#menuDialog").close();
+    for (const event of state.history) {
+      if (!state.performing) break;
+      $("#readingText").textContent = event.line;
+      speak(event.line);
+      const performanceNode = getNode(event.targetId);
+      state.ripples.push({ x: performanceNode.drawX || performanceNode.x, y: performanceNode.drawY || performanceNode.y, born: performance.now(), strength: .75, life: 2100 });
+      await new Promise(resolve => setTimeout(resolve, state.settings.reducedMotion ? 500 : Math.max(1500, event.line.length * 55)));
+      if (!state.performing) break;
+      $("#readingText").textContent = event.fragment;
+      speak(event.fragment);
+      await new Promise(resolve => setTimeout(resolve, state.settings.reducedMotion ? 600 : Math.max(1800, event.fragment.length * 48)));
+    }
+    state.performing = false;
+  }
+
+  function stopPerformance() {
+    state.performing = false;
+    exitReadingMode();
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function exportImage() {
+    canvas.toBlob(blob => {
+      if (!blob) return announce("The pond image could not be created.", "danger");
+      downloadBlob(blob, `poetry-pond-${new Date().toISOString().slice(0,10)}.png`);
+      announce("Pond image saved.", "success");
+    }, "image/png");
+  }
+
+  function exportData() {
+    const payload = {
+      title: "Open RCC Accretion Field — Semantic Fisheye Mountains",
+      exportedAt: new Date().toISOString(),
+      currentHistoryIndex: state.currentHistoryIndex,
+      history: state.history.map(({beforeSnapshot,afterSnapshot,...event}) => event),
+      field: snapshotField()
+    };
+    downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }), `poetry-pond-history-${new Date().toISOString().slice(0,10)}.json`);
+    announce("Field history exported.", "success");
+  }
+
+  function toggleRecording() {
+    if (state.recording) {
+      state.mediaRecorder.stop();
+      return;
+    }
+    if (!canvas.captureStream || !("MediaRecorder" in window)) {
+      announce("Canvas recording is not available in this browser.", "danger");
+      return;
+    }
+    try {
+      const stream = canvas.captureStream(30);
+      const options = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? { mimeType: "video/webm;codecs=vp9" } : { mimeType: "video/webm" };
+      state.recordedChunks = [];
+      state.mediaRecorder = new MediaRecorder(stream, options);
+      state.mediaRecorder.ondataavailable = event => { if (event.data && event.data.size) state.recordedChunks.push(event.data); };
+      state.mediaRecorder.onstop = () => {
+        state.recording = false;
+        $("#recordButton span").textContent = "Record pond";
+        $("#recordStatus").textContent = "Capture the canvas as WebM";
+        if (state.recordedChunks.length) {
+          downloadBlob(new Blob(state.recordedChunks, { type: state.mediaRecorder.mimeType }), `poetry-pond-recording-${new Date().toISOString().replace(/[:.]/g,"-")}.webm`);
+          announce("Recording saved.", "success");
+        } else {
+          announce("Recording stopped without recoverable video.", "danger");
+        }
+      };
+      state.mediaRecorder.onerror = () => announce("Recording stopped unexpectedly. Available video will be preserved.", "danger");
+      state.mediaRecorder.start(500);
+      state.recording = true;
+      $("#recordButton span").textContent = "Stop recording";
+      $("#recordStatus").textContent = "Recording is active";
+      announce("Recording started.");
+    } catch (error) {
+      console.error(error);
+      announce("Recording could not start. Composition remains available.", "danger");
+    }
+  }
+
+  function resetPond() {
+    if (state.currentOperation) cancelOperation("reset");
+    state.stones = [];
+    state.branches = [];
+    state.ripples = [];
+    state.particles = [];
+    state.history = [];
+    state.currentHistoryIndex = -1;
+    state.lastResult = null;
+    state.lastRemovedEvent = null;
+    state.fieldTerms = {};
+    lineInput.value = "";
+    createNodes();
+    setSelectedNode(getNode("node-7"));
+    setPhase("REST");
+    updateInputState();
+    updateHistoryUI();
+    $("#menuDialog").close();
+    announce("The pond is undisturbed.");
+  }
+
+  function updatePredictionButtons() {
+    $$(".prediction-button").forEach(button => button.setAttribute("aria-pressed", button.dataset.prediction === state.prediction ? "true" : "false"));
+  }
+
+  function updateFieldHUD() {
+    const node = getNode(state.selectedNodeId) || state.nodes[6] || state.nodes[0];
+    if (!node) return;
+    const values = {
+      Pressure: clamp(node.energy + node.saturation * .55, 0, 1),
+      Density: clamp(node.depth + node.layers.length * .035, 0, 1),
+      Memory: clamp(node.memory + node.layers.length * .025, 0, 1),
+      Tension: clamp(node.resistance + node.branching * .45, 0, 1)
+    };
+    for (const [name, value] of Object.entries(values)) {
+      const bar = $(`#driver${name}`);
+      const output = $(`#${name.toLowerCase()}Value`);
+      if (bar) bar.style.width = `${Math.round(value * 100)}%`;
+      if (output) output.textContent = String(Math.round(value * 100));
+    }
+    const mini = $$("#miniStack i");
+    const focus = clamp(Math.round((node.layers.length + node.depth * 7) / 2), 0, mini.length - 1);
+    mini.forEach((layer, index) => layer.classList.toggle("focus", index === focus));
+  }
+
+  function updateDiagnostics() {
+    $("#diagnostics").textContent = JSON.stringify({
+      phase: state.phase,
+      mode: state.mode,
+      prediction: state.prediction || null,
+      selectedNode: state.selectedNodeId,
+      historyCount: state.history.length,
+      currentHistoryIndex: state.currentHistoryIndex,
+      activeOperation: state.currentOperation ? {
+        id: state.currentOperation.id,
+        stages: state.currentOperation.stagesCompleted,
+        target: state.currentOperation.decision.targetId
+      } : null,
+      stones: state.stones.length,
+      branches: state.branches.length,
+      reducedMotion: state.settings.reducedMotion
+    }, null, 2);
+  }
+
+  function roundedRectPath(context, x, y, w, h, r) {
+    const radius = Math.min(r, w * .5, h * .5);
+    context.beginPath();
+    context.moveTo(x + radius, y);
+    context.arcTo(x + w, y, x + w, y + h, radius);
+    context.arcTo(x + w, y + h, x, y + h, radius);
+    context.arcTo(x, y + h, x, y, radius);
+    context.arcTo(x, y, x + w, y, radius);
+    context.closePath();
+  }
+
+  function fitText(text, maxWidth, startSize, minSize = 7) {
+    let size = startSize;
+    while (size > minSize) {
+      ctx.font = `500 ${size}px "Arial Narrow", Inter, system-ui, sans-serif`;
+      if (ctx.measureText(text).width <= maxWidth) break;
+      size -= .5;
+    }
+    return size;
+  }
+
+  function drawBackground(now) {
+    const w = state.width;
+    const h = state.height;
+    const horizon = state.scene.horizon;
+    const sky = ctx.createLinearGradient(0,0,0,horizon + 130);
+    sky.addColorStop(0, "#101c2a");
+    sky.addColorStop(.46, "#25354a");
+    sky.addColorStop(.78, "#5f5962");
+    sky.addColorStop(1, "#b78367");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0,0,w,horizon + 160);
+
+    const dusk = ctx.createRadialGradient(w*.78,horizon*.82,0,w*.78,horizon*.82,w*.55);
+    dusk.addColorStop(0,"rgba(246,180,108,.32)");
+    dusk.addColorStop(.32,"rgba(212,128,91,.12)");
+    dusk.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle = dusk;
+    ctx.fillRect(0,0,w,horizon + 150);
+
+    ctx.save();
+    ctx.globalAlpha = .24;
+    for (let i=0;i<4;i++) {
+      const y = horizon * (.26 + i*.14);
+      const cloud = ctx.createLinearGradient(0,y,w,y+18);
+      cloud.addColorStop(0,"rgba(60,72,94,0)");
+      cloud.addColorStop(.3,"rgba(91,91,111,.52)");
+      cloud.addColorStop(.72,"rgba(117,92,104,.35)");
+      cloud.addColorStop(1,"rgba(60,72,94,0)");
+      ctx.fillStyle = cloud;
+      ctx.beginPath();
+      ctx.ellipse(w*(.42 + i*.07),y,w*(.32+i*.04),11+i*3,.02,0,Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Distant land silhouettes.
+    ctx.fillStyle = "#101820";
+    ctx.beginPath();
+    ctx.moveTo(0,horizon+12);
+    for (let x=0;x<=w;x+=Math.max(24,w/32)) {
+      const y = horizon + 5 - Math.sin(x*.012)*8 - Math.sin(x*.027+1.7)*11;
+      ctx.lineTo(x,y);
+    }
+    ctx.lineTo(w,horizon+46); ctx.lineTo(0,horizon+46); ctx.closePath(); ctx.fill();
+
+    const water = ctx.createLinearGradient(0,horizon,0,h);
+    water.addColorStop(0,"#263a46");
+    water.addColorStop(.24,"#162b37");
+    water.addColorStop(.68,"#0a1922");
+    water.addColorStop(1,"#050d13");
+    ctx.fillStyle = water;
+    ctx.fillRect(0,horizon,w,h-horizon);
+
+    const reflectionGlow = ctx.createLinearGradient(w*.55,horizon,w*.92,state.scene.fieldBottom);
+    ctx.save();
+    ctx.globalAlpha=.28;
+    ctx.fillStyle = "rgba(210,135,87,.36)";
+    ctx.beginPath();
+    ctx.moveTo(w*.58,horizon);ctx.lineTo(w*.94,horizon);ctx.lineTo(w*.73,state.scene.fieldBottom);ctx.lineTo(w*.48,state.scene.fieldBottom);ctx.closePath();ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = "rgba(171,209,216,.075)";
+    ctx.lineWidth = 1;
+    const span = Math.max(10, Math.floor((state.scene.fieldBottom - horizon) / 16));
+    for (let y=horizon+12;y<state.scene.fieldBottom+40;y+=span) {
+      ctx.beginPath();
+      for (let x=0;x<=w;x+=16) {
+        const wave = state.settings.reducedMotion ? 0 : Math.sin(x*.014 + y*.018 + now*.00023) * 1.6;
+        if (x===0) ctx.moveTo(x,y+wave); else ctx.lineTo(x,y+wave);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Subtle vignette.
+    const vignette = ctx.createRadialGradient(w*.5,h*.46,Math.min(w,h)*.16,w*.5,h*.5,Math.max(w,h)*.78);
+    vignette.addColorStop(.48,"rgba(0,0,0,0)");
+    vignette.addColorStop(1,"rgba(0,4,7,.7)");
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0,0,w,h);
+  }
+
+  function scenePosition(node) {
+    const selected = getNode(state.selectedNodeId) || state.nodes[6];
+    const isSelected = selected && node.id === selected.id;
+    const centerX = state.width * .5;
+    const focusY = state.scene.fieldBottom - Math.min(36, state.height*.035);
+    let x = node.x;
+    let y = node.y;
+    let scale = .34 + node.ny * .48;
+    if (selected) {
+      if (isSelected) {
+        x = lerp(node.x, centerX, .78);
+        y = lerp(node.y, focusY, .72);
+        scale *= state.width < 650 ? 1.32 : 1.58;
+      } else {
+        const push = node.x < selected.x ? -1 : 1;
+        x += push * Math.min(state.width*.10, 72);
+        y = lerp(y, state.scene.horizon + (node.ny*.82) * (state.scene.fieldBottom-state.scene.horizon), .45);
+        scale *= .74;
+      }
+    }
+    return { x, y, scale, selected: isSelected };
+  }
+
+  function layerTextFor(node, readableIndex) {
+    const source = [...FOUNDATION_LINES];
+    for (const layer of node.layers) if (layer && layer.text) source.push(layer.text);
+    if (!source.length) return "The water is listening.";
+    return source[readableIndex % source.length];
+  }
+
+  function buildMountainLayers(node, position, now) {
+    const selected = position.selected;
+    const historyBoost = Math.min(16, node.layers.length * 2);
+    const count = Math.round((selected ? 28 : 15) + historyBoost + node.depth * 8);
+    const baseW = position.scale * (selected ? 270 : 170) * (1 + node.energy*.08 + node.saturation*.08);
+    const thinH = position.scale * (selected ? 3.5 : 3.0);
+    const readableEvery = selected ? 5 : 7;
+    const descriptors = [];
+    let currentY = position.y;
+    let readableIndex = 0;
+    for (let i=0;i<count;i++) {
+      const t = i / Math.max(1,count-1);
+      const newestReadableSlot = node.layers.length ? Math.max(0, Math.floor((count-4)/readableEvery)) : -1;
+      const isReadable = (i % readableEvery === 2) || (selected && i === count-4);
+      const eventBoost = selected && node.layers.length && readableIndex === newestReadableSlot;
+      const layerH = isReadable ? position.scale * (eventBoost ? 22 : 17) : thinH * (.8 + ((i*17)%5)*.08);
+      const taper = 1 - t * (selected ? .63 : .58);
+      const irregular = 1 + Math.sin(i*1.71 + node.index*.9) * .026 + Math.sin(i*.31)*.015;
+      const width = baseW * taper * irregular;
+      const offset = Math.sin(i*.83 + node.index) * position.scale * (selected ? 5 : 3);
+      const text = isReadable ? layerTextFor(node, readableIndex++) : "";
+      descriptors.push({
+        i,
+        x: position.x + offset,
+        y: currentY - layerH,
+        w: width,
+        h: layerH,
+        readable: isReadable,
+        text,
+        eventBoost,
+        t,
+        skew: position.scale * (selected ? 11 : 7),
+        depth: Math.max(2, position.scale * (isReadable ? 6 : 3.3)),
+        selected
+      });
+      currentY -= layerH + position.scale * .55;
+    }
+    node.visualW = baseW;
+    node.visualH = position.y - currentY + position.scale*10;
+    node.drawX = position.x;
+    node.drawY = position.y;
+    node.focusLayer = descriptors.filter(d=>d.readable).at(-1) || descriptors.at(-1);
+    return descriptors;
+  }
+
+  function drawStratum(layer, alpha=1, reflection=false) {
+    const {x,y,w,h,skew,depth,readable,text,eventBoost,t} = layer;
+    const left = x-w/2, right=x+w/2;
+    const baseHue = 25 + ((layer.i*7)%16);
+    const front = ctx.createLinearGradient(left,y,right,y+h);
+    if (readable) {
+      front.addColorStop(0, reflection ? "rgba(20,24,26,.62)" : "#0d1114");
+      front.addColorStop(.58, reflection ? "rgba(19,21,22,.54)" : "#171716");
+      front.addColorStop(1, reflection ? "rgba(18,19,19,.5)" : "#0a0d0f");
+    } else {
+      front.addColorStop(0, `hsla(${baseHue},18%,${reflection?12:19}%,${reflection?.6:1})`);
+      front.addColorStop(.45, `hsla(${baseHue+5},19%,${reflection?15:25}%,${reflection?.6:1})`);
+      front.addColorStop(1, `hsla(${baseHue-3},22%,${reflection?9:14}%,${reflection?.6:1})`);
+    }
+    ctx.save();
+    ctx.globalAlpha *= alpha;
+    ctx.fillStyle = front;
+    ctx.strokeStyle = readable ? (eventBoost ? "rgba(241,201,125,.92)" : "rgba(180,155,112,.42)") : "rgba(214,188,145,.12)";
+    ctx.lineWidth = readable ? (eventBoost ? 1.5 : .8) : .5;
+    ctx.beginPath();
+    ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.lineTo(right,y+h);ctx.lineTo(left,y+h);ctx.closePath();ctx.fill();ctx.stroke();
+
+    ctx.fillStyle = readable ? "rgba(71,54,37,.72)" : "rgba(79,62,45,.48)";
+    ctx.beginPath();
+    ctx.moveTo(left,y);ctx.lineTo(left+skew,y-depth);ctx.lineTo(right+skew,y-depth);ctx.lineTo(right,y);ctx.closePath();ctx.fill();
+
+    ctx.fillStyle = readable ? "rgba(7,9,10,.9)" : "rgba(34,27,22,.76)";
+    ctx.beginPath();
+    ctx.moveTo(right,y);ctx.lineTo(right+skew,y-depth);ctx.lineTo(right+skew,y-depth+h);ctx.lineTo(right,y+h);ctx.closePath();ctx.fill();
+
+    if (!readable) {
+      ctx.strokeStyle = `rgba(235,213,173,${reflection?.025:.06})`;
+      for (let k=1;k<Math.max(2,Math.floor(h/2));k+=2) {
+        ctx.beginPath();ctx.moveTo(left+2,y+k);ctx.lineTo(right-2,y+k+Math.sin(k+layer.i)*.5);ctx.stroke();
+      }
+    }
+
+    if (readable && text && w > 82) {
+      const maxW = w-14;
+      const fontSize = fitText(text,maxW,Math.min(layer.selected?15:10,h*.62),6.5);
+      ctx.font = `500 ${fontSize}px "Arial Narrow", Inter, system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = reflection ? "transparent" : "rgba(240,195,125,.34)";
+      ctx.shadowBlur = eventBoost && !reflection ? 9 : 0;
+      ctx.fillStyle = reflection ? "rgba(218,192,150,.34)" : (eventBoost ? "#f1c982" : (layer.i%2 ? "#d8e4e4" : "#dec69e"));
+      ctx.fillText(text,x,y+h*.56,maxW);
+    }
+    ctx.restore();
+  }
+
+  function drawMountainReflection(descriptors, baseY) {
+    if (!descriptors.length) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0,baseY,state.width,state.scene.fieldBottom-baseY+120);
+    ctx.clip();
+    ctx.translate(0,baseY);
+    ctx.scale(1,-.46);
+    ctx.translate(0,-baseY);
+    ctx.globalAlpha=.19;
+    ctx.filter="blur(.45px)";
+    for (const layer of descriptors) drawStratum(layer, .72*(1-layer.t*.4), true);
+    ctx.restore();
+    ctx.filter="none";
+  }
+
+  function drawMountain(node, descriptors, position, now) {
+    const recent = clamp(1-(now-node.lastChangedAt)/1700,0,1);
+    ctx.save();
+    if (position.selected) {
+      const glow = ctx.createRadialGradient(position.x,position.y-node.visualH*.46,6,position.x,position.y-node.visualH*.42,node.visualW*.82);
+      glow.addColorStop(0,`rgba(240,195,125,${.08+recent*.1})`);
+      glow.addColorStop(.55,"rgba(83,168,183,.035)");
+      glow.addColorStop(1,"rgba(0,0,0,0)");
+      ctx.fillStyle=glow;ctx.fillRect(position.x-node.visualW,position.y-node.visualH*1.25,node.visualW*2,node.visualH*1.5);
+    }
+    for (const layer of descriptors) drawStratum(layer, position.selected ? 1 : .72);
+
+    // Cap stone and spawn marker.
+    const top = descriptors.at(-1);
+    if (top) {
+      ctx.strokeStyle = position.selected ? "rgba(179,224,232,.75)" : "rgba(179,224,232,.26)";
+      ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(top.x+top.skew*.6,top.y-top.depth-3);ctx.lineTo(top.x+top.skew*.6,top.y-top.depth-(position.selected?20:10));ctx.stroke();
+      ctx.fillStyle=position.selected?"#bceaf0":"rgba(188,234,240,.4)";ctx.beginPath();ctx.arc(top.x+top.skew*.6,top.y-top.depth-(position.selected?21:11),1.6,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawCallout(label, sublabel, x, y, targetX, targetY, align="left") {
+    if (state.width < 900) return;
+    ctx.save();
+    ctx.font='500 11px "Arial Narrow", Inter, sans-serif';
+    ctx.textAlign=align;
+    ctx.textBaseline="alphabetic";
+    const width=Math.max(ctx.measureText(label).width,ctx.measureText(sublabel).width)+8;
+    const startX=align==="left"?x:x-width;
+    ctx.strokeStyle="rgba(190,224,230,.5)";ctx.lineWidth=.8;ctx.setLineDash([2,3]);
+    ctx.beginPath();ctx.moveTo(targetX,targetY);ctx.lineTo(align==="left"?startX-10:startX+width+10,targetY);ctx.lineTo(align==="left"?startX-10:startX+width+10,y-4);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle="rgba(223,233,235,.86)";ctx.fillText(label,x,y);
+    ctx.fillStyle="rgba(132,157,164,.9)";ctx.font='10px "Arial Narrow", Inter, sans-serif';ctx.fillText(sublabel,x,y+13);
+    ctx.fillStyle="rgba(210,236,240,.8)";ctx.beginPath();ctx.arc(targetX,targetY,1.7,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+
+  function drawSelectedCallouts(node) {
+    if (!node || !node.focusLayer || state.width < 900) return;
+    const f=node.focusLayer;
+    const topY=node.drawY-node.visualH;
+    drawCallout("semantic strata","compress and persist",42,Math.max(210,topY+70),node.drawX-node.visualW*.36,topY+node.visualH*.3,"left");
+    drawCallout("readable band","visible layer",42,Math.max(330,topY+210),f.x-f.w*.48,f.y+f.h*.5,"left");
+    drawCallout("selected layer","current focus",state.width-42,Math.max(270,f.y-10),f.x+f.w*.48,f.y+f.h*.5,"right");
+    drawCallout("spawn point","new thought",state.width-42,Math.max(160,topY-12),node.drawX,topY+2,"right");
+    drawCallout("accretion flow","water impact",state.width-42,Math.min(state.scene.fieldBottom-30,node.drawY-30),node.drawX+node.visualW*.42,node.drawY-2,"right");
+  }
+
+  function drawBranches(now) {
+    ctx.save();
+    ctx.lineCap="round";
+    for (const branch of state.branches) {
+      const a=getNode(branch.from), b=getNode(branch.to);
+      if(!a||!b) continue;
+      const ax=a.drawX||a.x, ay=a.drawY||a.y, bx=b.drawX||b.x, by=b.drawY||b.y;
+      const age=now-branch.born, progress=state.settings.reducedMotion?1:clamp(age/950,0,1);
+      const cx=(ax+bx)/2, cy=(ay+by)/2+Math.min(24,Math.abs(ax-bx)*.08);
+      const t=progress;
+      const qx=(1-t)*(1-t)*ax+2*(1-t)*t*cx+t*t*bx;
+      const qy=(1-t)*(1-t)*ay+2*(1-t)*t*cy+t*t*by;
+      ctx.strokeStyle="rgba(125,212,223,.42)";ctx.lineWidth=1.1+a.branching*1.5;ctx.setLineDash([3,6]);
+      ctx.beginPath();ctx.moveTo(ax,ay);ctx.quadraticCurveTo(cx,cy,qx,qy);ctx.stroke();ctx.setLineDash([]);
+    }
+    ctx.restore();
+  }
+
+  function drawRipples(now) {
+    const next=[];
+    for (const ripple of state.ripples) {
+      const age=now-ripple.born;if(age>ripple.life)continue;next.push(ripple);
+      const t=clamp(age/ripple.life,0,1), radius=12+t*(82+ripple.strength*100);
+      ctx.save();ctx.globalAlpha=(1-t)*.5*ripple.strength;ctx.strokeStyle="rgba(191,229,235,.86)";ctx.lineWidth=1;
+      for(let i=0;i<4;i++){ctx.beginPath();ctx.ellipse(ripple.x,ripple.y+3,radius+i*16,(radius+i*16)*.19,0,0,Math.PI*2);ctx.stroke();}
+      ctx.restore();
+    }
+    state.ripples=next;
+  }
+
+  function drawParticles(now) {
+    const next=[];
+    for(const p of state.particles){const age=now-p.born;if(age>p.life)continue;next.push(p);const t=age/p.life;const x=p.x+p.vx*t*2.8,y=p.y+p.vy*t*2.2+18*t*t;ctx.save();ctx.globalAlpha=(1-t)*.6;ctx.fillStyle="#efc681";ctx.fillRect(x,y,1.4,1.4);ctx.restore();}
+    state.particles=next;
+  }
+
+  function drawNodes(now) {
+    const positioned=state.nodes.map(node=>({node,position:scenePosition(node)}));
+    for(const item of positioned){item.descriptors=buildMountainLayers(item.node,item.position,now);drawMountainReflection(item.descriptors,item.position.y);}
+    const ordered=[...positioned].sort((a,b)=>a.position.y-b.position.y);
+    for(const item of ordered){drawMountain(item.node,item.descriptors,item.position,now);}
+    const selected=getNode(state.selectedNodeId);if(selected)drawSelectedCallouts(selected);
+  }
+
+  function drawStones(now) {
+    for(const stone of state.stones){const node=getNode(stone.nodeId);if(!node)continue;const age=now-stone.born,t=state.settings.reducedMotion?1:clamp(age/650,0,1),fall=1-Math.pow(1-t,3);const x=node.drawX||node.x,y=lerp((node.drawY||node.y)-node.visualH-90,(node.drawY||node.y)-node.visualH+6,fall);ctx.save();ctx.globalAlpha=clamp(age/160,0,1);ctx.fillStyle=stone.mode==="obstacle"?"#b98572":stone.mode==="goal"?"#e2c17f":stone.mode==="turn"?"#9f91b8":"#6e665a";ctx.strokeStyle="rgba(255,245,220,.55)";ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(x,y,7,5,-.12,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}
+  }
+
+  function drawSelectionHint(now) {
+    if(state.phase==="WORKING"||state.reading)return;
+    const selected=getNode(state.selectedNodeId);if(!selected)return;
+    if(state.width<680)return;
+    const alpha=.4+(state.settings.reducedMotion?0:Math.sin(now*.001)*.06);
+    ctx.save();ctx.fillStyle=`rgba(193,215,219,${alpha})`;ctx.font='10px "Arial Narrow", Inter, sans-serif';ctx.textAlign="center";ctx.fillText(`MOUNTAIN ${selected.index} · ${nodeSnapshotLabel(selected).toUpperCase()}`,selected.drawX,Math.max(112,selected.drawY-selected.visualH-28));ctx.restore();
+  }
+
+  function draw(now) {
+    if (now - state.scene.lastRender < 33) { requestAnimationFrame(draw); return; }
+    state.scene.lastRender = now;
+    state.now=now;state.frame++;
+    drawBackground(now);
+    drawBranches(now);
+    drawNodes(now);
+    drawRipples(now);
+    drawStones(now);
+    drawParticles(now);
+    drawSelectionHint(now);
+    requestAnimationFrame(draw);
+  }
+
+  function openDialog(dialog) {
+    if (!dialog.open) dialog.showModal();
+  }
+
+  function closeModeMenu() {
+    modeMenu.classList.remove("open");
+    modeButton.setAttribute("aria-expanded", "false");
+  }
+
+  lineInput.addEventListener("input", updateInputState);
+  lineInput.addEventListener("keydown", event => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+      event.preventDefault();
+      processStone();
+    }
+  });
+  dropButton.addEventListener("click", processStone);
+  clearButton.addEventListener("click", () => { lineInput.value = ""; updateInputState(); lineInput.focus(); });
+  $("#stopButton").addEventListener("click", () => cancelOperation("stopped by player"));
+  $("#continueButton").addEventListener("click", continueComposing);
+  $("#carryButton").addEventListener("click", carryFragment);
+  $("#speakButton").addEventListener("click", () => speak(state.lastResult ? state.lastResult.fragment : ""));
+  $("#undoButton").addEventListener("click", () => state.phase === "RECOVERY" ? restoreRemovedStone() : undoLastStone());
+
+  modeButton.addEventListener("click", () => {
+    const open = !modeMenu.classList.contains("open");
+    modeMenu.classList.toggle("open", open);
+    modeButton.setAttribute("aria-expanded", String(open));
+  });
+  $$(".mode-option").forEach(button => button.addEventListener("click", () => {
+    state.mode = button.dataset.mode;
+    $$(".mode-option").forEach(option => option.setAttribute("aria-checked", option === button ? "true" : "false"));
+    modeButton.innerHTML = `Intention: <strong>${MODES[state.mode].label}</strong>`;
+    closeModeMenu();
+    announce(`${MODES[state.mode].label} intention selected.`);
+  }));
+  $$(".prediction-button").forEach(button => button.addEventListener("click", () => {
+    state.prediction = button.dataset.prediction;
+    updatePredictionButtons();
+  }));
+
+  canvas.addEventListener("pointermove", event => {
+    const point = canvasPoint(event);
+    state.pointer = { ...point, active: true };
+    const node = nearestNode(point.x,point.y,46);
+    state.hoverNodeId = node ? node.id : null;
+    canvas.style.cursor = node ? "pointer" : "crosshair";
+  });
+  canvas.addEventListener("pointerleave", () => { state.pointer.active = false; state.hoverNodeId = null; });
+  canvas.addEventListener("pointerdown", event => {
+    if (state.phase === "WORKING" || state.reading) return;
+    const point = canvasPoint(event);
+    const node = nearestNode(point.x,point.y,58);
+    if (node) {
+      setSelectedNode(node);
+      state.ripples.push({ x: node.drawX || node.x, y: node.drawY || node.y, born: performance.now(), strength: .28, life: 1000 });
+    } else {
+      state.debugClicks++;
+      if (state.debugClicks >= 7) {
+        $("#diagnosticsSection").hidden = false;
+        announce("Diagnostics revealed in the menu.");
+      }
+    }
+  });
+
+  $("#menuButton").addEventListener("click", () => openDialog($("#menuDialog")));
+  $("#historyButton").addEventListener("click", () => openDialog($("#historyDialog")));
+  historyTrace.addEventListener("click", () => openDialog($("#historyDialog")));
+  $$('[data-close-dialog]').forEach(button => button.addEventListener("click", () => {
+    const dialog = document.getElementById(button.dataset.closeDialog);
+    if (dialog && dialog.open) dialog.close();
+  }));
+
+  $("#readingModeButton").addEventListener("click", () => enterReadingMode());
+  $("#readingExit").addEventListener("click", () => state.performing ? stopPerformance() : exitReadingMode());
+  $("#performButton").addEventListener("click", performHistory);
+  $("#recordButton").addEventListener("click", toggleRecording);
+  $("#exportImageButton").addEventListener("click", exportImage);
+  $("#exportDataButton").addEventListener("click", exportData);
+  $("#resetButton").addEventListener("click", resetPond);
+  $("#showLabelsToggle").addEventListener("change", event => { state.settings.showLabels = event.target.checked; });
+  $("#reducedMotionToggle").checked = state.settings.reducedMotion;
+  $("#reducedMotionToggle").addEventListener("change", event => { state.settings.reducedMotion = event.target.checked; announce(event.target.checked ? "Reduced motion enabled." : "Full motion enabled."); });
+
+  document.addEventListener("click", event => {
+    if (!modeMenu.contains(event.target) && !modeButton.contains(event.target)) closeModeMenu();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      if (state.currentOperation) cancelOperation("escape");
+      if (state.reading) stopPerformance();
+      closeModeMenu();
+    }
+    if ((event.key === "h" || event.key === "H") && !/textarea|input/i.test(document.activeElement.tagName) && state.history.length) openDialog($("#historyDialog"));
+  });
+
+  window.addEventListener("resize", resizeCanvas);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", () => {
+      document.documentElement.style.setProperty("--viewport-height", `${window.visualViewport.height}px`);
+      resizeCanvas();
+    });
+  }
+  window.addEventListener("error", event => {
+    if (state.phase !== "FAULT" && !state.currentOperation) announce(`A display error occurred: ${event.message}`, "danger");
+  });
+  window.addEventListener("unhandledrejection", event => {
+    console.error(event.reason);
+    if (!(event.reason && event.reason.name === "AbortError")) announce("A local operation could not finish. Existing work remains.", "danger");
+  });
+
+  createNodes();
+  resizeCanvas();
+  setSelectedNode(getNode("node-7"));
+  nodeCard.classList.remove("visible");
+  updateInputState();
+  updateHistoryUI();
+  requestAnimationFrame(draw);
+  announce("The water is listening.");
+})();
+</script>
+</body>
+</html>

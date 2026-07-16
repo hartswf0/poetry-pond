@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coaxing the Ripples — Rebuilt Conference Presentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f7f4ed;
+    --bg2:#f1ede4;
+    --paper:#fffdfa;
+    --ink:#171717;
+    --muted:#67635b;
+    --line:#dad3c7;
+    --accent:#8b6b2c;
+    --maxw:1120px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  main{scroll-snap-type:y mandatory}
+  .top{
+    position:fixed;
+    top:0; left:0; right:0;
+    z-index:100;
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    padding:12px 18px;
+    font-size:12px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    border-bottom:1px solid rgba(218,211,199,.8);
+    background:rgba(247,244,237,.84);
+    backdrop-filter:blur(10px);
+  }
+  .top .title{font-weight:700}
+  .top .meta{color:var(--muted)}
+  .slide{
+    min-height:100vh;
+    scroll-snap-align:start;
+    display:flex;
+    align-items:center;
+    padding:76px 24px 34px;
+    position:relative;
+    background:linear-gradient(180deg,var(--bg),var(--bg2));
+    border-bottom:1px solid rgba(218,211,199,.6);
+  }
+  .slide.white{background:var(--paper)}
+  .slide.alt{background:linear-gradient(180deg,#f4f1ea,#ece7db)}
+  .wrap{
+    width:min(var(--maxw),100%);
+    margin:0 auto;
+  }
+  .kicker{
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.11em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin-bottom:18px;
+  }
+  h1,h2,h3{
+    font-family:'Source Serif 4',serif;
+    line-height:1.03;
+    letter-spacing:-.028em;
+    margin:0 0 14px;
+    font-weight:700;
+  }
+  h1{font-size:clamp(2.7rem,7vw,5.5rem)}
+  h2{font-size:clamp(2.1rem,5vw,4rem)}
+  h3{font-size:clamp(1.7rem,4vw,2.9rem)}
+  .lede{
+    font-family:'Source Serif 4',serif;
+    font-size:clamp(1.35rem,2.4vw,2rem);
+    line-height:1.22;
+    max-width:17ch;
+    margin-bottom:20px;
+  }
+  p{
+    font-size:clamp(1.02rem,1.55vw,1.24rem);
+    line-height:1.5;
+    margin:0 0 14px;
+    max-width:42em;
+  }
+  .bigline{
+    font-family:'Source Serif 4',serif;
+    font-size:clamp(1.6rem,3.2vw,2.6rem);
+    line-height:1.18;
+    max-width:21ch;
+    margin:0 0 18px;
+  }
+  .subtle{color:var(--muted)}
+  .grid2{
+    display:grid;
+    grid-template-columns:1.2fr .8fr;
+    gap:34px;
+    align-items:start;
+  }
+  .gridEq{display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start;}
+  .card{
+    background:rgba(255,255,255,.55);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px 18px 16px;
+  }
+  .card h4{
+    margin:0 0 8px;
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--muted);
+  }
+  .card p{font-size:1rem; margin-bottom:8px}
+  .example{
+    border-left:4px solid var(--accent);
+    padding-left:16px;
+    margin:18px 0;
+  }
+  .example .label{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    font-weight:700;
+    color:var(--muted);
+    margin-bottom:7px;
+  }
+  .slide-num{
+    position:absolute;
+    right:18px;
+    bottom:14px;
+    font-size:12px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .figure{
+    width:min(var(--maxw),100%);
+    margin:0 auto;
+  }
+  .figure img{
+    display:block;
+    width:100%;
+    height:calc(100vh - 180px);
+    object-fit:contain;
+    object-position:center center;
+    border-radius:10px;
+  }
+  .figure figcaption{
+    display:grid;
+    grid-template-columns:1.2fr .8fr;
+    gap:24px;
+    padding-top:16px;
+    align-items:start;
+  }
+  .fig-main{
+    font-family:'Source Serif 4',serif;
+    font-size:clamp(1.12rem,2vw,1.55rem);
+    line-height:1.28;
+  }
+  .fig-note{
+    font-size:.98rem;
+    color:var(--muted);
+    line-height:1.45;
+  }
+  .quote{
+    font-family:'Source Serif 4',serif;
+    font-size:clamp(2rem,4vw,3.2rem);
+    line-height:1.14;
+    max-width:18ch;
+  }
+  .authors{margin-top:8px; font-size:1rem; color:var(--muted)}
+  .mini{font-size:15px; color:var(--muted)}
+  @media (max-width: 900px){
+    .grid2,.gridEq,.figure figcaption{grid-template-columns:1fr; gap:18px}
+    .figure img{height:auto; max-height:72vh}
+  }
+  @media (max-width: 640px){
+    .slide{padding:72px 18px 28px}
+    .top{padding:11px 14px}
+    .top .meta{display:none}
+    .slide-num{right:14px; bottom:10px}
+  }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="title">Coaxing the Ripples</div>
+  <div class="meta">Terhi Marttila · Jay David Bolter · Watson Hartsoe</div>
+</div>
+<main>
+
+<section class="slide white">
+  <div class="wrap">
+    <div class="kicker">ELO 2026</div>
+    <h1>Coaxing the Ripples</h1>
+    <div class="lede">Interactive writing becomes interesting when one action can still be felt several turns later.</div>
+    <p>Most AI systems are good at producing events. They are less good at producing a world. A character does something. The sentence disappears. The next sentence starts fresh. The language moves, but nothing has weight.</p>
+    <p>This talk is about a different ambition. <em>Ripples</em> asks whether a generative system can remember enough for an action to leave a mark.</p>
+    <div class="authors">Terhi Marttila, Jay David Bolter, Watson Hartsoe</div>
+  </div>
+  <div class="slide-num">01</div>
+</section>
+
+<section class="slide">
+  <div class="wrap grid2">
+    <div>
+      <div class="kicker">The simplest example</div>
+      <h2>The blueberry test.</h2>
+      <p>A bird eats a blueberry. Two turns later, the blueberry returns: blue, round, untouched. Many AI systems do this. The prose keeps flowing. The world keeps forgetting.</p>
+      <div class="example">
+        <div class="label">Why this matters</div>
+        <p>If the system cannot keep track of one eaten berry, it cannot build a convincing ecology, mindscape, or simulation. It can only produce fresh language.</p>
+      </div>
+    </div>
+    <div class="card">
+      <h4>Bad version</h4>
+      <p>“The bird pecks the blueberry.”</p>
+      <p>Next turn: “The blueberry glints in the grass.”</p>
+      <h4 style="margin-top:16px">Better version</h4>
+      <p>“The bird swallows the blueberry.”</p>
+      <p>Three turns later: “The earthworm moves through stained soil beneath the branch where the bird fed.”</p>
+    </div>
+  </div>
+  <div class="slide-num">02</div>
+</section>
+
+<section class="slide white">
+  <figure class="figure">
+    <img src="https://raw.githubusercontent.com/hartswf0/ripples/main/theory/images/worldtext-spec/1.png" alt="RIPPLES worldtext deck">
+    <figcaption>
+      <div class="fig-main">This is the shared starting point: a deck that lets a performer tune relations among entities rather than write every line directly.</div>
+      <div class="fig-note">The system begins with a worldtext, a set of entities, and a field of possible interactions. The goal is not “tell a story.” The goal is “let actions change the field.”</div>
+    </figcaption>
+  </figure>
+  <div class="slide-num">03</div>
+</section>
+
+<section class="slide alt">
+  <div class="wrap gridEq">
+    <div>
+      <div class="kicker">The basic unit</div>
+      <h3>Entity</h3>
+      <p>Something occupies the world: a face, a stream, a root, a rumor, a memory.</p>
+    </div>
+    <div>
+      <div class="kicker">The pressure</div>
+      <h3>Vector</h3>
+      <p>Something acts: whisper, shade, hunger, water, suspicion, decay.</p>
+    </div>
+  </div>
+  <div class="wrap" style="margin-top:28px">
+    <div class="card" style="max-width:560px">
+      <h4>The outcome</h4>
+      <p><strong>Ripple:</strong> the effect spreads beyond the first contact. That spread is what the interface has to make legible.</p>
+    </div>
+  </div>
+  <div class="slide-num">04</div>
+</section>
+
+<section class="slide white">
+  <figure class="figure">
+    <img src="https://raw.githubusercontent.com/hartswf0/ripples/main/theory/images/nonhuman-ecologies/3.png" alt="Entity vector ripple diagram">
+    <figcaption>
+      <div class="fig-main">The grammar is spare on purpose: something situated, a directed pressure, and an effect that changes the surrounding field.</div>
+      <div class="fig-note">This gave us a way to talk about consequence without relying on plot. Instead of asking what happens next, we ask what has changed.</div>
+    </figcaption>
+  </figure>
+  <div class="slide-num">05</div>
+</section>
+
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">One root, three works</div>
+    <h2>The shared prompt did not produce three copies.</h2>
+    <p>It produced three branches. Each branch kept the same underlying problem—how to make an event persist—but pushed it in a different direction.</p>
+    <div class="gridEq" style="margin-top:22px">
+      <div class="card"><h4>Whispers</h4><p>One thought bends another. Pressure moves across a grid of minds.</p></div>
+      <div class="card"><h4>Ecologies</h4><p>One intervention redistributes pressure across a forest of relations.</p></div>
+      <div class="card"><h4>Simulation</h4><p>The system continues to update after the hand leaves the controls.</p></div>
+    </div>
+  </div>
+  <div class="slide-num">06</div>
+</section>
+
+<section class="slide white">
+  <figure class="figure">
+    <img src="https://raw.githubusercontent.com/hartswf0/ripples/main/theory/images/worldtext-spec/4.png" alt="World jockey diagram">
+    <figcaption>
+      <div class="fig-main">The author shifts position. Less sentence-by-sentence control. More control over conditions, timing, and relation.</div>
+      <div class="fig-note">The performer becomes a tuner rather than a narrator: someone who mixes perspectives, nudges feedback, and steers the field without dictating every outcome.</div>
+    </figcaption>
+  </figure>
+  <div class="slide-num">07</div>
+</section>
+
+<section class="slide alt">
+  <div class="wrap grid2">
+    <div>
+      <div class="kicker">Branch 1</div>
+      <h2>Whispers</h2>
+      <p>In Bolter’s work, the unit is not an action in physical space. It is a pressure in mental space. A whisper enters one pane. The next thought in that pane changes. Adjacent panes begin to register the shift.</p>
+    </div>
+    <div class="card">
+      <h4>Concrete example</h4>
+      <p>A calm line in one mind becomes guarded in the next. Nearby characters start to echo suspicion, not because anyone argued with them, but because the mood of the field changed.</p>
+      <p class="mini">The reader does not speak for the characters. The reader changes the weather around them.</p>
+    </div>
+  </div>
+  <div class="slide-num">08</div>
+</section>
+
+<section class="slide white">
+  <figure class="figure">
+    <img src="https://raw.githubusercontent.com/hartswf0/ripples/main/theory/images/worldtext-spec/6.png" alt="Limited intervention vocabulary">
+    <figcaption>
+      <div class="fig-main">A small set of actions can remain expressive if each action lands differently on different entities.</div>
+      <div class="fig-note">This is one reason we kept the vocabulary tight. The richness comes from the relations underneath, not from piling on options.</div>
+    </figcaption>
+  </figure>
+  <div class="slide-num">09</div>
+</section>
+
+<section class="slide">
+  <div class="wrap grid2">
+    <div>
+      <div class="kicker">Branch 2</div>
+      <h2>Ecologies</h2>
+      <p>Marttila’s work treats the world as continuous. Water, root, stone, lichen, fungus, bird. The user touches one point in that field, but the consequence travels elsewhere.</p>
+    </div>
+    <div class="card">
+      <h4>Concrete example</h4>
+      <p>Add water near a pine. The soil darkens. Fungal growth improves. Shade thickens. Lichen loses ground. The later state looks quiet, but several earlier choices are folded into it.</p>
+      <p class="mini">The forest does not wait for the user. The user cuts into an ongoing system.</p>
+    </div>
+  </div>
+  <div class="slide-num">10</div>
+</section>
+
+<section class="slide white">
+  <figure class="figure">
+    <img src="https://raw.githubusercontent.com/hartswf0/ripples/main/theory/images/imaginary-ecologies/5.png" alt="State, vectors, and history architecture">
+    <figcaption>
+      <div class="fig-main">State sits under the prose. That hidden layer is what makes memory possible.</div>
+      <div class="fig-note">An event is not just described. It is stored as a condition. That is what lets the system carry a mark forward instead of resetting with every new output.</div>
+    </figcaption>
+  </figure>
+  <div class="slide-num">11</div>
+</section>
+
+<section class="slide alt">
+  <div class="wrap grid2">
+    <div>
+      <div class="kicker">Branch 3</div>
+      <h2>Simulation</h2>
+      <p>Hartsoe’s branch asks what happens when the hand loosens and the system keeps moving. Autonomy is not enough. A clock is autonomous. The question is whether drift remains legible.</p>
+    </div>
+    <div class="card">
+      <h4>Concrete example</h4>
+      <p>A moisture change triggers fungal growth. Fungal growth changes root health. Root weakness alters a neighboring plant. The user touched the first step, but the third step still has to feel earned.</p>
+      <p class="mini">The present has to look as if it grew from the past.</p>
+    </div>
+  </div>
+  <div class="slide-num">12</div>
+</section>
+
+<section class="slide white">
+  <figure class="figure">
+    <img src="https://raw.githubusercontent.com/hartswf0/ripples/main/theory/images/nonhuman-ecologies/8.png" alt="Latent library and verbal realization">
+    <figcaption>
+      <div class="fig-main">Language has to stay answerable to the state beneath it.</div>
+      <div class="fig-note">If the prose floats free, the system becomes decorative. We wanted variation in language, but not at the cost of severing language from event.</div>
+    </figcaption>
+  </figure>
+  <div class="slide-num">13</div>
+</section>
+
+<section class="slide">
+  <div class="wrap grid2">
+    <div>
+      <div class="kicker">A harder lesson</div>
+      <h2>Language makes matter too easily.</h2>
+      <p>Mention a wolf and a wolf appears. Mention rain and every surface shines. This is one reason generated worlds can feel bloated. Nothing costs anything. Naming becomes conjuring.</p>
+    </div>
+    <div class="card">
+      <h4>Concrete example</h4>
+      <p>We found that a new entity could not arrive just because its name crossed the screen. It needed a path: migration, decomposition, invitation, collision, growth.</p>
+      <p class="mini">Words could suggest matter. They could not summon it for free.</p>
+    </div>
+  </div>
+  <div class="slide-num">14</div>
+</section>
+
+<section class="slide white">
+  <figure class="figure">
+    <img src="https://raw.githubusercontent.com/hartswf0/ripples/main/theory/images/nonhuman-ecologies/9.png" alt="Operative fiction framework">
+    <figcaption>
+      <div class="fig-main">The work sits between fiction and system.</div>
+      <div class="fig-note">It remains speculative, but it is not arbitrary. It becomes believable when the fiction is tied to an operative structure that can preserve and redistribute change.</div>
+    </figcaption>
+  </figure>
+  <div class="slide-num">15</div>
+</section>
+
+<section class="slide alt">
+  <div class="wrap grid2">
+    <div>
+      <div class="kicker">What changed</div>
+      <h2>The sentence stopped being the unit of authorship.</h2>
+      <p>In ordinary writing, the sentence is the thing you control. In <em>Ripples</em>, authorship moved upstream. The craft lies in deciding what may touch, what may persist, what may vanish, and how long a change remains alive.</p>
+    </div>
+    <div class="card">
+      <h4>Short version</h4>
+      <p>The author no longer writes only outputs.</p>
+      <p>The author designs consequence.</p>
+    </div>
+  </div>
+  <div class="slide-num">16</div>
+</section>
+
+<section class="slide white">
+  <figure class="figure">
+    <img src="https://raw.githubusercontent.com/hartswf0/ripples/main/theory/images/worldtext-spec/9.png" alt="Final RIPPLES framework">
+    <figcaption>
+      <div class="fig-main">This is the larger claim behind all three works.</div>
+      <div class="fig-note">What matters is not whether AI can generate language. It can. What matters is whether an AI-driven interactive system can make an event leave a mark.</div>
+    </figcaption>
+  </figure>
+  <div class="slide-num">17</div>
+</section>
+
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Closing</div>
+    <div class="quote">A world begins when a sentence can no longer take itself back.</div>
+    <p style="margin-top:24px; max-width:34em">That is the thread connecting <em>Whispers</em>, <em>Ecologies</em>, and <em>Simulation</em>. Each work asks the same question in a different key: can writing become a field in which actions accumulate rather than disappear?</p>
+  </div>
+  <div class="slide-num">18</div>
+</section>
+
+</main>
+</body>
+</html>

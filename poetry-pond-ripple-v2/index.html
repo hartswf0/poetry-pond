@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#07111b">
+<title>Poetry Pond — True 3D Text Mountain</title>
+<style>
+:root{
+  --ink:#f4efe5;
+  --muted:#9aa8b2;
+  --line:rgba(240,236,222,.16);
+  --glass:rgba(7,14,23,.68);
+  --glass2:rgba(7,13,21,.92);
+  --gold:#efc375;
+  --aqua:#79d8d1;
+  --danger:#e8a59c;
+  --safe-t:max(14px,env(safe-area-inset-top));
+  --safe-b:max(14px,env(safe-area-inset-bottom));
+}
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#07111b;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid rgba(239,195,117,.9);outline-offset:3px}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;background:#07111b}
+#vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,transparent 34%,rgba(1,5,9,.10) 58%,rgba(1,4,8,.75) 115%);z-index:3}
+#grain{position:fixed;inset:-30%;pointer-events:none;opacity:.035;z-index:4;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.86' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.8'/%3E%3C/svg%3E");animation:grain 1.1s steps(2) infinite}
+@keyframes grain{0%{transform:translate(0,0)}30%{transform:translate(2%,-1%)}60%{transform:translate(-1%,2%)}100%{transform:translate(0,0)}}
+#labels,#reflectionLabels{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:5}
+#reflectionLabels{z-index:2;filter:blur(.7px)}
+.stratum-label{pointer-events:auto;cursor:pointer;position:absolute;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.03;white-space:normal;overflow:hidden;text-wrap:balance;font-family:"Arial Narrow","Roboto Condensed",Impact,ui-sans-serif,sans-serif;font-stretch:condensed;font-weight:590;letter-spacing:-.02em;color:#ddd7ca;text-shadow:0 2px 5px rgba(0,0,0,.95),0 0 15px rgba(255,239,207,.12);transform-origin:center;opacity:0;transition:opacity .18s,filter .18s,color .18s;will-change:transform,left,top,width,height}
+.stratum-label.instruction{color:#c7d0d2;font-weight:690;letter-spacing:.02em;text-transform:uppercase}
+.stratum-label.user{color:#fff0cc;font-weight:780;text-shadow:0 2px 5px #000,0 0 13px rgba(239,195,117,.75)}
+.stratum-label.consequence{color:#e4ddd0}
+.stratum-label.pending{color:#f2c98f;font-style:italic;opacity:.72!important}
+.stratum-label.therefore{color:#f2cd88;font-weight:760;text-shadow:0 2px 5px #000,0 0 15px rgba(239,195,117,.55)}
+.stratum-label.branch{color:#b9ebe6;font-weight:700;text-shadow:0 2px 5px #000,0 0 14px rgba(121,216,209,.48)}
+.stratum-label.satellite{color:rgba(221,226,221,.74);text-transform:uppercase;letter-spacing:.06em;font-weight:650}
+.stratum-label.selected{filter:brightness(1.28)}
+.reflection-label{position:absolute;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;font-family:"Arial Narrow","Roboto Condensed",Impact,ui-sans-serif,sans-serif;color:rgba(239,195,117,.34);text-shadow:0 0 8px rgba(239,195,117,.22);transform-origin:center;opacity:0;will-change:transform,left,top,width,height}
+#ui{position:fixed;inset:0;z-index:10;pointer-events:none}
+.interactive{pointer-events:auto}
+.topbar{position:absolute;top:var(--safe-t);left:18px;right:18px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.brand{display:flex;align-items:center;gap:10px;text-shadow:0 3px 18px #000}
+.brand-dot{width:9px;height:9px;border-radius:50%;border:1px solid rgba(239,195,117,.86);box-shadow:0 0 18px rgba(239,195,117,.5)}
+.brand b{display:block;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
+.brand small{display:block;margin-top:3px;font-size:9px;color:var(--muted);letter-spacing:.03em}
+.top-actions{display:flex;gap:8px;align-items:center}
+.icon-btn,.quiet-btn,.send-btn,.mode-btn,.drawer-row,.danger-btn{border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 10px 34px rgba(0,0,0,.25)}
+.icon-btn{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;font-size:17px}
+.icon-btn:disabled{opacity:.32;cursor:default}
+.status{position:absolute;top:calc(var(--safe-t) + 57px);left:50%;transform:translateX(-50%);max-width:min(680px,calc(100% - 30px));padding:8px 12px;border:1px solid transparent;border-radius:999px;background:rgba(5,12,20,.42);backdrop-filter:blur(12px);color:#bdc8cd;font-size:9px;letter-spacing:.07em;text-transform:uppercase;text-align:center;opacity:0;transition:.25s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.status.show{opacity:1;border-color:rgba(255,255,255,.08)}
+.status.busy{color:#f0d69f;border-color:rgba(239,195,117,.22)}
+.status.fault{color:#efb1a9;border-color:rgba(232,165,156,.26)}
+.world-hint{position:absolute;left:50%;top:17%;transform:translateX(-50%);width:min(760px,calc(100% - 40px));text-align:center;text-shadow:0 4px 20px #000;transition:.5s}
+.world-hint.hide{opacity:0;transform:translate(-50%,-8px);pointer-events:none}
+.world-hint .kicker{font-size:8px;text-transform:uppercase;letter-spacing:.24em;color:#cbb78d}
+.world-hint h1{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:clamp(28px,4vw,58px);line-height:1.02;margin:9px 0 8px}
+.world-hint p{margin:0 auto;max-width:560px;color:#b4bec1;font-size:10px;line-height:1.55}
+.composer-wrap{position:absolute;left:50%;bottom:var(--safe-b);transform:translateX(-50%);width:min(780px,calc(100% - 28px));display:grid;gap:7px}
+.composer{height:58px;padding:6px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:7px;border:1px solid rgba(239,232,216,.22);border-radius:18px;background:rgba(6,13,22,.74);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);box-shadow:0 22px 70px rgba(0,0,0,.42)}
+.composer input{min-width:0;border:0;background:transparent;padding:0 8px;font-size:14px;color:#f4efe5}
+.composer input::placeholder{color:#7e8c95}
+.composer input:focus{outline:0}
+.mode-wrap{position:relative}
+.mode-btn{height:46px;min-width:92px;border-radius:13px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:10px}
+.mode-menu{position:absolute;left:0;bottom:55px;width:260px;padding:7px;border:1px solid var(--line);border-radius:16px;background:rgba(7,13,21,.97);box-shadow:0 24px 70px rgba(0,0,0,.55);display:none}
+.mode-menu.open{display:block}
+.mode-option{display:block;width:100%;padding:10px;border:0;border-radius:11px;background:transparent;text-align:left}
+.mode-option:hover{background:rgba(255,255,255,.05)}
+.mode-option b{display:block;font-size:10px}
+.mode-option small{display:block;color:var(--muted);font-size:8px;line-height:1.4;margin-top:3px}
+.send-btn{height:46px;min-width:118px;border-radius:13px;padding:0 18px;background:linear-gradient(180deg,rgba(239,195,117,.32),rgba(135,90,37,.28));border-color:rgba(239,195,117,.42);font-weight:760;font-size:11px}
+.send-btn:disabled{opacity:.38;cursor:default}
+.send-btn.stop{background:linear-gradient(180deg,rgba(232,165,156,.32),rgba(110,49,45,.28));border-color:rgba(232,165,156,.44)}
+.composer-meta{display:flex;justify-content:space-between;gap:12px;padding:0 8px;color:#8e9ca5;font-size:8px;line-height:1.3;text-shadow:0 2px 8px #000}
+.composer-meta span:last-child{color:#c9b98f;text-align:right}
+.drawer-backdrop{position:fixed;inset:0;z-index:50;background:rgba(0,3,7,.58);opacity:0;pointer-events:none;transition:.25s}
+.drawer-backdrop.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;z-index:51;width:min(410px,94vw);height:100%;padding:20px;background:linear-gradient(180deg,rgba(9,17,26,.99),rgba(4,9,15,.995));border-left:1px solid var(--line);box-shadow:-35px 0 90px rgba(0,0,0,.6);transform:translateX(104%);transition:.35s cubic-bezier(.2,.8,.2,1);overflow:auto}
+.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.drawer h2{font-family:Georgia,"Times New Roman",serif;font-size:30px;font-weight:400;margin:0}
+.drawer-section{padding:14px 0;border-top:1px solid var(--line)}
+.drawer-section h3{margin:0 0 8px;font-size:8px;text-transform:uppercase;letter-spacing:.19em;color:#73818a}
+.drawer-row{width:100%;display:flex;justify-content:space-between;align-items:center;gap:14px;padding:12px;border-radius:14px;margin:6px 0;text-align:left}
+.drawer-row b{display:block;font-size:10px}
+.drawer-row small{display:block;margin-top:3px;color:var(--muted);font-size:8px;line-height:1.4}
+.drawer-row .value{color:#d9c28e;font-size:9px;white-space:nowrap}
+.field{margin:10px 0}
+.field label{display:block;margin-bottom:6px;color:#77858e;font-size:8px;text-transform:uppercase;letter-spacing:.14em}
+.field input,.field select{width:100%;height:42px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.035);padding:0 10px;font-size:10px}
+.field-note{font-size:8px;line-height:1.45;color:#8e9ba3}
+.key-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px}
+.key-btn{height:42px;padding:0 13px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.05);font-size:10px;font-weight:640}
+.key-btn:hover{border-color:rgba(239,195,117,.5)}
+.key-note-ok{color:#9ee2b1}.key-note-off{color:#8e9ba3}.key-note-err{color:#efaaa2}
+.danger-btn{width:100%;height:42px;border-radius:12px;border-color:rgba(232,165,156,.24);color:#eab0aa;background:rgba(100,35,33,.15)}
+.reading{position:fixed;inset:0;z-index:60;display:none;background:radial-gradient(circle at 50% 44%,rgba(2,8,13,.05),rgba(1,4,8,.62));pointer-events:none}
+.reading.open{display:block}
+.reading .exit{position:absolute;top:var(--safe-t);right:18px;pointer-events:auto}
+.reading .caption{position:absolute;left:50%;bottom:calc(var(--safe-b) + 18px);transform:translateX(-50%);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#c8b684;text-shadow:0 2px 10px #000}
+.toast-region{position:fixed;top:calc(var(--safe-t) + 58px);right:18px;z-index:90;display:grid;gap:8px;pointer-events:none}
+.toast{max-width:310px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(6,12,20,.94);box-shadow:0 14px 34px rgba(0,0,0,.4);font-size:9px;color:#d7dfdf;transition:.25s}
+.fallback{position:fixed;inset:0;z-index:100;display:none;place-items:center;padding:30px;background:#07111b;text-align:center}
+.fallback.show{display:grid}
+.fallback h1{font-family:Georgia,serif;font-weight:400}
+.fallback p{max-width:520px;color:var(--muted);line-height:1.6}
+
+.ripple-proof{position:absolute;left:50%;bottom:calc(var(--safe-b) + 80px);transform:translateX(-50%) translateY(10px);width:min(760px,calc(100% - 28px));padding:10px 42px 10px 13px;border:1px solid rgba(121,216,209,.25);border-radius:14px;background:rgba(5,12,20,.88);backdrop-filter:blur(18px);box-shadow:0 20px 60px rgba(0,0,0,.38);font-size:9px;line-height:1.5;color:#dbe6e3;opacity:0;pointer-events:none;transition:.2s;z-index:20}
+.ripple-proof.open{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+.ripple-proof b{color:#aee7df;font-size:8px;letter-spacing:.14em;text-transform:uppercase;margin-right:7px}
+.ripple-proof button{position:absolute;right:7px;top:7px;width:28px;height:28px;border:0;border-radius:9px;background:rgba(255,255,255,.06);color:#dce5e2}
+.stratum-label.causal-source{color:#b9ebe6!important;filter:brightness(1.4);text-shadow:0 2px 5px #000,0 0 18px rgba(121,216,209,.85)!important}
+.eval-pass{color:#9ee2b1}.eval-fail{color:#efaaa2}
+
+/* ---- context inspector ---- */
+.ctx-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.ctx-tab{height:38px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.04);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.ctx-tab.active{border-color:rgba(121,216,209,.5);background:rgba(121,216,209,.08);color:#b9ebe6}
+.ctx-body{display:grid;gap:8px}
+.ctx-card{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:rgba(255,255,255,.028);font-size:10px;line-height:1.5;overflow-wrap:anywhere}
+.ctx-card .ctx-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:4px;font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:#8fb9b4}
+.ctx-card .ctx-head .t{color:#71808a}
+.ctx-card.fault .ctx-head{color:#efaaa2}
+.ctx-card .ctx-line{color:#ece7db;font-family:Georgia,serif;font-size:12px;margin-bottom:4px}
+.ctx-card .ctx-detail{color:#9aa8b2;font-size:9px;line-height:1.55}
+.ctx-card .ctx-detail b{color:#cdc4ae;font-weight:640}
+.ctx-kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;font-size:9px}
+.ctx-kv dt{color:#71808a}.ctx-kv dd{margin:0;color:#c9d3d3;overflow-wrap:anywhere}
+.ctx-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 12px}
+.ctx-empty{padding:16px 6px;color:#71808a;font-size:10px;text-align:center}
+.clarification-tray{position:absolute;left:50%;bottom:calc(var(--safe-b) + 80px);transform:translateX(-50%) translateY(12px);width:min(720px,calc(100% - 24px));padding:14px;border:1px solid rgba(239,195,117,.28);border-radius:16px;background:rgba(7,13,20,.94);backdrop-filter:blur(20px);box-shadow:0 24px 70px rgba(0,0,0,.5);z-index:24;opacity:0;pointer-events:none;transition:.2s}
+.clarification-tray.open{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+.clarification-tray h3{margin:0 0 6px;font:600 10px/1.2 ui-sans-serif,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#e9bd79}
+.clarification-tray p{margin:0 0 12px;color:#e7e1d7;font:13px/1.45 Georgia,serif}
+.clarification-options{display:flex;flex-wrap:wrap;gap:7px}
+.clarification-options button{border:1px solid rgba(255,255,255,.12);border-radius:11px;padding:9px 11px;background:rgba(255,255,255,.055);color:#e8e5dc;font:600 10px/1.2 ui-sans-serif,sans-serif;cursor:pointer}
+.clarification-options button:hover,.clarification-options button:focus-visible{border-color:rgba(239,195,117,.6);background:rgba(239,195,117,.1);outline:none}
+
+@media(max-width:720px){
+  .topbar{left:12px;right:12px}.brand small{display:none}.icon-btn{width:44px;height:44px;border-radius:15px}
+  .world-hint{top:13%}.world-hint p{display:none}
+  .composer-wrap{width:calc(100% - 20px)}.composer{height:60px;grid-template-columns:auto minmax(0,1fr) auto;padding:6px}.mode-btn{height:48px;min-width:74px;padding:0 9px}.send-btn{height:48px;min-width:88px;padding:0 12px}
+  .composer input{font-size:16px;padding:0 5px} /* 16px stops iOS focus-zoom */
+  .composer-meta{font-size:7px}.mode-menu{width:min(280px,calc(100vw - 24px))}
+  .mode-option{padding:13px 12px}.mode-option b{font-size:12px}.mode-option small{font-size:9px}
+  .stratum-label{letter-spacing:-.025em}
+  /* settings and context become full-width bottom sheets with a grab handle */
+  .drawer{top:auto;bottom:0;left:0;right:0;width:100%;height:auto;max-height:84vh;border-left:0;border-top:1px solid var(--line);border-radius:24px 24px 0 0;box-shadow:0 -30px 80px rgba(0,0,0,.6);transform:translateY(105%);padding:12px 18px calc(var(--safe-b) + 8px)}
+  .drawer.open{transform:translateY(0)}
+  .drawer::before{content:'';display:block;width:44px;height:4px;margin:2px auto 12px;border-radius:999px;background:rgba(255,255,255,.24)}
+  .drawer h2{font-size:23px}
+  .drawer-head{margin-bottom:10px}
+  .drawer-section{padding:12px 0}
+  .drawer-row{min-height:54px;padding:12px 14px;margin:7px 0}
+  .drawer-row b{font-size:12px}.drawer-row small{font-size:10px;margin-top:4px}
+  .drawer-row .value{font-size:11px}
+  .drawer-section h3{font-size:9px}
+  .field input,.field select{height:48px;font-size:16px}
+  .field label{font-size:9px}
+  .field-note{font-size:10px}
+  .key-btn{height:48px;font-size:11px}
+  .ctx-tab{height:44px;font-size:10px}
+  .ctx-card{font-size:11px}.ctx-card .ctx-line{font-size:13px}.ctx-card .ctx-detail{font-size:10px}
+  .danger-btn{height:48px}
+  .ripple-proof,.clarification-tray{bottom:calc(var(--safe-b) + 92px)}
+}
+@media(max-height:700px){.world-hint{top:11%}.world-hint h1{font-size:28px}.world-hint p{display:none}.composer-wrap{bottom:max(8px,env(safe-area-inset-bottom))}}
+@media(prefers-reduced-motion:reduce){#grain{animation:none}.drawer,.status,.world-hint{transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="gl" aria-label="A true three-dimensional water field with a central text mountain. Drag to orbit, scroll or pinch to zoom, and tap water to create a ripple."></canvas>
+<div id="reflectionLabels" aria-hidden="true"></div>
+<div id="labels" aria-live="polite"></div>
+<div id="vignette"></div><div id="grain"></div>
+
+<div id="ui">
+  <header class="topbar">
+    <div class="brand"><i class="brand-dot"></i><div><b>Poetry Pond</b><small>The mountain is the conversation record</small></div></div>
+    <div class="top-actions interactive">
+      <button id="undoBtn" class="icon-btn" aria-label="Undo the latest exchange" title="Undo latest exchange" disabled>↶</button>
+      <button id="readBtn" class="icon-btn" aria-label="Enter reading mode" title="Reading mode">◐</button>
+      <button id="contextBtn" class="icon-btn" aria-label="Open context inspector" title="Context inspector">☷</button>
+      <button id="menuBtn" class="icon-btn" aria-label="Open settings" title="Settings">☰</button>
+    </div>
+  </header>
+  <div id="status" class="status" role="status" aria-live="polite"></div>
+  <section id="worldHint" class="world-hint">
+    <div class="kicker">The first stack is the instruction</div>
+    <h1>Write below.<br>The mountain remembers.</h1>
+    <p>Your line lands as stone. The pond answers in new strata. The water carries every impact outward.</p>
+  </section>
+  <aside id="rippleProof" class="ripple-proof interactive" aria-live="polite"><button id="closeProof" aria-label="Close causal proof">×</button><div id="proofText"></div></aside>
+  <aside id="clarificationTray" class="clarification-tray interactive" aria-live="assertive" aria-hidden="true">
+    <h3>The stone cannot settle yet</h3>
+    <p id="clarificationQuestion"></p>
+    <div id="clarificationOptions" class="clarification-options"></div>
+  </aside>
+  <div class="composer-wrap interactive">
+    <div class="composer">
+      <div class="mode-wrap">
+        <button id="modeBtn" class="mode-btn" aria-haspopup="true" aria-expanded="false"><span id="modeName">Stone</span><span aria-hidden="true">⌃</span></button>
+        <div id="modeMenu" class="mode-menu" role="menu">
+          <button class="mode-option" data-mode="Stone"><b>Stone</b><small>A direct statement that becomes a new layer.</small></button>
+          <button class="mode-option" data-mode="Obstacle"><b>Obstacle</b><small>A resistant line that redirects the next consequence.</small></button>
+          <button class="mode-option" data-mode="Goal"><b>Goal</b><small>An attracting line that pulls the response toward a future state.</small></button>
+          <button class="mode-option" data-mode="Turn"><b>Turn</b><small>A reversal that changes the mountain’s direction.</small></button>
+        </div>
+      </div>
+      <input id="lineInput" maxlength="240" autocomplete="off" placeholder="Write one line into the pond" aria-label="Write one line into the pond">
+      <button id="sendBtn" class="send-btn" disabled>Drop stone</button>
+    </div>
+    <div class="composer-meta"><span>Drag to orbit · wheel or pinch to zoom · tap water for a ripple</span><span id="recordMeta">Instruction strata: 5</span></div>
+  </div>
+</div>
+
+<div id="drawerBackdrop" class="drawer-backdrop"></div>
+<aside id="drawer" class="drawer" aria-hidden="true">
+  <div class="drawer-head"><h2>Field</h2><button id="closeDrawer" class="icon-btn" aria-label="Close settings">×</button></div>
+  <section class="drawer-section">
+    <h3>World</h3>
+    <button id="orbitToggle" class="drawer-row"><span><b>Slow orbit</b><small>Let the field turn while it is resting.</small></span><span class="value">Off</span></button>
+    <button id="reflectionToggle" class="drawer-row"><span><b>Reflection</b><small>Render a live mirrored field into the water.</small></span><span class="value">On</span></button>
+    <button id="satelliteToggle" class="drawer-row"><span><b>Distant stacks</b><small>Keep neighboring semantic peaks visible.</small></span><span class="value">On</span></button>
+    <button id="speakBtn" class="drawer-row"><span><b>Read newest line</b><small>Use the browser voice for the top stratum.</small></span><span class="value">Speak</span></button>
+  </section>
+  <section class="drawer-section">
+    <h3>OpenAI context engine</h3>
+    <p class="field-note">The browser never receives an API key. The server first proposes a typed event, validates it against the ontology and exact before-values, and only then asks OpenAI to write visible strata. Ambiguity returns here for participant resolution instead of silently becoming truth.</p>
+    <button id="aiToggle" class="drawer-row"><span><b>Use OpenAI when available</b><small>Falls back locally without losing the visible mountain.</small></span><span class="value">On</span></button>
+    <div class="drawer-row"><span><b>Rendering model</b><small>Responses API · typed proposal plus validated writer · store false</small></span><span id="aiStatus" class="value">Checking</span></div>
+    <div class="field">
+      <label for="apiKeyInput">OpenAI API key</label>
+      <div class="key-row">
+        <input id="apiKeyInput" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false">
+        <button id="apiKeySave" class="key-btn" type="button">Save</button>
+        <button id="apiKeyClear" class="key-btn" type="button">Clear</button>
+      </div>
+      <p class="field-note" id="apiKeyNote">Checking the local server…</p>
+      <p class="field-note">The key is sent once to your local server over loopback, kept in server memory and <code>.runtime-config.json</code>, and never returned to the browser. Without a key everything still runs on the typed local engine.</p>
+    </div>
+    <button id="rememberToggle" class="drawer-row"><span><b>Remember this pond</b><small>Persist the event ledger, entity state, strata, and API usage in this browser. No API key is stored.</small></span><span class="value">Off</span></button>
+  </section>
+  <section class="drawer-section">
+    <h3>Causal engine</h3>
+    <div class="drawer-row"><span><b>Authoritative world</b><small>Entities and state are rebuilt from validated events.</small></span><span id="worldStats" class="value">0 events</span></div>
+    <div class="drawer-row"><span><b>API usage</b><small>Requests and tokens retained for inspection.</small></span><span id="usageStats" class="value">0 calls</span></div>
+    <button id="runEvalsBtn" class="drawer-row"><span><b>Run Level 0 ripple tests</b><small>Independent fixtures for persistence, ambiguity, negation, quantity, ownership, counterfactuals, proof, and branch propagation.</small></span><span id="evalStatus" class="value">Run</span></button>
+  </section>
+  <section class="drawer-section">
+    <h3>Record</h3>
+    <button id="openContextBtn" class="drawer-row"><span><b>Context inspector</b><small>Turn log, world state, and the validated event ledger.</small></span><span class="value">Open</span></button>
+    <button id="exportBtn" class="drawer-row"><span><b>Export mountain record</b><small>Download all strata, context log, and relationships as JSON.</small></span><span class="value">Export</span></button>
+    <button id="resetCameraBtn" class="drawer-row"><span><b>Reset camera</b><small>Return to the frontal waterline view.</small></span><span class="value">Reset</span></button>
+    <button id="resetBtn" class="danger-btn">Start a new pond and AI context</button>
+  </section>
+</aside>
+
+<aside id="contextDrawer" class="drawer" aria-hidden="true" aria-label="Context inspector">
+  <div class="drawer-head"><h2>Context</h2><button id="closeContext" class="icon-btn" aria-label="Close context inspector">×</button></div>
+  <div class="ctx-tabs" role="tablist">
+    <button class="ctx-tab active" data-tab="log" role="tab">Turn log</button>
+    <button class="ctx-tab" data-tab="world" role="tab">World</button>
+    <button class="ctx-tab" data-tab="events" role="tab">Events</button>
+  </div>
+  <div class="ctx-actions">
+    <button id="ctxCopy" class="key-btn" type="button">Copy view as JSON</button>
+    <button id="ctxDownload" class="key-btn" type="button">Download context log</button>
+  </div>
+  <div id="ctxBody" class="ctx-body" aria-live="polite"></div>
+</aside>
+
+<div id="reading" class="reading"><button id="exitReading" class="icon-btn exit" aria-label="Exit reading mode">×</button><div class="caption">Reading mode · the stack is the text</div></div>
+<div id="toasts" class="toast-region"></div>
+<div id="fallback" class="fallback"><div><h1>The pond could not open in 3D.</h1><p>This browser does not expose WebGL 2. The code is complete and dependency-free, but this scene requires a WebGL 2-capable browser.</p></div></div>
+
+<script type="module" src="./app.mjs"></script>
+</body>
+</html>
