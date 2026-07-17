@@ -65,34 +65,37 @@ footer code{color:var(--sand)}
 
 <section>
   <h2>Foundation — current</h2>
-  <div class="sec-note">The typed causal-world line. Validated event proposals, replay undo, inspectable ripple proofs, bounded LLM roles. All three servers accept a runtime API key from their settings panel — the key stays on the local server, never in the browser.</div>
+  <div class="sec-note">The typed causal-world line. Validated event proposals, replay undo, inspectable ripple proofs, bounded LLM roles. Each opens right here as a static page — paste an API key in its settings and the browser calls OpenAI directly. Run its Node server instead and the same panel holds the key server-side.</div>
   <div class="grid">
-    <a class="card hero" href="http://127.0.0.1:8789">
+    <a class="card hero" href="poetry-pond-ripple-v3/">
       <span class="badges">
         <span class="badge b-verified">27/27 tests · 3/3 evals · 7/7 routing</span>
-        <span class="badge b-server">API · key panel · node :8789</span>
+        <span class="badge b-api">API · paste key in browser</span>
+        <span class="badge b-server">or node :8789 · server key</span>
       </span>
       <div class="name">Poetry Pond — Ripple V3 · Dual-Model Causal World</div>
-      <div class="desc">V2's typed foundation plus real Responses-API integration: Luna for routine proposals and rendering, Sol reserved for hard interpretation and multi-hop causal review, with routing policies, token budgets, and stateless bounded context. OpenAI still cannot declare truth.</div>
-      <div class="file">poetry-pond-ripple-v3/ — run: <b style="color:var(--sand)">cd poetry-pond-ripple-v3 && npm run verify && npm start</b></div>
+      <div class="desc">V2's typed foundation plus real Responses-API integration: Luna for routine proposals and rendering, Sol reserved for hard interpretation and multi-hop causal review, with routing policies, token budgets, and stateless bounded context. OpenAI still cannot declare truth. Browser mode runs the Luna tier; full routing needs the server.</div>
+      <div class="file">poetry-pond-ripple-v3/ — full mode: <b style="color:var(--sand)">cd poetry-pond-ripple-v3 && npm run verify && npm start</b></div>
     </a>
-    <a class="card" href="http://127.0.0.1:8787">
+    <a class="card" href="poetry-pond-ripple-v2/">
       <span class="badges">
         <span class="badge b-verified">18/18 tests · 3/3 evals</span>
-        <span class="badge b-server">API · key panel · node :8787</span>
+        <span class="badge b-api">API · paste key in browser</span>
+        <span class="badge b-server">or node :8787 · server key</span>
       </span>
       <div class="name">Poetry Pond — Ripple V2 · Typed Causal World</div>
       <div class="desc">Ontology-validated events, clarification instead of invented causality, exact replay undo, citation-checked rendering. Runtime key panel, mobile bottom-sheet controls, three-tab context inspector with JSONL turn logging.</div>
-      <div class="file">poetry-pond-ripple-v2/ — run: <b style="color:var(--sand)">cd poetry-pond-ripple-v2 && npm start</b></div>
+      <div class="file">poetry-pond-ripple-v2/ — full mode: <b style="color:var(--sand)">cd poetry-pond-ripple-v2 && npm start</b></div>
     </a>
-    <a class="card" href="http://127.0.0.1:8788">
+    <a class="card" href="poetry-pond-sol56/">
       <span class="badges">
         <span class="badge b-ungraded">predecessor</span>
-        <span class="badge b-server">API · key panel · node :8788</span>
+        <span class="badge b-api">API · paste key in browser</span>
+        <span class="badge b-server">or node :8788 · server key</span>
       </span>
       <div class="name">Poetry Pond — Sol56 Context Pond</div>
-      <div class="desc">The server-backed predecessor of V2: real 3D water and text mountain with OpenAI continuity chained by previous-response id. Now carries the same runtime key panel as V2/V3.</div>
-      <div class="file">poetry-pond-sol56/ — run: <b style="color:var(--sand)">cd poetry-pond-sol56 && npm start</b></div>
+      <div class="desc">The server-backed predecessor of V2: real 3D water and text mountain with OpenAI semantic continuity. Browser mode calls OpenAI directly per turn; the server adds previous-response chaining.</div>
+      <div class="file">poetry-pond-sol56/ — full mode: <b style="color:var(--sand)">cd poetry-pond-sol56 && npm start</b></div>
     </a>
   </div>
 </section>
@@ -133,6 +136,12 @@ footer code{color:var(--sand)}
       <div class="name">RCC ECO TOOL — Pond</div>
       <div class="desc">Sibling eco-tool pond build.</div>
       <div class="file">rcc-eco-tool-pond.html</div>
+    </a>
+    <a class="card" href="tactile_topography_console.html">
+      <span class="badges"><span class="badge b-ungraded">progenitor · ORCA</span><span class="badge b-api">API · in-app key (Gemini)</span></span>
+      <div class="name">ORCA // RIPPLE — Tactile Topography Console</div>
+      <div class="desc">The ancestor of this whole line — same 12×12 grid, tags, and minimap the RCC builds inherited — but its core pattern is the ripple as sensation: boot ritual, sonified impacts, vibration haptics. It makes the chain's fourth link (reader can detect it) bodily, before the family grew its stored-change machinery. Only Gemini-backed build in the pond.</div>
+      <div class="file">tactile_topography_console.html</div>
     </a>
   </div>
 </section>
@@ -308,10 +317,10 @@ footer code{color:var(--sand)}
 </section>
 
 <footer>
-  Serve this index and every static build: <code>python3 -m http.server 8931</code> in this directory → <code>http://localhost:8931/index.html</code>.<br>
-  Server builds run separately: V3 <code>:8789</code> · V2 <code>:8787</code> · Sol56 <code>:8788</code> (each: <code>cd &lt;dir&gt; &amp;&amp; npm start</code>).<br>
-  API badges: <span style="color:var(--cyan)">server key panel</span> = paste a key in the build's settings, held by its local server only ·
-  <span style="color:var(--violet)">in-app key</span> = the page has its own key field (browser storage) ·
+  Everything here works straight from the browser: serve this directory statically (<code>python3 -m http.server 8931</code> → <code>http://localhost:8931/index.html</code>, or GitHub Pages) and paste an API key into any build's settings panel where you want live generation.<br>
+  Optional full mode for the causal-world line: V3 <code>:8789</code> · V2 <code>:8787</code> · Sol56 <code>:8788</code> (each: <code>cd &lt;dir&gt; &amp;&amp; npm start</code>) — then the same panel hands the key to the local server instead of keeping it in the browser.<br>
+  API badges: <span style="color:var(--violet)">paste key in browser</span> = key field in the page itself, stored in this browser ·
+  <span style="color:var(--cyan)">server key</span> = with the Node server running, the key is held server-side and never returned to the browser ·
   no badge = fully local, no API needed.<br>
   Status badges are earned, not decorative: <span style="color:var(--goal)">verified</span> = suite run and passing here · <span style="color:var(--amber)">graded</span> = Dark Matter Guardian score against the rubric deck · unlabeled = not yet assessed.
 </footer>

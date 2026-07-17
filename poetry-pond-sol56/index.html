@@ -182,7 +182,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
         <button id="apiKeyClear" class="key-btn" type="button">Clear</button>
       </div>
       <p class="field-note" id="apiKeyNote">Checking the local server…</p>
-      <p class="field-note">Sent once to your local server over loopback, kept in server memory and <code>.runtime-config.json</code>, never returned to the browser.</p>
+      <p class="field-note">With the local server running, the key is sent once over loopback, kept in server memory and <code>.runtime-config.json</code>, never returned to the browser. Served statically (no server), the key stays in this browser and the page calls OpenAI directly.</p>
     </div>
     <button id="rememberToggle" class="drawer-row"><span><b>Remember this pond</b><small>Persist strata and the response-chain pointer in this browser. No API key is stored.</small></span><span class="value">Off</span></button>
   </section>
@@ -352,7 +352,7 @@ const satellites=[
 const state={
   entries:instructionEntries.map(x=>({...x})),mode:'Stone',busy:false,operation:null,batches:[],selectedId:null,
   orbit:false,reflect:true,showSatellites:true,remember:false,reading:false,
-  aiEnabled:true,aiAvailable:false,aiModel:'gpt-5.6-sol',apiPath:'/api/pond',previousResponseId:null,contextSummary:'',lastGenerator:'local',warm:.42,
+  aiEnabled:true,aiAvailable:false,serverAvailable:false,browserKey:localStorage.getItem('pond.browser.openai.key')||'',aiModel:'gpt-5.6-sol',apiPath:'/api/pond',previousResponseId:null,contextSummary:'',lastGenerator:'local',warm:.42,
   yaw:0,pitch:.16,distance:18,target:[0,3.15,0],camera:[0,0,0],
   ripples:[],falling:null,lastTime:performance.now(),autoPhase:0
 };
@@ -509,7 +509,9 @@ function normalisePondResponse(out){
   };
 }
 async function remoteResponse(text,mode,signal){
-  if(!state.aiEnabled||!state.aiAvailable)return null;
+  if(!state.aiEnabled)return null;
+  if(!state.serverAvailable&&state.browserKey)return browserResponse(text,mode,signal);
+  if(!state.aiAvailable)return null;
   const r=await fetch(state.apiPath,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
     text,
     mode,
@@ -522,6 +524,67 @@ async function remoteResponse(text,mode,signal){
   if(!r.ok)throw new Error(j.error||`OpenAI context engine returned ${r.status}`);
   return normalisePondResponse(j);
 }
+// Browser-direct mode for static hosting: mirrors the server's structured
+// Responses call with the key held in this browser's localStorage.
+const BROWSER_POND_SCHEMA={type:'object',additionalProperties:false,properties:{
+  consequences:{type:'array',minItems:3,maxItems:3,items:{type:'string'}},
+  therefore:{type:'string'},branch:{type:['string','null']},
+  target:{type:'string',enum:['history','memory','possibility','return','silence']},
+  context_summary:{type:'string'},
+  ripple:{type:'object',additionalProperties:false,properties:{
+    impact:{type:'number'},consequences:{type:'array',minItems:3,maxItems:3,items:{type:'number'}},
+    branch:{type:'number'},final:{type:'number'}},required:['impact','consequences','branch','final']}
+},required:['consequences','therefore','branch','target','context_summary','ripple']};
+const BROWSER_POND_INSTRUCTIONS=`You are the context engine inside Poetry Pond, an immersive 3D text mountain.
+
+The visible mountain is the complete conversation record. A participant line becomes a user stratum. Your answer becomes exactly three consequence strata, an optional branch stratum, and one therefore stratum. The first five instruction strata are interface rules, not prior participant content.
+
+Maintain semantic continuity using the supplied context summary and recent visible strata. Refer to specific prior ideas when relevant; do not produce generic inspirational filler.
+
+Interpret the selected mask as follows:
+- Stone: a direct assertion that adds weight.
+- Obstacle: resistance, contradiction, friction, or blockage.
+- Goal: attraction toward a desired future state.
+- Turn: reversal, reframing, or change of direction.
+
+Writing rules:
+- Each visible stratum must be concise, ideally 6 to 16 words.
+- Each consequence must do a different job: interpret, connect to prior context, then alter the field.
+- The therefore line must begin with "Therefore," and provisionally resolve the turn.
+- A branch is only used when the new line meaningfully activates a distant semantic stack; otherwise return null.
+- The context summary should be a compact durable account of what the mountain now means, not a transcript.
+
+Ripple semantics:
+- impact is the initial force of the participant line.
+- consequences contains one amplitude per consequence.
+- branch is zero when branch is null, otherwise the distant impact amplitude.
+- final is the settling force of the therefore line.
+Use values roughly between 0.08 and 0.80.`;
+async function browserResponse(text,mode,signal){
+  const body={
+    model:state.aiModel||'gpt-5.6-sol',
+    store:false,
+    reasoning:{effort:'medium'},
+    max_output_tokens:1200,
+    instructions:BROWSER_POND_INSTRUCTIONS,
+    input:`Continue the Poetry Pond from this exact visible state:\n${JSON.stringify({
+      participant_line:String(text||'').slice(0,240),
+      mask:mode,
+      exchange_count:state.batches.length,
+      context_summary:(state.contextSummary||localContextSummary()).slice(0,1800),
+      recent_visible_strata:recentVisibleStrata()
+    },null,2)}`,
+    text:{format:{type:'json_schema',name:'poetry_pond_turn',strict:true,schema:BROWSER_POND_SCHEMA}}
+  };
+  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${state.browserKey}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal});
+  const raw=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(raw?.error?.message||`OpenAI returned HTTP ${r.status}.`);
+  let outputText=typeof raw.output_text==='string'&&raw.output_text.trim()?raw.output_text.trim():'';
+  if(!outputText)for(const item of raw.output||[])for(const part of item.content||[])if(part.type==='output_text'&&typeof part.text==='string'){outputText=part.text.trim();break}
+  if(!outputText)throw new Error('OpenAI returned no structured text output.');
+  const parsed=JSON.parse(outputText);
+  return normalisePondResponse({...parsed,response_id:null,model:raw.model||state.aiModel,generator:'openai-browser',usage:raw.usage||null});
+}
 async function checkAIStatus(){
   try{
     const r=await fetch('/api/status',{cache:'no-store'});const j=await r.json();
@@ -531,11 +594,12 @@ async function checkAIStatus(){
 }
 function updateAIStatus(){
   if(!ui.aiStatus)return;
-  ui.aiStatus.textContent=!state.aiEnabled?'Disabled':state.aiAvailable?`${state.aiModel} ready`:'Local fallback';
+  ui.aiStatus.textContent=!state.aiEnabled?'Disabled':state.aiAvailable?`${state.aiModel} ready`:(state.browserKey&&!state.serverAvailable?'Browser direct':'Local fallback');
   ui.aiToggle.querySelector('.value').textContent=state.aiEnabled?'On':'Off';
   const note=document.getElementById('apiKeyNote');
   if(note){
-    if(state.serverAvailable===false){note.textContent='The local server is not reachable, so no key can be held. Local generation is running.';note.className='field-note key-note-off'}
+    if(!state.serverAvailable&&state.browserKey){note.textContent=`Browser key active (…${state.browserKey.slice(-4)}). This page calls OpenAI directly; the key sits in this browser's localStorage — use only on a device you trust.`;note.className='field-note key-note-ok'}
+    else if(!state.serverAvailable){note.textContent='No local server found. Paste a key here to call OpenAI directly from this browser, or run npm start for server-held keys.';note.className='field-note key-note-off'}
     else if(state.aiAvailable){note.textContent=`Key active (…${state.keyTail}, source: ${state.keySource==='env'?'server environment':'saved from this panel'}).`;note.className='field-note key-note-ok'}
     else{note.textContent='No key configured. Local generation runs everything; add a key to enable the context engine.';note.className='field-note key-note-off'}
   }
@@ -544,6 +608,16 @@ async function saveApiKey(){
   const input=document.getElementById('apiKeyInput');const note=document.getElementById('apiKeyNote');
   const key=input.value.trim();
   if(!key){toast('Paste a key first, or use Clear to remove the saved one.');return}
+  if(!/^sk-[A-Za-z0-9_-]{10,}$/.test(key)){note.textContent='That does not look like an OpenAI key (expected sk-…). Nothing was saved.';note.className='field-note key-note-err';return}
+  await checkAIStatus();
+  if(!state.serverAvailable){
+    state.browserKey=key;
+    localStorage.setItem('pond.browser.openai.key',key);
+    input.value='';
+    updateAIStatus();
+    toast(`Key kept in this browser (…${key.slice(-4)}). Calls now go directly from this page to OpenAI.`);
+    return;
+  }
   try{
     const r=await fetch('/api/llm-key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key})});
     const j=await r.json().catch(()=>({}));
@@ -554,13 +628,21 @@ async function saveApiKey(){
   }catch(err){note.textContent=err.message;note.className='field-note key-note-err';toast('The key was not saved.')}
 }
 async function clearApiKey(){
+  if(state.browserKey){
+    state.browserKey='';
+    localStorage.removeItem('pond.browser.openai.key');
+  }
   try{
     const r=await fetch('/api/llm-key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:''})});
     if(!r.ok)throw new Error('The server could not clear the key.');
     document.getElementById('apiKeyInput').value='';
     await checkAIStatus();
     toast(state.aiAvailable?'Runtime key cleared; the server environment key remains.':'Key cleared. Local generation continues.');
-  }catch(err){toast(err.message)}
+  }catch(_){
+    document.getElementById('apiKeyInput').value='';
+    updateAIStatus();
+    toast('Browser key cleared. Local generation continues.');
+  }
 }
 document.getElementById('apiKeySave')?.addEventListener('click',saveApiKey);
 document.getElementById('apiKeyClear')?.addEventListener('click',clearApiKey);

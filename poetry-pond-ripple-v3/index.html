@@ -202,7 +202,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
         <button id="apiKeyClear" class="key-btn" type="button">Clear</button>
       </div>
       <p class="field-note" id="apiKeyNote">Checking the local server…</p>
-      <p class="field-note">Sent once to your local server over loopback, held in server memory and <code>.runtime-config.json</code>, never returned to the browser. Without a key, Luna and Sol stay off and the typed local engine runs everything.</p>
+      <p class="field-note">With the local server running, the key is sent once over loopback, held in server memory and <code>.runtime-config.json</code>, never returned to the browser. Served statically (no server), the key stays in this browser and the page calls OpenAI directly on the Luna tier. Without any key, the typed local engine runs everything.</p>
     </div>
     <button id="rememberToggle" class="drawer-row"><span><b>Remember this pond</b><small>Persist the event ledger, entity state, strata, and API usage in this browser. No API key is stored.</small></span><span class="value">Off</span></button>
   </section>

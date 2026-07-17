@@ -2,6 +2,12 @@ import {
   createWorld, hydrateWorld, undoLastTurn as undoWorldTurn,
   processLocalTurn, buildRippleProof, getPath
 } from './world-engine.mjs';
+import { browserTurn } from './browser-llm.mjs';
+
+// Browser-direct key for static hosting (no local server). Held in this
+// browser's localStorage; calls go straight to OpenAI on the Luna tier.
+// Full Luna/Sol routing, budgets, and preflight need the local server.
+const BROWSER_KEY_STORAGE='pond.browser.openai.key';
 
 function main(){
 'use strict';
@@ -160,7 +166,7 @@ const state={
   entries:instructionEntries.map(x=>({...x})),mode:'Stone',busy:false,operation:null,batches:[],selectedId:null,selectedCausalIds:[],pendingClarification:null,
   world:createWorld(),usageLog:[],evalReport:null,
   orbit:false,reflect:true,showSatellites:true,remember:false,reading:false,
-  aiEnabled:true,aiPolicy:'efficient',serverAvailable:false,aiAvailable:false,solModel:'gpt-5.6-sol',lunaModel:'gpt-5.6-luna',apiPath:'/api/turn',lastGenerator:'local-typed',warm:.42,
+  aiEnabled:true,aiPolicy:'efficient',serverAvailable:false,aiAvailable:false,solModel:'gpt-5.6-sol',lunaModel:'gpt-5.6-luna',browserKey:localStorage.getItem(BROWSER_KEY_STORAGE)||'',apiPath:'/api/turn',lastGenerator:'local-typed',warm:.42,
   yaw:0,pitch:.16,distance:18,target:[0,3.15,0],camera:[0,0,0],
   ripples:[],falling:null,lastTime:performance.now(),autoPhase:0
 };
@@ -364,11 +370,12 @@ async function checkAIStatus(){
 function updateAIStatus(){
   if(!ui.aiStatus)return;
   const policyLabel=state.aiPolicy==='deep'?'Deep':state.aiPolicy==='luna'?'Luna':'Efficient';
-  ui.aiStatus.textContent=!state.serverAvailable?'Browser engine':!state.aiEnabled?'Server validation only':state.aiAvailable?`${state.solModel} + ${state.lunaModel}`:'Server local validation';
+  ui.aiStatus.textContent=!state.serverAvailable?(state.browserKey&&state.aiEnabled?'Browser direct · Luna':'Browser engine'):!state.aiEnabled?'Server validation only':state.aiAvailable?`${state.solModel} + ${state.lunaModel}`:'Server local validation';
   ui.aiToggle.querySelector('.value').textContent=state.aiEnabled?'On':'Off';if(ui.aiPolicy)ui.aiPolicy.querySelector('.value').textContent=policyLabel;
   const note=document.getElementById('apiKeyNote');
   if(note){
-    if(!state.serverAvailable){note.textContent='The local server is not reachable, so no key can be held. The browser typed engine is running.';note.className='field-note key-note-off'}
+    if(!state.serverAvailable&&state.browserKey){note.textContent=`Browser key active (…${state.browserKey.slice(-4)}). This page calls OpenAI directly on the Luna tier; the key sits in this browser's localStorage — use only on a device you trust. Full Luna/Sol routing needs the local server.`;note.className='field-note key-note-ok'}
+    else if(!state.serverAvailable){note.textContent='No local server found. Paste a key here to call OpenAI directly from this browser (Luna tier), or run npm start for full routing with server-held keys.';note.className='field-note key-note-off'}
     else if(state.aiAvailable){note.textContent=`Key active (…${state.keyTail}, source: ${state.keySource==='env'?'server environment':'saved from this panel'}). Luna and Sol are live.`;note.className='field-note key-note-ok'}
     else{note.textContent='No key configured. The typed local engine runs everything; add a key to enable Luna and Sol.';note.className='field-note key-note-off'}
   }
@@ -377,6 +384,16 @@ async function saveApiKey(){
   const input=document.getElementById('apiKeyInput');const note=document.getElementById('apiKeyNote');
   const key=input.value.trim();
   if(!key){toast('Paste a key first, or use Clear to remove the saved one.');return}
+  if(!/^sk-[A-Za-z0-9_-]{10,}$/.test(key)){note.textContent='That does not look like an OpenAI key (expected sk-…). Nothing was saved.';note.className='field-note key-note-err';return}
+  await checkAIStatus();
+  if(!state.serverAvailable){
+    state.browserKey=key;
+    localStorage.setItem(BROWSER_KEY_STORAGE,key);
+    input.value='';
+    updateAIStatus();
+    toast(`Key kept in this browser (…${key.slice(-4)}). Calls now go directly from this page to OpenAI (Luna tier).`);
+    return;
+  }
   try{
     const r=await fetch('/api/llm-key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key})});
     const j=await r.json().catch(()=>({}));
@@ -387,13 +404,21 @@ async function saveApiKey(){
   }catch(err){note.textContent=err.message;note.className='field-note key-note-err';toast('The key was not saved.')}
 }
 async function clearApiKey(){
+  if(state.browserKey){
+    state.browserKey='';
+    localStorage.removeItem(BROWSER_KEY_STORAGE);
+  }
   try{
     const r=await fetch('/api/llm-key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:''})});
     if(!r.ok)throw new Error('The server could not clear the key.');
     document.getElementById('apiKeyInput').value='';
     await checkAIStatus();
     toast(state.aiAvailable?'Runtime key cleared; the server environment key remains.':'Key cleared. The typed local engine continues.');
-  }catch(err){toast(err.message)}
+  }catch(_){
+    document.getElementById('apiKeyInput').value='';
+    updateAIStatus();
+    toast('Browser key cleared. The typed local engine continues.');
+  }
 }
 document.getElementById('apiKeySave')?.addEventListener('click',saveApiKey);
 document.getElementById('apiKeyClear')?.addEventListener('click',clearApiKey);
@@ -408,8 +433,22 @@ function stopOperation(){
 }
 async function obtainTurn(payload,op){
   let result=null;
+  const turnInput={text:payload.text,originalText:payload.originalText||payload.text,mode:payload.mode,resolution:payload.resolution||null,turnId:payload.batchId,eventId:payload.eventId,idempotencyKey:payload.batchId,sourceStratumId:payload.userId,createdAt:payload.createdAt};
   try{result=await remoteTurn(payload,op.abort.signal)}catch(err){if(op.cancelled)return null;state.serverAvailable=false;state.aiAvailable=false;updateAIStatus();state.usageLog.push({batchId:payload.batchId,createdAt:new Date().toISOString(),status:'failed',error:err.message});toast(`${err.message}. The browser typed engine continued.`)}
-  if(!result)result=processLocalTurn(state.world,{text:payload.text,originalText:payload.originalText||payload.text,mode:payload.mode,resolution:payload.resolution||null,turnId:payload.batchId,eventId:payload.eventId,idempotencyKey:payload.batchId,sourceStratumId:payload.userId,createdAt:payload.createdAt});
+  if(!result&&state.aiEnabled&&state.browserKey&&!state.serverAvailable){
+    const started=performance.now();
+    try{
+      result=await browserTurn(state.world,turnInput,{key:state.browserKey,plannerModel:state.lunaModel,writerModel:state.lunaModel,signal:op.abort.signal});
+      state.usageLog.push({batchId:payload.batchId,createdAt:new Date().toISOString(),latencyMs:Math.round(performance.now()-started),status:'completed',usage:result.usage||null,proposer:result.proposer||null,generator:result.generator||null,transport:'browser-direct-luna'});
+      updateMeta();
+    }catch(err){
+      if(op.cancelled)return null;
+      result=null;
+      state.usageLog.push({batchId:payload.batchId,createdAt:new Date().toISOString(),status:'failed',error:err.message,transport:'browser-direct-luna'});
+      toast(`Browser OpenAI call failed: ${err.message}. The typed local engine continued.`);
+    }
+  }
+  if(!result)result=processLocalTurn(state.world,turnInput);
   return result;
 }
 async function executeTurn(payload){

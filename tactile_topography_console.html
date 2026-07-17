@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ORCA // RIPPLE</title>
+    <style>
+        :root {
+            --bg-deep: #030508;
+            --panel-bg: rgba(6, 10, 18, 0.95);
+            --border-dim: rgba(0, 229, 255, 0.2);
+            --text-main: #a0b0c0;
+            --cyan: #00e5ff;
+            --orange: #ff6a00;
+            --alert: #ff4d4d;
+            --goal: #00ff88;
+            --shift: #bd00ff;
+            --font-mono: 'Courier New', Courier, monospace;
+        }
+
+        * { box-sizing: border-box; user-select: none; }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--bg-deep); font-family: var(--font-mono);
+            color: var(--text-main); overflow: hidden;
+            overscroll-behavior: none; 
+            touch-action: none;
+        }
+
+        /* --- ONBOARDING OVERLAY --- */
+        #onboarding-overlay {
+            position: absolute; inset: 0; z-index: 1000;
+            background: var(--bg-deep); display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            transition: opacity 2s ease-in-out; pointer-events: none;
+        }
+        .ob-text {
+            color: var(--cyan); font-family: var(--font-mono); font-size: 1.2rem;
+            letter-spacing: 4px; opacity: 0; transition: opacity 1s ease;
+            margin: 10px 0; text-transform: uppercase; font-weight: bold; text-align: center; padding: 0 20px;
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+        }
+
+        .scanlines {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px; pointer-events: none; z-index: 50;
+        }
+
+        #canvas-container {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1;
+            background: radial-gradient(circle at center, #0a1118 0%, #020305 100%);
+        }
+
+        /* --- AWAKEN BOOT SCREEN --- */
+        #boot-screen {
+            position: absolute; inset: 0; z-index: 2000;
+            background: #000; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: var(--cyan); font-family: var(--font-mono);
+            font-weight: bold; letter-spacing: 4px; transition: opacity 1.5s ease-in-out;
+        }
+        .pulse-text { animation: textPulse 2s infinite alternate; }
+        @keyframes textPulse { from { opacity: 0.5; } to { opacity: 1; text-shadow: 0 0 15px var(--cyan); } }
+
+        /* --- MINIMAP HUD --- */
+        #minimap-container {
+            position: absolute; top: 24px; right: 24px; z-index: 20;
+            display: flex; flex-direction: column; opacity: 0; animation: fadeInUI 2s 4s forwards;
+        }
+        #minimap {
+            display: grid; grid-template-columns: repeat(12, 10px); grid-template-rows: repeat(12, 10px);
+            gap: 4px; padding: 4px;
+        }
+        @media (min-width: 768px) {
+            #minimap { grid-template-columns: repeat(12, 12px); grid-template-rows: repeat(12, 12px); gap: 4px; }
+        }
+        .mini-cell { 
+            background: rgba(255,255,255,0.1); cursor: pointer; border-radius: 50%; 
+            transition: transform 0.1s, background-color 0.3s, box-shadow 0.3s;
+        }
+        .mini-active { background: var(--cyan); box-shadow: 0 0 5px var(--cyan); }
+        .mini-selected { background: var(--orange) !important; box-shadow: 0 0 8px var(--orange) !important; animation: pulse 1s infinite alternate; }
+        
+        @keyframes pulse { from { opacity: 0.6; } to { opacity: 1; transform: scale(1.1); } }
+        @keyframes fadeInUI { to { opacity: 1; } }
+
+        /* --- FIXED RIGHT-SIDE CONTEXT MENU & VECTORS --- */
+        #layer-controls {
+            position: absolute; top: 160px; right: 16px; display: none; 
+            flex-direction: column; align-items: flex-end; gap: 12px;
+            pointer-events: none; z-index: 100; max-width: calc(100vw - 32px);
+        }
+
+        #tag-buttons {
+            display: flex; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; 
+            pointer-events: auto; overflow-x: auto; max-width: 100%;
+            scrollbar-width: none;
+            padding-bottom: 4px;
+        }
+        #tag-buttons::-webkit-scrollbar { display: none; } 
+        
+        .tag-btn {
+            padding: 8px 12px; border: 1px solid var(--border-dim); background: var(--panel-bg);
+            color: #fff; font-family: var(--font-mono); font-size: 0.7rem; font-weight: bold;
+            cursor: pointer; transition: all 0.2s; backdrop-filter: blur(8px);
+            text-transform: uppercase; border-radius: 2px; letter-spacing: 0.5px;
+            white-space: nowrap; box-shadow: 0 4px 15px rgba(0,0,0,0.5); flex-shrink: 0;
+        }
+
+        .btn-obstacle { color: var(--alert); border-left: 4px solid var(--alert); }
+        .btn-goal { color: var(--goal); border-left: 4px solid var(--goal); }
+        .btn-shift { color: var(--shift); border-left: 4px solid var(--shift); }
+        .btn-branch { color: #fff; border-left: 4px solid #fff; }
+        #btn-dismiss { color: var(--text-main); border-left: 4px solid var(--text-main); }
+
+        .btn-obstacle:hover { background: var(--alert); color: #000; box-shadow: 0 0 15px var(--alert); }
+        .btn-goal:hover { background: var(--goal); color: #000; box-shadow: 0 0 15px var(--goal); }
+        .btn-shift:hover { background: var(--shift); color: #000; box-shadow: 0 0 15px var(--shift); }
+        .btn-branch:hover { background: #fff; color: #000; box-shadow: 0 0 15px #fff; }
+        #btn-dismiss:hover { background: var(--text-main) !important; color: #000 !important; }
+
+        /* --- CONTEXTUAL VECTOR TABS --- */
+        #vector-container { display: flex; flex-direction: column; align-items: flex-end; width: 100%; pointer-events: auto; }
+        
+        #vector-toggle {
+            background: var(--panel-bg); color: var(--cyan); border: 1px solid var(--cyan);
+            padding: 6px 12px; font-family: var(--font-mono); font-size: 0.7rem; font-weight: bold; cursor: pointer;
+            margin-bottom: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border-radius: 2px;
+            backdrop-filter: blur(8px); transition: all 0.2s;
+        }
+        #vector-toggle:hover { background: var(--cyan); color: #000; }
+
+        #vector-list {
+            display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 450px;
+            transition: opacity 0.3s;
+        }
+        #vector-list.collapsed { display: none !important; }
+
+        .vector-header {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(0,0,0,0.8); padding: 8px 12px; border: 1px solid var(--border-dim);
+            border-right: 4px solid var(--cyan); border-radius: 4px 0 0 4px; backdrop-filter: blur(12px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); gap: 16px;
+        }
+        
+        .vector-action-btn {
+            background: transparent; border: 1px solid var(--text-main); color: var(--text-main);
+            font-family: var(--font-mono); font-size: 0.65rem; cursor: pointer; padding: 4px 8px; 
+            transition: all 0.2s; border-radius: 2px; text-transform: uppercase; font-weight: bold;
+        }
+        .vector-action-btn:hover { background: var(--text-main); color: #000; }
+
+        .vector-loading {
+            color: var(--cyan); font-family: var(--font-mono); font-size: 0.8rem; font-weight: bold;
+            padding: 12px; background: var(--panel-bg); border: 1px solid var(--border-dim);
+            backdrop-filter: blur(12px); display: flex; align-items: center; gap: 10px;
+            border-right: 4px solid var(--cyan); border-radius: 4px 0 0 4px;
+        }
+        .vector-loading::before {
+            content: '⟳'; display: inline-block; animation: spin 1s linear infinite; font-size: 1.2rem;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .vector-wrapper {
+            display: flex; width: 100%; background: var(--panel-bg);
+            border: 1px solid var(--border-dim); border-right: none;
+            backdrop-filter: blur(12px); box-shadow: 0 8px 25px rgba(0,0,0,0.8);
+            border-radius: 4px 0 0 4px; transition: transform 0.2s;
+            opacity: 0; animation: slideInRight 0.3s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+            overflow: hidden; pointer-events: auto;
+        }
+        .vector-wrapper:hover { transform: translateX(-4px); }
+
+        .vector-content {
+            flex-grow: 1; padding: 12px 16px; background: transparent; border: none;
+            text-align: left; cursor: pointer; color: var(--text-main); font-family: var(--font-mono);
+            font-size: 0.85rem; line-height: 1.5; transition: background 0.2s;
+        }
+        .vector-content:hover { background: rgba(255, 255, 255, 0.05); }
+
+        /* TINY COLLAPSED TAB STYLING */
+        .vector-collapsed-tab {
+            padding: 6px 12px; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;
+            color: #fff; font-family: var(--font-mono); font-size: 0.75rem; font-weight: bold;
+            cursor: pointer; align-self: flex-end; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: all 0.2s; backdrop-filter: blur(8px);
+            opacity: 0; animation: slideInRight 0.3s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+        }
+        .vector-collapsed-tab:hover { transform: translateX(-4px); filter: brightness(1.2); }
+
+        .vector-therefore { font-weight: bold; font-size: 0.75rem; text-transform: uppercase; display: block; margin-bottom: 4px; letter-spacing: 1px;}
+        .vector-reason { color: #fff; font-weight: normal; }
+
+        .vector-actions {
+            display: flex; flex-direction: column; width: 32px; flex-shrink: 0;
+        }
+        .v-ctrl {
+            flex: 1; background: rgba(0,0,0,0.3); border: none; border-bottom: 1px solid rgba(0,0,0,0.4);
+            color: rgba(255,255,255,0.8); cursor: pointer; font-size: 14px; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+        }
+        .v-ctrl:last-child { border-bottom: none; }
+        .v-ctrl:hover { background: rgba(0,0,0,0.7); color: #fff; }
+
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* --- BOTTOM TERMINAL WITH DRAG RESIZER --- */
+        .hud-panel {
+            position: absolute; z-index: 10; background: var(--panel-bg);
+            border: 1px solid var(--border-dim); border-top: none;
+            backdrop-filter: blur(12px); display: flex; flex-direction: column; 
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.8); opacity: 0; animation: fadeInUI 2s 4s forwards;
+            bottom: 0; left: 0; right: 0; height: 260px;
+        }
+        
+        #resizer {
+            position: absolute; top: 0; left: 0; right: 0; height: 16px;
+            cursor: ns-resize; z-index: 20; background: rgba(0, 229, 255, 0.05);
+            border-top: 2px solid var(--cyan); display: flex; justify-content: center; align-items: center;
+        }
+        #resizer::before {
+            content: "|||"; color: var(--cyan); font-size: 10px; letter-spacing: 4px; opacity: 0.5; font-family: sans-serif;
+        }
+        #resizer:hover { background: rgba(0, 229, 255, 0.15); }
+
+        #chat-wrapper {
+            flex-grow: 1; display: flex; flex-direction: column; overflow: hidden;
+            margin-top: 16px; 
+        }
+
+        #chat-log {
+            flex-grow: 1; padding: 8px 20px; overflow-y: auto; font-size: 0.85rem; line-height: 1.5;
+            display: flex; flex-direction: column; gap: 6px; scrollbar-width: thin; scrollbar-color: var(--cyan) transparent;
+        }
+
+        .msg { padding-left: 12px; border-left: 2px solid transparent; animation: fadeIn 0.3s ease-out; position: relative; transition: all 0.3s; }
+        .msg-dimmed { opacity: 0.4 !important; filter: grayscale(80%); } 
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
+        
+        .msg[data-col-id] { cursor: pointer; }
+        .msg[data-col-id]:hover { background: rgba(0, 229, 255, 0.1); border-left-color: var(--cyan); opacity: 1 !important; filter: none !important; }
+        .msg[data-col-id]::before { content: '[' attr(data-coord) '] '; font-size: 0.75rem; opacity: 0.8; color: var(--cyan); font-weight: bold; }
+        
+        .msg-selected {
+            background: rgba(255, 106, 0, 0.15) !important;
+            border-left: 4px solid var(--orange) !important;
+            box-shadow: inset 0 0 15px rgba(255, 106, 0, 0.1);
+            opacity: 1 !important; filter: none !important;
+        }
+        
+        /* Compact Inline Chat Vector */
+        .msg-chat-vector {
+            background: rgba(189, 0, 255, 0.1); border-left: 4px solid var(--shift) !important;
+            color: #fff; padding: 6px 10px; margin-top: 2px; border-radius: 2px;
+            cursor: pointer; font-weight: normal; display: inline-flex; gap: 8px; align-items: baseline;
+        }
+        .msg-chat-vector:hover { background: rgba(189, 0, 255, 0.25); transform: translateX(4px); }
+        .vec-target { color: var(--shift); font-size: 0.75rem; text-transform: uppercase; font-weight: bold; white-space: nowrap; flex-shrink: 0;}
+
+        .msg-sys { color: #687a8c; border-color: #687a8c; }
+        .msg-user { color: #fff; border-color: var(--cyan); background: rgba(0, 229, 255, 0.05); font-weight: bold; }
+        .msg-ai { color: var(--goal); border-color: var(--goal); background: rgba(0, 255, 136, 0.05); }
+        .msg-spawn { color: var(--shift); border-color: var(--shift); font-weight: bold; font-size: 0.75rem; text-transform: uppercase;}
+        
+        .typing-indicator::after { content: ''; animation: ellipsis 1.5s infinite; }
+        @keyframes ellipsis { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+
+        /* --- COMPACT MOBILE CONTROL STRIP --- */
+        #input-area { display: flex; border-top: 1px solid var(--border-dim); background: #000; align-items: stretch; height: 50px; flex-shrink: 0;}
+
+        .control-btn {
+            background: transparent; border: none; color: var(--text-main); font-size: 1rem; font-family: var(--font-mono);
+            cursor: pointer; padding: 0 16px; border-right: 1px solid var(--border-dim);
+            transition: background 0.2s, color 0.2s; display: flex; align-items: center; justify-content: center; font-weight: bold;
+        }
+        .control-btn:hover { background: var(--panel-bg); color: #fff; }
+        
+        .mode-obstacle { color: var(--alert) !important; text-shadow: 0 0 5px var(--alert); }
+        .mode-goal { color: var(--goal) !important; text-shadow: 0 0 5px var(--goal); }
+        .mode-shift { color: var(--shift) !important; text-shadow: 0 0 5px var(--shift); }
+
+        /* Desktop specific styling */
+        .lbl-desk { display: none; }
+        @media (min-width: 768px) {
+            .hud-panel { left: 24px; right: 24px; border-left: 1px solid var(--border-dim); border-right: 1px solid var(--border-dim); border-radius: 4px 4px 0 0;}
+            .lbl-desk { display: inline; margin-left: 8px; }
+            #resizer { border-radius: 4px 4px 0 0; }
+        }
+
+        #cmd-input {
+            flex-grow: 1; background: transparent; border: none; color: var(--cyan);
+            font-family: inherit; font-size: 1rem; padding: 0 16px; outline: none; font-weight: bold; min-width: 50px;
+        }
+        #cmd-submit {
+            background: transparent; color: var(--cyan); border: none; border-left: 1px solid var(--border-dim);
+            font-weight: bold; font-size: 1.2rem; cursor: pointer; padding: 0 20px; transition: all 0.2s; display: flex; align-items: center;
+        }
+        #cmd-submit:hover { background: var(--cyan); color: #000; }
+
+        #hover-readout {
+            position: absolute; top: 60%; left: 50%; transform: translateX(-50%);
+            color: #fff; font-weight: bold; font-size: 0.8rem; text-align: center;
+            background: rgba(0, 229, 255, 0.1); padding: 8px 16px; border: 1px solid var(--border-dim);
+            backdrop-filter: blur(4px); pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 50;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div class="scanlines"></div>
+    <div id="canvas-container"></div>
+    <div id="hover-readout"></div>
+
+    <!-- AWAKEN & ONBOARDING OVERLAY -->
+    <div id="boot-screen" onclick="bootUp()">
+        <span class="pulse-text">[ AWAKEN TOPOGRAPHY ]</span>
+    </div>
+
+    <div id="onboarding-overlay">
+        <div id="ob-1" class="ob-text">The water is still.</div>
+        <div id="ob-2" class="ob-text" style="margin-top: 20px;">A topography of potential waits beneath the surface.</div>
+        <div id="ob-3" class="ob-text" style="margin-top: 40px; color: var(--orange);">Drop a stone. Watch the ripples.</div>
+    </div>
+
+    <!-- MINIMAP -->
+    <div id="minimap-container">
+        <div id="minimap"></div>
+    </div>
+
+    <!-- LAYER-SPECIFIC CONTROLS & VECTORS (DOCKED RIGHT) -->
+    <div id="layer-controls">
+        <div id="tag-buttons">
+            <button id="btn-branch" class="tag-btn btn-branch" onclick="branchStub()">⎇ BRANCH</button>
+            <button id="btn-obstacle" class="tag-btn btn-obstacle" onclick="tagLayer('OBSTACLE')">⨂ OBSTACLE</button>
+            <button id="btn-goal" class="tag-btn btn-goal" onclick="tagLayer('GOAL')">◎ GOAL</button>
+            <button id="btn-shift" class="tag-btn btn-shift" onclick="tagLayer('SHIFT')">↯ SHIFT</button>
+            <button id="btn-dismiss" class="tag-btn" onclick="collapseStack()" style="background:#000; color:var(--text-main); border-color:var(--text-main);">✕ DISMISS</button>
+        </div>
+        <div id="vector-container">
+            <div id="vector-list"></div>
+        </div>
+    </div>
+
+    <div class="hud-panel" id="bottom-panel">
+        <div id="resizer"></div>
+        <div id="chat-wrapper">
+            <div id="chat-log">
+                <div class="msg msg-sys">>>> RIPPLE ENGINE ONLINE.</div>
+            </div>
+            <!-- MOBILE-OPTIMIZED INPUT BAR -->
+            <div id="input-area">
+                <button id="btn-audio" class="control-btn" onclick="toggleAudio()" title="Toggle Audio">
+                    <span id="audio-lbl">AUDIO: MUTE</span>
+                </button>
+                <button id="btn-key" class="control-btn" onclick="toggleKeyEntry()" title="Gemini API key (kept in this browser)">
+                    ⚿ <span id="key-lbl" class="lbl-desk">KEY: OFF</span>
+                </button>
+                <button id="mode-badge" class="control-btn mode-default" onclick="toggleMode()" title="Cycle Lenses">
+                    ■ <span id="mode-lbl" class="lbl-desk">NEUTRAL</span>
+                </button>
+                <button id="btn-export" class="control-btn" onclick="exportTopography()" title="Export Memory">
+                    ⭳ <span class="lbl-desk">EXPORT</span>
+                </button>
+                <button id="btn-focus" class="control-btn" onclick="recenterView()" title="Center Camera on Node">
+                    ⌖ <span class="lbl-desk">FOCUS</span>
+                </button>
+                <input type="text" id="cmd-input" placeholder="Drop a Stone..." autocomplete="off">
+                <button id="cmd-submit" title="Execute Ripple">
+                    ↵ <span class="lbl-desk">DROP</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Gemini key pasted by the participant; kept only in this browser's
+        // localStorage. Without it, the console runs its local fallbacks.
+        let apiKey = localStorage.getItem('pond.browser.gemini.key') || '';
+        let keyEntryMode = false;
+        let isAITyping = false;
+        let hoveredColId = -1;
+        let activeStubText = ""; 
+
+        const STATE = {
+            tension: 1.8,   
+            flowRate: 0.6,  
+            resonance: 1.0, 
+            selectedColId: -1,
+            selectedLayerIdx: -1, 
+            targetMode: 'GLOBAL',
+            inputMode: 'DEFAULT',
+            isPaused: false,
+            simTime: 0,
+            autoPan: true 
+        };
+
+        const MODES = ['DEFAULT', 'OBSTACLE', 'GOAL', 'SHIFT'];
+        const MODE_SYMBOLS = { DEFAULT: '■', OBSTACLE: '⨂', GOAL: '◎', SHIFT: '↯' };
+        const MODE_CLASSES = { DEFAULT: 'mode-default', OBSTACLE: 'mode-obstacle', GOAL: 'mode-goal', SHIFT: 'mode-shift'};
+        const MODE_LABELS = { DEFAULT: 'NEUTRAL', OBSTACLE: 'OBSTACLE', GOAL: 'GOAL', SHIFT: 'SHIFT'};
+
+        const TAG_COLORS = {
+            DEFAULT: 0x00e5ff,
+            OBSTACLE: 0xff4d4d,
+            GOAL: 0x00ff88,
+            SHIFT: 0xbd00ff
+        };
+
+        // --- INTERACTION LOGIC (Scoping variables globally to fix pointer down error) ---
+        let pointerDownPos = { x: 0, y: 0 };
+        let isDraggingCanvas = false;
+
+        // --- RESIZABLE PANEL LOGIC ---
+        const resizer = document.getElementById('resizer');
+        const bottomPanel = document.getElementById('bottom-panel');
+        let isResizingPanel = false;
+
+        resizer.addEventListener('mousedown', () => { isResizingPanel = true; document.body.style.cursor = 'ns-resize'; });
+        resizer.addEventListener('touchstart', () => { isResizingPanel = true; }, {passive: true});
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isResizingPanel) return;
+            let newHeight = window.innerHeight - e.clientY;
+            newHeight = Math.max(120, Math.min(newHeight, window.innerHeight * 0.8));
+            bottomPanel.style.height = `${newHeight}px`;
+            if(STATE.selectedColId !== -1) STATE.autoPan = true; 
+        });
+        window.addEventListener('touchmove', (e) => {
+            if (!isResizingPanel) return;
+            let newHeight = window.innerHeight - e.touches[0].clientY;
+            newHeight = Math.max(120, Math.min(newHeight, window.innerHeight * 0.8));
+            bottomPanel.style.height = `${newHeight}px`;
+            if(STATE.selectedColId !== -1) STATE.autoPan = true;
+        });
+
+        window.addEventListener('mouseup', () => { isResizingPanel = false; document.body.style.cursor = 'default'; });
+        window.addEventListener('touchend', () => { isResizingPanel = false; });
+
+
+        // --- WEB AUDIO & HAPTICS ENGINE ---
+        let audioCtx = null;
+        let masterGain = null;
+        let audioEnabled = false;
+
+        const pentatonic = [130.81, 146.83, 164.81, 196.00, 220.00, 261.63, 293.66, 329.63, 392.00, 440.00];
+
+        window.toggleAudio = function(forceOn = false) {
+            if (forceOn) audioEnabled = false; 
+            audioEnabled = !audioEnabled;
+            if(audioEnabled) {
+                if(!audioCtx) initAudio();
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                document.getElementById('audio-lbl').innerText = 'AUDIO: LIVE';
+                triggerHaptic(15);
+            } else {
+                if(audioCtx) audioCtx.suspend();
+                document.getElementById('audio-lbl').innerText = 'AUDIO: MUTE';
+            }
+        };
+
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0.3;
+            masterGain.connect(audioCtx.destination);
+            
+            const delay = audioCtx.createDelay();
+            delay.delayTime.value = 0.8;
+            const feedback = audioCtx.createGain();
+            feedback.gain.value = 0.4;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 800;
+
+            delay.connect(filter);
+            filter.connect(feedback);
+            feedback.connect(delay);
+            delay.connect(masterGain);
+            
+            masterGain.connect(delay); 
+        }
+
+        function playAmbientNote() {
+            if(!audioEnabled || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = Math.random() > 0.5 ? 'sine' : 'triangle';
+            const freq = pentatonic[Math.floor(Math.random() * pentatonic.length)];
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 2.0);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 8.0);
+            
+            osc.connect(gain);
+            gain.connect(masterGain);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 8.0);
+        }
+
+        function playBootChord() {
+            if(!audioEnabled || !audioCtx) return;
+            [130.81, 196.00, 261.63, 392.00].forEach((freq, i) => {
+                setTimeout(() => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 3.0);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 12.0);
+                    osc.connect(gain);
+                    gain.connect(masterGain);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 12.0);
+                }, i * 400);
+            });
+        }
+
+        function triggerHaptic(pattern) {
+            if (navigator.vibrate) navigator.vibrate(pattern);
+        }
+
+        window.recenterView = function() {
+            if(STATE.selectedColId !== -1) {
+                STATE.autoPan = true;
+                triggerHaptic(20);
+            }
+        };
+
+        // --- AWAKEN ONBOARDING SEQUENCE ---
+        window.bootUp = function() {
+            const boot = document.getElementById('boot-screen');
+            boot.style.opacity = 0;
+            setTimeout(() => boot.remove(), 1500);
+
+            toggleAudio(true); 
+            playBootChord();
+            triggerRipple(0, 0, 2.5, TAG_COLORS.DEFAULT);
+
+            setTimeout(() => document.getElementById('ob-1').style.opacity = 1, 1500);
+            setTimeout(() => document.getElementById('ob-2').style.opacity = 1, 3500);
+            setTimeout(() => document.getElementById('ob-3').style.opacity = 1, 5500);
+            setTimeout(() => {
+                const overlay = document.getElementById('onboarding-overlay');
+                overlay.style.opacity = 0;
+                setTimeout(() => overlay.remove(), 2000);
+            }, 8500);
+        };
+
+        // --- RIPPLE SYSTEM ---
+        const activeRipples = [];
+        window.triggerRipple = function(x, z, intensity=1.0, colorHex=TAG_COLORS.DEFAULT) {
+            activeRipples.push({x, z, time: 0, intensity});
+            const geo = new THREE.RingGeometry(0.5, 1.5, 64);
+            const mat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.rotation.x = -Math.PI / 2;
+            mesh.position.set(x, -0.5, z);
+            scene.add(mesh);
+
+            playAmbientNote();
+            triggerHaptic([30, 50, 30]);
+
+            const startTime = performance.now();
+            const duration = 3000; 
+
+            function grow() {
+                const elapsed = performance.now() - startTime;
+                const progress = elapsed / duration;
+                if (progress < 1.0) {
+                    const scale = 1.0 + (1.0 - Math.pow(1.0 - progress, 3)) * 60.0;
+                    mesh.scale.set(scale, scale, scale);
+                    mesh.material.opacity = 0.8 * (1.0 - progress);
+                    requestAnimationFrame(grow);
+                } else {
+                    scene.remove(mesh);
+                    geo.dispose();
+                    mat.dispose();
+                }
+            }
+            grow();
+        };
+
+        // --- EXPORT SYSTEM ---
+        window.exportTopography = function() {
+            triggerHaptic(15);
+            let out = "# RIPPLE TOPOGRAPHY EXPORT\n\n";
+            colRegistry.filter(c => c.layers > 0).forEach(c => {
+                out += `## NODE ${c.coord} : "${c.title}" [${c.tag}]\n`;
+                c.messages.forEach((m, i) => {
+                    const prefix = i === 0 ? "STONE" : `FRAGMENT`;
+                    out += `- ${prefix}: ${m}\n`;
+                });
+                out += "\n";
+            });
+            const blob = new Blob([out], {type: "text/markdown"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `ripple_map_${Date.now()}.md`;
+            a.click();
+            appendLog("TOPOGRAPHY EXPORTED TO LOCAL STORAGE.", "sys");
+        };
+
+        // --- MODE CONTROLS ---
+        function setMode(mode) {
+            STATE.inputMode = mode;
+            const badge = document.getElementById('mode-badge');
+            badge.className = `control-btn ${MODE_CLASSES[mode]}`;
+            badge.innerHTML = `${MODE_SYMBOLS[mode]} <span id="mode-lbl" class="lbl-desk">${MODE_LABELS[mode]}</span>`;
+        }
+
+        window.toggleMode = function() {
+            triggerHaptic(10);
+            const currentIndex = MODES.indexOf(STATE.inputMode);
+            const nextIndex = (currentIndex + 1) % MODES.length;
+            setMode(MODES[nextIndex]);
+        };
+
+        // =========================================================
+        // THREE.JS ENGINE
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x020305, 0.008);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1500);
+        camera.position.set(40, 50, 80);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x020305);
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; 
+        controls.dampingFactor = 0.08;
+        controls.maxDistance = 300; 
+        controls.minDistance = 10;
+        controls.maxPolarAngle = Math.PI / 1.8;
+
+        const clickableMeshes = [];
+        const colRegistry = [];
+        const miniCells = [];
+
+        // Focus Beam
+        const beamGeo = new THREE.CylinderGeometry(1.8, 1.8, 300, 16);
+        const beamMat = new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false});
+        const focusBeam = new THREE.Mesh(beamGeo, beamMat);
+        scene.add(focusBeam);
+        focusBeam.visible = false;
+
+        function createTextSprite(text, isTitle=false) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024; canvas.height = isTitle ? 80 : 120; 
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = isTitle ? 'rgba(0,0,0,0)' : 'rgba(2, 5, 8, 0.98)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if (!isTitle) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 6;
+                ctx.strokeRect(3, 3, canvas.width - 6, canvas.height - 6);
+            }
+
+            let fontSize = isTitle ? 40 : 52;
+            if (!isTitle) {
+                if (text.length > 35) fontSize = 42;
+                if (text.length > 55) fontSize = 32;
+                if (text.length > 75) fontSize = 24;
+            }
+
+            ctx.font = `bold ${fontSize}px "Courier New", monospace`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillStyle = isTitle ? '#00e5ff' : '#FFFFFF';
+            
+            if(isTitle) {
+                ctx.shadowColor = "#00e5ff";
+                ctx.shadowBlur = 10;
+            } else {
+                ctx.shadowColor = "transparent";
+                ctx.shadowBlur = 0;
+            }
+            
+            ctx.fillText(text.toUpperCase(), canvas.width/2, canvas.height/2, canvas.width - 40);
+            
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            
+            const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, blending: THREE.NormalBlending, depthTest: !isTitle, depthWrite: !isTitle });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(15, isTitle ? 1.1 : 1.7, 1);
+            return sprite;
+        }
+
+        function getGeometryForTag(tag, isEmpty = false) {
+            if (isEmpty) return new THREE.CircleGeometry(0.5, 16); 
+            switch(tag) {
+                case 'OBSTACLE': return new THREE.PlaneGeometry(5, 5); 
+                case 'GOAL': return new THREE.RingGeometry(1, 3.5, 32); 
+                case 'SHIFT': return new THREE.CircleGeometry(3.5, 3); 
+                default: return new THREE.RingGeometry(2.0, 2.5, 24); 
+            }
+        }
+
+        function getNeighboringNode(centerCol) {
+            let candidates = colRegistry.filter(c => c.id !== centerCol.id);
+            candidates.sort((a, b) => {
+                return Math.hypot(a.x - centerCol.x, a.z - centerCol.z) - Math.hypot(b.x - centerCol.x, b.z - centerCol.z);
+            });
+            let closest = candidates.slice(0, 4);
+            let emptyClose = closest.filter(c => c.layers === 0);
+            if (emptyClose.length > 0) return emptyClose[Math.floor(Math.random() * emptyClose.length)];
+            return closest[Math.floor(Math.random() * closest.length)];
+        }
+
+        // --- GRID GENERATION & MINIMAP INIT ---
+        const GRID_SIZE = 12;
+        const RADIUS_MAX = 6.5;
+        const SPACING = 10.0;
+        const centerPos = GRID_SIZE / 2;
+        const minimap = document.getElementById('minimap');
+
+        for (let y = 0; y < GRID_SIZE; y++) {
+            for (let x = 0; x < GRID_SIZE; x++) {
+                const dx = x - centerPos + 0.5;
+                const dy = y - centerPos + 0.5;
+                const r = Math.sqrt(dx*dx + dy*dy);
+                
+                const cell = document.createElement('div');
+                cell.className = 'mini-cell';
+                minimap.appendChild(cell);
+
+                if (r <= RADIUS_MAX) {
+                    const col = {
+                        id: colRegistry.length, coord: `[${x},${y}]`,
+                        x: dx * SPACING, z: dy * SPACING,
+                        layers: 0, messages: [], sprites: [], tag: 'DEFAULT', layerVectors: [], title: "VOID", titleSprite: null
+                    };
+                    
+                    const baseGeo = getGeometryForTag(col.tag, true);
+                    const baseMat = new THREE.MeshBasicMaterial({ color: TAG_COLORS.DEFAULT, transparent: true, opacity: 0.1, side: THREE.DoubleSide });
+                    const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+                    baseMesh.rotation.x = -Math.PI / 2;
+                    baseMesh.position.set(col.x, -1, col.z);
+                    baseMesh.userData = { colId: col.id, layer: -1 };
+                    scene.add(baseMesh);
+                    clickableMeshes.push(baseMesh);
+                    col.baseMesh = baseMesh; 
+
+                    colRegistry.push(col);
+                    
+                    cell.dataset.colId = col.id;
+                    cell.onclick = () => { triggerHaptic(10); expandStack(col.id, col.layers - 1); };
+                    miniCells.push({cell, colId: col.id});
+                } else {
+                    cell.style.visibility = 'hidden'; 
+                }
+            }
+        }
+
+        function updateMinimap() {
+            miniCells.forEach(mc => {
+                const col = colRegistry[mc.colId];
+                mc.cell.className = 'mini-cell';
+                if (col.layers > 0) mc.cell.classList.add('mini-active');
+                if (STATE.selectedColId === col.id) mc.cell.classList.add('mini-selected');
+                
+                if (col.layers > 0 && col.tag !== 'DEFAULT') {
+                    mc.cell.style.backgroundColor = '#' + TAG_COLORS[col.tag].toString(16).padStart(6, '0');
+                } else {
+                    mc.cell.style.backgroundColor = '';
+                }
+            });
+        }
+
+        function addLayerToColumn(column, text, isNew = true) {
+            column.messages.push(text);
+            column.layerVectors.push([]); 
+            
+            if (column.layers === 0) {
+                column.baseMesh.geometry.dispose();
+                column.baseMesh.geometry = getGeometryForTag(column.tag, false);
+
+                const titleStr = text.length > 25 ? text.substring(0, 25) + '...' : text;
+                column.title = titleStr;
+                column.titleSprite = createTextSprite(`[${column.coord}] ${titleStr}`, true);
+                column.titleSprite.material.color.setHex(TAG_COLORS[column.tag] || TAG_COLORS.DEFAULT);
+                scene.add(column.titleSprite);
+            }
+
+            const sprite = createTextSprite(text);
+            const tagColor = column.tag ? TAG_COLORS[column.tag] : TAG_COLORS.DEFAULT;
+            sprite.material.color.setHex(tagColor);
+            
+            const startY = isNew ? (column.layers + 6) * STATE.tension : column.layers * STATE.tension;
+            sprite.position.set(column.x, startY, column.z);
+            sprite.userData = { colId: column.id, layer: column.layers, spawnTime: performance.now() };
+            
+            scene.add(sprite);
+            column.sprites.push(sprite);
+            clickableMeshes.push(sprite);
+            column.layers++;
+            
+            updateMinimap();
+            return sprite;
+        }
+
+        // --- PRE-POPULATE THE BOARD ---
+        function seedBoard() {
+            const seedPhrases = [
+                "DORMANT_SYSTEM_RELIC", "ECHO_CHAMBER_ACTIVE", "FRACTURED_MEMORY_NODE"
+            ];
+            colRegistry.forEach(col => {
+                if (Math.random() < 0.05 && seedPhrases.length > 0) {
+                    addLayerToColumn(col, seedPhrases.pop(), false);
+                }
+            });
+        }
+        seedBoard();
+
+        // --- PATH BUILDING (JUMPS) ---
+        function buildPath(originCol, originLayerIdx, destCol, tag) {
+            const startY = originLayerIdx >= 0 ? originCol.sprites[originLayerIdx].position.y : 0;
+            const start = new THREE.Vector3(originCol.x, startY, originCol.z);
+            const end = new THREE.Vector3(destCol.x, (destCol.layers * STATE.tension) + 2, destCol.z);
+            const mid = new THREE.Vector3((start.x + end.x)/2, Math.max(start.y, end.y) + 25, (start.z + end.z)/2);
+
+            const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+            const tubeGeo = new THREE.TubeGeometry(curve, 32, 0.2, 8, false);
+            const color = TAG_COLORS[tag] || TAG_COLORS.DEFAULT;
+            const tubeMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+            
+            const splineObject = new THREE.Mesh(tubeGeo, tubeMat);
+            scene.add(splineObject);
+            
+            destCol.baseMesh.material.opacity = 0.8;
+            
+            const startTime = performance.now();
+            function fadeBridge() {
+                const elapsed = performance.now() - startTime;
+                if (elapsed < 6000) {
+                    tubeMat.opacity = 0.9 * (1 - elapsed / 6000);
+                    requestAnimationFrame(fadeBridge);
+                } else {
+                    scene.remove(splineObject);
+                    tubeGeo.dispose();
+                    tubeMat.dispose();
+                    if(STATE.selectedColId !== destCol.id) destCol.baseMesh.material.opacity = destCol.layers > 0 ? 0.25 : 0.05;
+                }
+            }
+            fadeBridge();
+        }
+
+        // --- PASS 2: FETCH THEREFORE VECTORS FOR A SPECIFIC LAYER ---
+        async function fetchVectorsForLayer(colId, layerIdx) {
+            const col = colRegistry[colId];
+            const stubText = col.messages[layerIdx];
+            const list = document.getElementById('vector-list');
+            
+            list.innerHTML = `
+                <div class="vector-wrapper" style="opacity:1;">
+                    <div class="vector-loading" style="width:100%;">TRACING CONSEQUENCES...</div>
+                </div>`;
+            
+            const activeNodes = colRegistry.filter(c => c.layers > 0 && c.id !== colId).slice(0, 10);
+            let topoMap = `<Map_Graph_State>\n`;
+            activeNodes.forEach(c => {
+                topoMap += `  Node [${c.coord}] (${c.tag}): "${c.messages[c.messages.length - 1]}"\n`;
+            });
+            topoMap += `</Map_Graph_State>`;
+
+            const sysPrompt = `
+<POML_Ripple_Vector_Pass>
+    <Meta>
+        <Engine>RIPPLE</Engine>
+        ${topoMap}
+    </Meta>
+    <System_Role>You are the RIPPLE Vector Engine. The user selected a specific fragment of reality. Calculate logical "Therefore" consequences branching off this exact moment.</System_Role>
+    <Target_Fragment>"${stubText}"</Target_Fragment>
+    <Column_Mode>${col.tag}</Column_Mode>
+    <Formatting_Rules>
+        1. Output exactly 2 Action Vectors representing logical bridges.
+        2. If Column_Mode is OBSTACLE, vectors must introduce friction. If GOAL, vectors must move towards resolution. If SHIFT, vectors must pivot laterally.
+        3. Format strictly as: [VECTOR: [x,y] | Therefore, <action/consequence>]
+        4. CRITICAL: You MUST use the Map_Graph_State to jump to existing nodes.
+        5. DO NOT echo the Map_Graph_State back to the user.
+    </Formatting_Rules>
+</POML_Ripple_Vector_Pass>`;
+            
+            const payload = { contents: [{ parts: [{ text: "Extract Therefore Vectors." }] }], systemInstruction: { parts: [{ text: sysPrompt }]} };
+            
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await res.json();
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                
+                const vectorMatches = [...text.matchAll(/\[VECTOR:\s*(\[\d+,\d+\])[^a-zA-Z]*(.*?)\]/gi)];
+                col.layerVectors[layerIdx] = vectorMatches.map(m => {
+                    const coordTarget = m[1];
+                    let actionReason = m[2];
+                    if(!actionReason.toLowerCase().startsWith('therefore')) actionReason = `Therefore, ${actionReason}`;
+                    
+                    let destCol = colRegistry.find(c => c.coord === coordTarget);
+                    if (!destCol || destCol.id === col.id) {
+                        const pool = colRegistry.filter(c => c.id !== col.id);
+                        destCol = pool[Math.floor(Math.random() * pool.length)];
+                    }
+                    return { text: actionReason, destId: destCol.id, isLoading: false, isCollapsed: false };
+                });
+                
+                if (STATE.selectedColId === colId && STATE.selectedLayerIdx === layerIdx) {
+                    renderVectors(colId, layerIdx);
+                }
+            } catch (e) {
+                if (STATE.selectedColId === colId && STATE.selectedLayerIdx === layerIdx) {
+                    list.innerHTML = `<div class="vector-wrapper" style="opacity:1;"><div class="vector-loading" style="width:100%; color:var(--alert);">✕ CONNECTION FAILED</div></div>`;
+                }
+            }
+        }
+
+        async function fetchSingleVector(colId, layerIdx, vecIdx) {
+            triggerHaptic(10);
+            const col = colRegistry[colId];
+            
+            // Backup the old vector in case the API call fails so we don't lose it entirely
+            const oldVec = { ...col.layerVectors[layerIdx][vecIdx] };
+            
+            col.layerVectors[layerIdx][vecIdx].isLoading = true;
+            renderVectors(colId, layerIdx);
+
+            const stubText = col.messages[layerIdx];
+            const activeNodes = colRegistry.filter(c => c.layers > 0 && c.id !== colId).slice(0, 10);
+            let topoMap = `<Map_Graph_State>\n`;
+            activeNodes.forEach(c => {
+                topoMap += `  Node [${c.coord}] (${c.tag}): "${c.messages[c.messages.length - 1]}"\n`;
+            });
+            topoMap += `</Map_Graph_State>`;
+
+            const sysPrompt = `
+<POML_Ripple_Vector_Pass>
+    <Meta>
+        <Engine>RIPPLE</Engine>
+        ${topoMap}
+    </Meta>
+    <System_Role>You are the RIPPLE Vector Engine. The user asked for an alternative logical "Therefore" consequence branching off this exact moment.</System_Role>
+    <Target_Fragment>"${stubText}"</Target_Fragment>
+    <Avoid_Previous>"${oldVec.text}"</Avoid_Previous>
+    <Column_Mode>${col.tag}</Column_Mode>
+    <Formatting_Rules>
+        1. Output EXACTLY 1 Action Vector representing a completely NEW logical bridge. Do not repeat the Avoid_Previous logic.
+        2. Format strictly as: [VECTOR: [x,y] | Therefore, <action/consequence>]
+        3. CRITICAL: You MUST use the Map_Graph_State to jump to an existing node that makes narrative sense.
+        4. DO NOT echo the Map_Graph_State back to the user.
+    </Formatting_Rules>
+</POML_Ripple_Vector_Pass>`;
+            
+            const payload = { contents: [{ parts: [{ text: "Generate ONE alternative Action Vector." }] }], systemInstruction: { parts: [{ text: sysPrompt }]} };
+            
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await res.json();
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                
+                const match = /\[VECTOR:\s*(\[\d+,\d+\])[^a-zA-Z]*(.*?)\]/is.exec(text);
+                if (match) {
+                    const coordTarget = match[1];
+                    let actionReason = match[2];
+                    if(!actionReason.toLowerCase().startsWith('therefore')) actionReason = `Therefore, ${actionReason}`;
+                    
+                    let destCol = colRegistry.find(c => c.coord === coordTarget);
+                    if (!destCol || destCol.id === col.id) {
+                        const pool = colRegistry.filter(c => c.id !== col.id && c.layers > 0);
+                        const fallbackPool = pool.length > 0 ? pool : colRegistry.filter(c => c.id !== col.id);
+                        destCol = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
+                    }
+                    col.layerVectors[layerIdx][vecIdx] = { text: actionReason, destId: destCol.id, isLoading: false, isCollapsed: false };
+                } else {
+                    // Safe restore if AI hallucinates format
+                    col.layerVectors[layerIdx][vecIdx] = oldVec;
+                    col.layerVectors[layerIdx][vecIdx].isLoading = false;
+                }
+            } catch (e) {
+                // Safe restore if network fails
+                col.layerVectors[layerIdx][vecIdx] = oldVec;
+                col.layerVectors[layerIdx][vecIdx].isLoading = false;
+            }
+            
+            if (STATE.selectedColId === colId && STATE.selectedLayerIdx === layerIdx) {
+                renderVectors(colId, layerIdx);
+            }
+        }
+
+        window.renderVectors = function(colId, layerIdx) {
+            const list = document.getElementById('vector-list');
+            list.innerHTML = '';
+            
+            const col = colRegistry[colId];
+            const vectors = col.layerVectors[layerIdx];
+            
+            if(!vectors || vectors.length === 0) return;
+
+            vectors.forEach((vecObj, idx) => {
+                const destCol = colRegistry[vecObj.destId];
+                const destColor = destCol.tag ? TAG_COLORS[destCol.tag] : TAG_COLORS.DEFAULT;
+                const cssColor = '#' + destColor.toString(16).padStart(6, '0');
+                
+                if (vecObj.isCollapsed) {
+                    const expandBtn = document.createElement('button');
+                    expandBtn.className = 'vector-collapsed-tab';
+                    expandBtn.style.backgroundColor = cssColor;
+                    expandBtn.innerHTML = `↳ [${destCol.coord}]`;
+                    expandBtn.onclick = () => { vecObj.isCollapsed = false; renderVectors(colId, layerIdx); triggerHaptic(10); };
+                    list.appendChild(expandBtn);
+                    return;
+                }
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'vector-wrapper';
+                wrapper.style.animationDelay = `${idx * 0.1}s`;
+
+                if (vecObj.isLoading) {
+                    wrapper.innerHTML = `<div class="vector-loading" style="width:100%;">⟳ CALCULATING ALTERNATIVE...</div>`;
+                    list.appendChild(wrapper);
+                    return;
+                }
+                
+                const executeJump = () => {
+                    triggerHaptic(20);
+                    col.layerVectors[layerIdx].splice(idx, 1); 
+                    renderVectors(colId, layerIdx); 
+                    
+                    buildPath(col, layerIdx, destCol, STATE.inputMode);
+                    const transclusionPrompt = `${vecObj.text}`;
+                    processCommand(transclusionPrompt, destCol.id);
+                };
+
+                const contentBtn = document.createElement('button');
+                contentBtn.className = 'vector-content';
+                contentBtn.innerHTML = `<span class="vector-therefore" style="color:${cssColor}">↳ JUMP TO [${destCol.coord}]</span><span class="vector-reason">${vecObj.text}</span>`;
+                contentBtn.onclick = executeJump;
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'vector-actions';
+                actionsDiv.style.backgroundColor = cssColor;
+                
+                const btnRegen = document.createElement('button');
+                btnRegen.className = 'v-ctrl';
+                btnRegen.innerHTML = '⟳';
+                btnRegen.title = 'Regenerate Vector';
+                btnRegen.onclick = () => fetchSingleVector(colId, layerIdx, idx);
+
+                const btnMinimize = document.createElement('button');
+                btnMinimize.className = 'v-ctrl';
+                btnMinimize.innerHTML = '−';
+                btnMinimize.title = 'Minimize Vector';
+                btnMinimize.onclick = () => { vecObj.isCollapsed = true; renderVectors(colId, layerIdx); triggerHaptic(10); };
+
+                actionsDiv.appendChild(btnRegen);
+                actionsDiv.appendChild(btnMinimize);
+
+                wrapper.appendChild(contentBtn);
+                wrapper.appendChild(actionsDiv);
+                
+                list.appendChild(wrapper);
+
+                // Inline Chat Vector
+                if(!vecObj.loggedToChat) {
+                    vecObj.loggedToChat = true;
+                    const chatBtn = document.createElement('div');
+                    chatBtn.className = 'msg msg-chat-vector';
+                    chatBtn.dataset.colId = colId; 
+                    chatBtn.innerHTML = `<span class="vec-target" style="color:${cssColor}">↳ JUMP TO [${destCol.coord}]</span><span style="font-weight:normal;">${vecObj.text}</span>`;
+                    chatBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        chatBtn.style.display = 'none'; 
+                        executeJump();
+                    };
+                    chatLog.appendChild(chatBtn);
+                    chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: 'smooth' });
+                }
+            });
+        };
+
+        window.tagLayer = function(tag) {
+            if (STATE.selectedColId === -1) return;
+            triggerHaptic(15);
+            const col = colRegistry[STATE.selectedColId];
+            col.tag = tag;
+            
+            col.baseMesh.geometry.dispose();
+            col.baseMesh.geometry = getGeometryForTag(tag, false);
+            col.baseMesh.material.color.setHex(TAG_COLORS[tag]);
+            if(col.titleSprite) col.titleSprite.material.color.setHex(TAG_COLORS[tag]);
+            
+            appendLog(`>> NODE ${col.coord} SHIFTED TO [${tag}]`, 'sys');
+            setMode(tag); 
+            triggerRipple(col.x, col.z, 1.5, TAG_COLORS[tag]);
+            updateMinimap();
+
+            const stubContext = activeStubText ? activeStubText : col.messages[col.layers-1];
+            processCommand(`[ ${tag} SEQUENCE INITIATED ] Apply ${tag} to: "${stubContext}"`, col.id);
+        };
+
+        window.branchStub = function() {
+            if (!activeStubText) return;
+            triggerHaptic([20, 30, 20]);
+            const stub = activeStubText;
+            collapseStack(); 
+            
+            const emptyNodes = colRegistry.filter(c => c.layers === 0);
+            const targetCol = emptyNodes.length > 0 ? emptyNodes[Math.floor(Math.random() * emptyNodes.length)] : colRegistry[Math.floor(Math.random() * colRegistry.length)];
+            
+            appendLog(`>> BRANCHING STUB TO NEW TOWER AT ${targetCol.coord}`, 'sys');
+            
+            cmdInput.value = stub;
+            processCommand(stub, targetCol.id); 
+            cmdInput.value = "";
+        };
+
+        // --- INTERACTION LOGIC ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        
+        function onInteract(clientX, clientY) {
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(clickableMeshes);
+            if (intersects.length > 0) {
+                const data = intersects[0].object.userData;
+                const targetLayer = data.layer >= 0 ? data.layer : Math.max(0, colRegistry[data.colId].layers - 1);
+                expandStack(data.colId, targetLayer);
+            } else {
+                collapseStack();
+            }
+        }
+
+        window.addEventListener('pointerdown', (e) => { 
+            if (e.target.tagName === 'CANVAS') {
+                pointerDownPos = { x: e.clientX, y: e.clientY };
+                isDraggingCanvas = false;
+                STATE.autoPan = false; 
+            }
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (e.target.tagName === 'CANVAS') {
+                const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+                if (dist > 5) isDraggingCanvas = true; 
+            }
+            
+            if(e.target.tagName !== 'CANVAS') return;
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(clickableMeshes);
+            const readout = document.getElementById('hover-readout');
+            
+            if (intersects.length > 0) {
+                hoveredColId = intersects[0].object.userData.colId;
+                const col = colRegistry[hoveredColId];
+                if(col.layers > 0) {
+                    readout.innerText = `NODE ${col.coord} : ${col.title} [${col.tag}]`;
+                    readout.style.opacity = 1;
+                    readout.style.left = `${e.clientX}px`;
+                    readout.style.top = `${e.clientY - 30}px`;
+                } else {
+                    readout.style.opacity = 0;
+                }
+            } else {
+                hoveredColId = -1;
+                readout.style.opacity = 0;
+            }
+        });
+
+        window.addEventListener('pointerup', (e) => {
+            if (e.target.tagName === 'CANVAS' && !isDraggingCanvas) {
+                triggerHaptic(10);
+                onInteract(e.clientX, e.clientY);
+            }
+        });
+
+        window.addEventListener('wheel', (e) => {
+            if (e.ctrlKey || e.shiftKey) {
+                e.preventDefault();
+                STATE.tension = Math.max(0.6, Math.min(5.0, STATE.tension - e.deltaY * 0.005));
+            }
+        }, {passive: false});
+
+        // --- CHAT FILTERING & STUB SELECTION ---
+        function filterChatByNode(colId) {
+            const allMsgs = document.querySelectorAll('.msg[data-col-id]');
+            if (colId === -1) {
+                allMsgs.forEach(m => m.classList.remove('msg-dimmed'));
+            } else {
+                allMsgs.forEach(m => {
+                    const mColId = parseInt(m.dataset.colId);
+                    const mOriginId = m.dataset.originId ? parseInt(m.dataset.originId) : -1;
+                    
+                    if (mColId === colId || mOriginId === colId) {
+                        m.classList.remove('msg-dimmed');
+                    } else {
+                        m.classList.add('msg-dimmed');
+                    }
+                });
+            }
+        }
+
+        window.expandStack = function(colId, layerIdx) {
+            const col = colRegistry[colId];
+            if (col.layers === 0) return; 
+            if (layerIdx === undefined || layerIdx < 0) layerIdx = col.layers - 1;
+
+            STATE.selectedColId = colId;
+            STATE.selectedLayerIdx = layerIdx;
+            STATE.targetMode = 'NODE';
+            STATE.autoPan = true; 
+            setMode(col.tag); 
+            
+            document.getElementById('layer-controls').style.display = 'flex';
+            
+            if (!col.layerVectors[layerIdx] || col.layerVectors[layerIdx].length === 0) {
+                fetchVectorsForLayer(colId, layerIdx);
+            } else {
+                renderVectors(colId, layerIdx);
+            }
+
+            updateMinimap();
+            triggerRipple(col.x, col.z, 0.8, TAG_COLORS[col.tag]);
+            
+            focusBeam.position.set(col.x, 150, col.z);
+            focusBeam.material.color.setHex(TAG_COLORS[col.tag]);
+            focusBeam.visible = true;
+
+            filterChatByNode(colId);
+
+            document.querySelectorAll('.msg-selected').forEach(el => el.classList.remove('msg-selected'));
+            const msgs = document.querySelectorAll(`.msg[data-col-id="${colId}"][data-layer-idx="${layerIdx}"]`);
+            if (msgs.length > 0) {
+                const targetMsg = msgs[0];
+                targetMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                targetMsg.classList.add('msg-selected');
+                
+                const rawText = col.messages[layerIdx];
+                activeStubText = rawText; 
+                cmdInput.placeholder = `Branching from: "${rawText.substring(0, 30)}..."`;
+            }
+        };
+
+        window.collapseStack = function() {
+            triggerHaptic(10);
+            STATE.selectedColId = -1;
+            STATE.selectedLayerIdx = -1;
+            STATE.targetMode = 'GLOBAL';
+            STATE.autoPan = true;
+            setMode('DEFAULT');
+            document.getElementById('layer-controls').style.display = 'none';
+            focusBeam.visible = false;
+            updateMinimap();
+            filterChatByNode(-1); 
+            
+            document.querySelectorAll('.msg-selected').forEach(el => el.classList.remove('msg-selected'));
+            activeStubText = "";
+            cmdInput.placeholder = "Drop a Stone...";
+        };
+
+
+        // --- PASS 1: THE INGESTION ENGINE (POETIC RIPPLE SIMULATOR) ---
+        const chatLog = document.getElementById('chat-log');
+        const cmdInput = document.getElementById('cmd-input');
+        const cmdSubmit = document.getElementById('cmd-submit');
+
+        function appendLog(text, type='sys', animated=false, colId=null, layerIdx=null, originId=null) {
+            const div = document.createElement('div');
+            div.className = `msg msg-${type} ${animated ? 'typing-indicator' : ''}`;
+            
+            if (colId !== null && colId !== -1 && layerIdx !== null) {
+                div.dataset.colId = colId;
+                div.dataset.layerIdx = layerIdx;
+                div.dataset.coord = colRegistry[colId].coord;
+                if(originId !== null) div.dataset.originId = originId;
+
+                div.onclick = (e) => { 
+                    e.stopPropagation();
+                    triggerHaptic(10);
+                    expandStack(colId, layerIdx); 
+                }; 
+            }
+            
+            div.innerText = (type==='user'?'> ':'') + text;
+            chatLog.appendChild(div);
+            chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: 'smooth' });
+            return div;
+        }
+
+        function localRippleFallback(promptText, mode, targetCol) {
+            const seed = promptText.replace(/[.?!]+$/, '').slice(0, 48) || 'the stone';
+            // Bracketed coords get stripped by the reply cleaner, so bare digits here.
+            const where = targetCol ? targetCol.coord.replace(/[\[\]]/g, '') : 'the column';
+            const lines = [
+                `${seed} sinks below the surface.`,
+                `The water closes over ${where}.`,
+                mode === 'OBSTACLE' ? 'Something hard refuses to move.' :
+                mode === 'GOAL' ? 'A far light pulls at the current.' :
+                mode === 'SHIFT' ? 'The direction of the drift changes.' :
+                'Rings widen toward the other columns.',
+                'The topography holds what fell.'
+            ];
+            return lines.join(' ');
+        }
+        let hintedNoKey = false;
+        async function fetchPass1Ripples(promptText, mode, targetCol) {
+            if (!apiKey) {
+                if (!hintedNoKey) { hintedNoKey = true; logSys('NO KEY SET — LOCAL RIPPLES. Click ⚿ to paste a Gemini key (kept in this browser).'); }
+                return localRippleFallback(promptText, mode, targetCol);
+            }
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            let modeContext = "";
+            if (mode === 'OBSTACLE') modeContext = "CRITICAL MODE = OBSTACLE. You MUST halt progress. Introduce friction, failure states, walls, or destructive forces specifically focused on the anchor stub.";
+            if (mode === 'GOAL') modeContext = "CRITICAL MODE = GOAL. You MUST create an attractor. Pull the narrative toward a resolution, convergence, or target achievement specifically focused on the anchor stub.";
+            if (mode === 'SHIFT') modeContext = "CRITICAL MODE = SHIFT. You MUST force a lateral pivot. Change the physical rules, introduce a new faction, or flip the perspective specifically focusing on the anchor stub.";
+
+            const isSequence = promptText.includes("SEQUENCE INITIATED");
+            const spawnRule = isSequence 
+                ? "2. NO SPAWNING: Do NOT spawn any off-shoot nodes. Focus entirely on the immediate stack's vertical evolution. Do NOT output [SPAWN] tags." 
+                : "2. MAP POPULATION (SPAWN): To show the ripple spreading, you MUST spawn 1-2 reactions on adjacent nodes. Format strictly as: [SPAWN: [x,y] | short poetic fragment]";
+
+            let anchorContext = activeStubText ? `<Anchor_Stub>CRITICAL: The user is explicitly branching off this specific thought: "${activeStubText}". Make the next ripples a direct consequence of THIS thought.</Anchor_Stub>` : '';
+
+            const sysPrompt = `
+<POML_Ripple_Orchestration>
+    <Meta>
+        <Engine>RIPPLE_PASS_1</Engine>
+        ${anchorContext}
+    </Meta>
+    <System_Role>
+        You are the RIPPLE Architect. Take the user's "Stone" (Premise) and drop it into the topography. Trace its immediate poetic, physical impact.
+    </System_Role>
+    <Formatting_Rules>
+        1. MAIN BLOCKS: Output EXACTLY 4 short, poetic, atmospheric fragments (under 50 chars). No prefixes, no numbers. Just pure imagery of the consequence falling into place. DO NOT ECHO THE MAP GRAPH STATE.
+        ${spawnRule}
+        3. Do NOT output [VECTOR] or "Therefore" tags in this pass.
+        ${modeContext}
+    </Formatting_Rules>
+</POML_Ripple_Orchestration>`;
+            
+            const payload = { contents: [{ parts: [{ text: promptText }] }], systemInstruction: { parts: [{ text: sysPrompt }]} };
+            try {
+                const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await res.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || "...SIGNAL_LOST...";
+            } catch (e) { return "...TIMEOUT..."; }
+        }
+
+        async function processCommand(cmd, forceTargetId = null) {
+            if (!cmd.trim()) return;
+            
+            let targetCol;
+            if (forceTargetId !== null) {
+                targetCol = colRegistry[forceTargetId];
+            } else if (STATE.targetMode === 'NODE' && STATE.selectedColId !== -1) {
+                targetCol = colRegistry[STATE.selectedColId];
+            } else {
+                const emptyNodes = colRegistry.filter(c => c.layers === 0);
+                targetCol = emptyNodes.length > 0 ? emptyNodes[Math.floor(Math.random() * emptyNodes.length)] : colRegistry[Math.floor(Math.random() * colRegistry.length)];
+            }
+
+            const stoneLayerIdx = targetCol.layers;
+            addLayerToColumn(targetCol, cmd, true);
+            appendLog(`${cmd}`, 'user', false, targetCol.id, stoneLayerIdx);
+
+            if (STATE.inputMode !== 'DEFAULT') {
+                targetCol.tag = STATE.inputMode;
+                targetCol.baseMesh.geometry.dispose();
+                targetCol.baseMesh.geometry = getGeometryForTag(STATE.inputMode, false);
+                targetCol.baseMesh.material.color.setHex(TAG_COLORS[STATE.inputMode]);
+                if(targetCol.titleSprite) targetCol.titleSprite.material.color.setHex(TAG_COLORS[STATE.inputMode]);
+            }
+
+            triggerRipple(targetCol.x, targetCol.z, 1.2, TAG_COLORS[targetCol.tag]);
+
+            if (STATE.selectedColId !== targetCol.id || STATE.selectedLayerIdx !== stoneLayerIdx) {
+                expandStack(targetCol.id, stoneLayerIdx);
+            }
+
+            isAITyping = true;
+            let currentTypingIndicator = appendLog("TRACING RIPPLES", 'sys', true);
+
+            try {
+                const replyText = await fetchPass1Ripples(cmd, STATE.inputMode, targetCol);
+                
+                const spawnMatches = [...replyText.matchAll(/\[SPAWN:\s*(\[.*?\])\s*\|\s*(.*?)\]/gi)];
+                spawnMatches.forEach((m, idx) => {
+                    let destCol = colRegistry.find(c => c.coord === m[1]);
+                    if (!destCol || destCol.id === targetCol.id) {
+                        destCol = getNeighboringNode(targetCol);
+                    }
+                    
+                    const spawnText = m[2];
+                    setTimeout(() => {
+                        const spawnLayerIdx = destCol.layers;
+                        addLayerToColumn(destCol, spawnText.trim(), true);
+                        triggerRipple(destCol.x, destCol.z, 0.6, TAG_COLORS[destCol.tag]);
+                        // Log spawn with Origin ID to prevent aggressive chat dimming
+                        appendLog(`[SPAWN @ ${destCol.coord}]: ${spawnText}`, 'spawn', false, destCol.id, spawnLayerIdx, targetCol.id);
+                    }, 1000 + (idx * 500)); 
+                });
+
+                if (currentTypingIndicator) currentTypingIndicator.remove();
+                
+                let cleanReply = replyText.replace(/\[SPAWN:.*?\]/gi, '').replace(/\[.*?\]/g, '').trim();
+                let fragments = cleanReply.split(/(?<=[.?!])\s+/);
+                
+                fragments = fragments.filter(f => {
+                    const clean = f.trim();
+                    if(clean.length < 3) return false;
+                    if(clean.includes('|')) return false; 
+                    if(clean.toLowerCase().includes('node [')) return false; 
+                    return true;
+                });
+                
+                fragments.forEach((fragment, index) => {
+                    setTimeout(() => {
+                        const lIdx = targetCol.layers;
+                        addLayerToColumn(targetCol, fragment.trim(), true);
+                        triggerRipple(targetCol.x, targetCol.z, 0.5, TAG_COLORS[targetCol.tag]);
+                        appendLog(fragment.trim(), 'ai', false, targetCol.id, lIdx);
+                        
+                        if (index === fragments.length - 1 && STATE.selectedColId === targetCol.id) {
+                            expandStack(targetCol.id, targetCol.layers - 1);
+                        }
+                    }, index * 800); 
+                });
+
+            } catch (e) { 
+                if (currentTypingIndicator) currentTypingIndicator.remove();
+                appendLog("COMM_FAILURE: Ripple calculation aborted.", 'sys'); 
+            }
+            finally { 
+                isAITyping = false; 
+                cmdInput.value = '';
+                cmdInput.focus();
+            }
+        }
+
+        function syncKeyLabel() {
+            const lbl = document.getElementById('key-lbl');
+            if (lbl) lbl.innerText = apiKey ? `KEY: …${apiKey.slice(-4)}` : 'KEY: OFF';
+        }
+        function logSys(text) {
+            const log = document.getElementById('chat-log');
+            const div = document.createElement('div');
+            div.className = 'msg msg-sys';
+            div.textContent = '>>> ' + text;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+        window.toggleKeyEntry = function() {
+            triggerHaptic(15);
+            if (keyEntryMode) { exitKeyEntry(); return; }
+            if (apiKey) {
+                apiKey = '';
+                localStorage.removeItem('pond.browser.gemini.key');
+                syncKeyLabel();
+                logSys('KEY CLEARED. LOCAL RIPPLES ONLY.');
+                return;
+            }
+            keyEntryMode = true;
+            cmdInput.type = 'password';
+            cmdInput.value = '';
+            cmdInput.placeholder = 'Paste Gemini API key, press ↵ (stored in this browser)';
+            cmdInput.focus();
+        };
+        function exitKeyEntry() {
+            keyEntryMode = false;
+            cmdInput.type = 'text';
+            cmdInput.value = '';
+            cmdInput.placeholder = 'Drop a Stone...';
+        }
+        function saveKeyFromInput() {
+            const key = cmdInput.value.trim();
+            if (!key) { exitKeyEntry(); return; }
+            apiKey = key;
+            localStorage.setItem('pond.browser.gemini.key', key);
+            exitKeyEntry();
+            syncKeyLabel();
+            logSys(`KEY SAVED (…${key.slice(-4)}). GEMINI RIPPLES LIVE. Click ⚿ again to clear.`);
+        }
+        syncKeyLabel();
+
+        function submitCurrent() {
+            if (keyEntryMode) { saveKeyFromInput(); return; }
+            if (!isAITyping && cmdInput.value.trim() !== '') {
+                processCommand(cmdInput.value);
+            }
+        }
+        cmdSubmit.addEventListener('click', () => {
+            triggerHaptic(15);
+            submitCurrent();
+        });
+        cmdInput.addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') {
+                submitCurrent();
+            }
+        });
+
+        // --- ANIMATION LOOP ---
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            if (!STATE.isPaused) STATE.simTime += delta;
+
+            const targetFlow = isAITyping ? 3.0 : 0.6;
+            STATE.flowRate += (targetFlow - STATE.flowRate) * 0.05;
+
+            for (let i = activeRipples.length - 1; i >= 0; i--) {
+                activeRipples[i].time += delta;
+                if (activeRipples[i].time > 4.0) activeRipples.splice(i, 1); 
+            }
+
+            miniCells.forEach(mc => {
+                const col = colRegistry[mc.colId];
+                const isColSelected = (STATE.selectedColId === col.id);
+                const isColHovered = (hoveredColId === col.id);
+
+                if (col.layers === 0) {
+                    col.baseMesh.material.opacity = isColHovered ? 0.3 : 0.1;
+                } else {
+                    col.baseMesh.material.opacity = isColSelected ? 0.8 : (isColHovered ? 0.6 : 0.25);
+                }
+                
+                let rippleIntensity = 0;
+                activeRipples.forEach(r => {
+                    const dist = Math.hypot(col.x - r.x, col.z - r.z);
+                    const waveFront = r.time * 60.0;
+                    const diff = Math.abs(waveFront - dist);
+                    if (diff < 15) {
+                        rippleIntensity = Math.max(rippleIntensity, (1 - diff/15) * r.intensity * (1 - r.time/4.0));
+                    }
+                });
+
+                if (rippleIntensity > 0.05) {
+                    mc.cell.style.transform = `scale(${1 + rippleIntensity * 0.8})`;
+                    mc.cell.style.backgroundColor = '#ffffff';
+                    mc.cell.style.boxShadow = `0 0 ${10 * rippleIntensity}px #ffffff`;
+                } else {
+                    mc.cell.style.transform = 'scale(1)';
+                    if (isColSelected) {
+                        mc.cell.style.backgroundColor = 'var(--orange)';
+                        mc.cell.style.boxShadow = '0 0 8px var(--orange)';
+                    } else if (col.layers > 0) {
+                        mc.cell.style.backgroundColor = col.tag !== 'DEFAULT' ? '#' + TAG_COLORS[col.tag].toString(16).padStart(6, '0') : 'var(--cyan)';
+                        mc.cell.style.boxShadow = 'none';
+                    } else {
+                        mc.cell.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                        mc.cell.style.boxShadow = 'none';
+                    }
+                }
+
+                const spacing = STATE.tension; 
+                const wave = Math.sin((col.x * 0.12) + (col.z * 0.12) + (STATE.simTime * STATE.flowRate));
+                
+                let rippleOffset3D = 0;
+                activeRipples.forEach(r => {
+                    const dist = Math.hypot(col.x - r.x, col.z - r.z);
+                    const waveFront = r.time * 60.0; 
+                    const diff = waveFront - dist;
+                    if (diff > 0 && diff < 15) { 
+                        rippleOffset3D += Math.sin((diff / 15) * Math.PI) * 8.0 * r.intensity * (1.0 - r.time / 4.0);
+                    }
+                });
+
+                if(col.titleSprite) {
+                    col.titleSprite.position.y += (((col.layers * spacing) + 8 + wave * 2) - col.titleSprite.position.y) * 0.12;
+                    col.titleSprite.material.opacity = (isColSelected || isColHovered) ? 1.0 : (col.layers > 0 ? 0.6 : 0.0);
+                }
+
+                col.sprites.forEach((s, l) => {
+                    const isNew = (performance.now() - s.userData.spawnTime < 1000);
+                    const isSpecificLayerSelected = (isColSelected && l === STATE.selectedLayerIdx);
+                    
+                    let targetY = (l * spacing) + (wave * 0.5) + rippleOffset3D; 
+                    if (isNew) targetY += 6; 
+
+                    s.position.y += (targetY - s.position.y) * 0.12;
+                    const tagColor = col.tag ? TAG_COLORS[col.tag] : TAG_COLORS.DEFAULT;
+
+                    if (isColSelected) {
+                        s.material.color.setHex(isSpecificLayerSelected ? 0xffffff : tagColor);
+                        s.material.opacity = isSpecificLayerSelected ? 1.0 : 0.85; 
+                    } else if (isColHovered) {
+                        s.material.color.setHex(l === col.layers-1 ? 0xffffff : tagColor);
+                        s.material.opacity = 1.0;
+                    } else if (STATE.selectedColId !== -1) {
+                        s.material.opacity = 0.15; 
+                    } else {
+                        s.material.color.setHex(tagColor);
+                        s.material.opacity = (l === col.layers-1) ? 1.0 : 0.7; 
+                    }
+                });
+            });
+
+            if (STATE.selectedColId !== -1 && STATE.selectedLayerIdx !== -1 && STATE.autoPan) {
+                const col = colRegistry[STATE.selectedColId];
+                const targetY = col.layers > 0 ? (STATE.selectedLayerIdx * STATE.tension) : 0;
+                
+                const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+                camRight.y = 0;
+                camRight.normalize().multiplyScalar(15); 
+                
+                const currentPanelHeight = document.getElementById('bottom-panel').offsetHeight;
+                const verticalOffset = currentPanelHeight / 10; 
+                
+                controls.target.lerp(new THREE.Vector3(col.x + camRight.x, targetY - verticalOffset, col.z + camRight.z), 0.08);
+            } else if (STATE.selectedColId === -1 && STATE.autoPan) {
+                controls.target.lerp(new THREE.Vector3(0, 0, 0), 0.02);
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        animate();
+    </script>
+</body>
+</html>

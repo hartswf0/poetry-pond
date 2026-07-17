@@ -241,7 +241,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
         <button id="apiKeyClear" class="key-btn" type="button">Clear</button>
       </div>
       <p class="field-note" id="apiKeyNote">Checking the local server…</p>
-      <p class="field-note">The key is sent once to your local server over loopback, kept in server memory and <code>.runtime-config.json</code>, and never returned to the browser. Without a key everything still runs on the typed local engine.</p>
+      <p class="field-note">With the local server running, the key is sent once over loopback, held in server memory and <code>.runtime-config.json</code>, and never returned to the browser. Served statically (no server), the key stays in this browser and the page calls OpenAI directly. Without any key everything still runs on the typed local engine.</p>
     </div>
     <button id="rememberToggle" class="drawer-row"><span><b>Remember this pond</b><small>Persist the event ledger, entity state, strata, and API usage in this browser. No API key is stored.</small></span><span class="value">Off</span></button>
   </section>
